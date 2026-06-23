@@ -33,9 +33,31 @@ Open `http://localhost:8080/chat` in your browser. Enter the token when prompted
 
 ### Requirements
 
-- Python 3.9+
-- tmux
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- **Python 3.9+**
+- **tmux** — cocoon runs Claude Code inside a tmux session. This is how it captures output without needing an API key
+- **[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)** — installed and authenticated (`claude` command works in terminal)
+
+#### Installing tmux
+
+```bash
+# macOS
+brew install tmux
+
+# Ubuntu / Debian
+sudo apt install tmux
+
+# Fedora
+sudo dnf install tmux
+
+# Arch
+sudo pacman -S tmux
+
+# Windows (use WSL)
+wsl --install          # if you don't have WSL yet
+sudo apt install tmux  # inside WSL
+```
+
+> **Why tmux?** Claude Code is a terminal application — there's no API to talk to it programmatically. Cocoon uses tmux as a virtual terminal: it sends your messages via `tmux send-keys` and reads Claude's responses via `tmux capture-pane`. This is the same terminal you'd interact with manually, just automated. No API key, no token limits, no extra cost.
 
 ### Configuration
 
