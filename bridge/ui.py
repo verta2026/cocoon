@@ -370,6 +370,13 @@ function renderFileRefs(html) {
     var url = '/files/' + encodeURIComponent(match[0].split('/').pop()) + '?token=' + encodeURIComponent(TOKEN);
     return '<img src="' + url + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0.3em 0;display:block;cursor:pointer;border:1px solid var(--border);" loading="lazy" onclick="openLightbox(this.src)">';
   });
+  html = html.replace(/\[file\]\s*\/tmp\/[^\s]+/gi, function(m) {
+    var match = m.match(/\/tmp\/[^\s]+/);
+    if (!match) return m;
+    var name = match[0].split('/').pop();
+    var url = '/files/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(TOKEN);
+    return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3em;background:var(--code-bg);padding:0.25em 0.6em;border-radius:5px;font-size:0.82em;color:inherit;text-decoration:none;">file</a>';
+  });
   return html;
 }
 
@@ -521,7 +528,31 @@ function paintChat(baseHtml) {
   chat.innerHTML = nextHtml;
   _paintedHtml = nextHtml;
   chat.querySelectorAll('details').forEach(function(d, i) { if (openIdx.has(i)) d.open = true; });
-  if (wasAtBottom) chat.scrollTop = chat.scrollHeight;
+  if (wasAtBottom) {
+    bindBottomOnMediaLoad();
+    scrollChatToBottom();
+  }
+}
+
+function scrollChatToBottom() {
+  const settle = function() { chat.scrollTop = chat.scrollHeight; };
+  requestAnimationFrame(function() {
+    settle();
+    setTimeout(settle, 80);
+    setTimeout(settle, 240);
+    setTimeout(settle, 650);
+  });
+}
+
+function bindBottomOnMediaLoad() {
+  chat.querySelectorAll('img').forEach(function(img) {
+    if (img.dataset.bottomScrollBound === '1') return;
+    img.dataset.bottomScrollBound = '1';
+    if (!img.complete) {
+      img.addEventListener('load', scrollChatToBottom, { once: true });
+      img.addEventListener('error', scrollChatToBottom, { once: true });
+    }
+  });
 }
 
 function setBusy(busy) {
@@ -586,7 +617,12 @@ function renderAttachPreview() {
     else { card.href = url; card.target = '_blank'; }
     const thumb = document.createElement('span');
     thumb.className = 'attach-thumb';
-    if (isImg) { const img = document.createElement('img'); img.src = url; thumb.appendChild(img); }
+    if (isImg) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.onload = scrollChatToBottom;
+      thumb.appendChild(img);
+    }
     else { const icon = document.createElement('span'); icon.className = 'attach-file-icon'; icon.textContent = 'file'; thumb.appendChild(icon); }
     card.appendChild(thumb); list.appendChild(card);
   });
@@ -601,7 +637,10 @@ async function handleFileUpload(inputEl) {
       pendingFiles.push(await r.json());
     } catch(e) { alert('upload failed: ' + file.name); }
   }
-  if (pendingFiles.length > 0) renderAttachPreview();
+  if (pendingFiles.length > 0) {
+    renderAttachPreview();
+    scrollChatToBottom();
+  }
   inputEl.value = '';
 }
 document.getElementById('file-input').addEventListener('change', function() { handleFileUpload(this); });
