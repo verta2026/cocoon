@@ -38,6 +38,16 @@ def dismiss_settings_warning_prompt(session_name: str):
     return False
 
 
+def dismiss_trust_prompt(session_name: str):
+    if not tmux_exists(session_name):
+        return False
+    screen = tmux_capture(session_name, 80)
+    if "trust this folder" in screen and "Enter to confirm" in screen:
+        subprocess.run(["tmux", "send-keys", "-t", session_name, "Enter"], check=True)
+        return True
+    return False
+
+
 def wait_for_claude_ready(session_name: str, timeout=70):
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -51,6 +61,9 @@ def wait_for_claude_ready(session_name: str, timeout=70):
             time.sleep(1)
             continue
         if dismiss_settings_warning_prompt(session_name):
+            time.sleep(2)
+            continue
+        if dismiss_trust_prompt(session_name):
             time.sleep(2)
             continue
         screen = tmux_capture(session_name, 80)

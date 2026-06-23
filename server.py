@@ -34,6 +34,7 @@ from bridge.prompts import (
     dismiss_rating_prompt as _dismiss_rating_prompt,
     dismiss_resume_summary_prompt as _dismiss_resume_summary_prompt,
     dismiss_settings_warning_prompt as _dismiss_settings_warning_prompt,
+    dismiss_trust_prompt as _dismiss_trust_prompt,
     wait_for_claude_ready as _wait_for_claude_ready,
 )
 from bridge.uploads import (
@@ -107,6 +108,7 @@ async def status(request: Request):
     command = pane_command() if alive else ""
     running = command == "claude"
     dismissed_resume = dismiss_resume_summary_prompt() if running else False
+    dismissed_trust = _dismiss_trust_prompt(SESSION_NAME) if alive else False
     return {
         "session": SESSION_NAME,
         "alive": alive,
@@ -114,6 +116,7 @@ async def status(request: Request):
         "command": command,
         "busy": claude_busy() if running else False,
         "dismissed_resume": dismissed_resume,
+        "dismissed_trust": dismissed_trust,
     }
 
 
