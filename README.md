@@ -104,6 +104,55 @@ cocoon/
     └── ui.py         # chat UI (HTML/CSS/JS)
 ```
 
+## Troubleshooting
+
+**Windows: tmux is not available natively**
+
+tmux doesn't run on Windows directly. You need WSL (Windows Subsystem for Linux):
+
+1. Open PowerShell **as Administrator** and run `wsl --install`
+2. Restart your computer
+3. Open the Ubuntu terminal that appears in Start Menu
+4. Inside WSL, install everything: `sudo apt install tmux python3 python3-pip`
+5. Install Claude Code inside WSL: `npm install -g @anthropic-ai/claude-code`
+6. Run cocoon from WSL — not from PowerShell or cmd
+
+Everything (cocoon, claude, tmux) must run inside the same WSL environment. Don't mix Windows and WSL paths.
+
+**Claude Code shows "trust this folder" prompt and hangs**
+
+Cocoon auto-dismisses this prompt. If it still hangs, the prompt may have appeared before cocoon's status check. Visit `/status` in your browser (e.g. `http://localhost:8080/status?token=your-token`) to trigger the dismiss, or restart with `POST /start`.
+
+**Port already in use**
+
+Another process is using port 8080. Either kill it or choose a different port:
+
+```bash
+COCOON_PORT=3000 ./start.sh
+```
+
+**"No module named fastapi"**
+
+The start script auto-installs dependencies, but if it fails:
+
+```bash
+pip3 install -r requirements.txt
+```
+
+On Debian/Ubuntu with externally-managed Python, you may need `--break-system-packages` or use a venv:
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+```
+
+**Phone can't reach localhost**
+
+`localhost` only works on the machine running cocoon. To access from your phone on the same WiFi:
+
+1. Find your computer's local IP: `hostname -I` (Linux) or `ifconfig | grep inet` (macOS)
+2. Open `http://<your-ip>:8080/chat` on your phone
+3. Make sure your firewall allows port 8080
+
 ## Accessing remotely
 
 If running on a VPS, set a strong token and expose the port:
