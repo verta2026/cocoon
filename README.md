@@ -36,6 +36,19 @@ chmod +x start.sh
 
 Open `http://localhost:8080/chat` in your browser. Enter the token when prompted (default: `cocoon-default-token`).
 
+> **⚠️ Security warning — read before deploying**
+>
+> Cocoon gives web access to a real Claude Code terminal. Anyone with your token can read/write files, run shell commands, and use every tool Claude Code has access to. This is not a sandboxed chatbot — it's full terminal control through a browser.
+>
+> **Change the default token immediately.** The default is `cocoon-default-token` and the server binds `0.0.0.0` (all interfaces). If you're on a VPS with a public IP and forget to change the token, anyone can find and control your terminal.
+>
+> ```bash
+> # Always set a strong random token
+> COCOON_TOKEN=$(openssl rand -hex 24) ./start.sh
+> ```
+>
+> **For remote access, use a private network** — Tailscale, SSH tunnel, or VPN. Exposing cocoon directly to the public internet (even with a strong token) is not recommended. If you must, put it behind HTTPS + Cloudflare with a long random token, and understand the risk: a leaked token = full terminal access.
+
 ### Requirements
 
 - **Python 3.9+**
