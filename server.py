@@ -41,7 +41,7 @@ from bridge.uploads import (
     save_upload_file as _save_upload_file,
     serve_upload_file as _serve_upload_file,
 )
-from bridge.ui import CHAT_HTML
+from bridge.ui import CHAT_HTML, terminal_html as _terminal_html
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -218,6 +218,12 @@ async def serve_file(filename: str, request: Request, token: str = None):
     else:
         raise HTTPException(403, "Bad token")
     return _serve_upload_file(UPLOAD_DIR, filename)
+
+
+@app.get("/terminal")
+async def terminal_page(request: Request):
+    verify_token(request)
+    return HTMLResponse(_terminal_html(TOKEN))
 
 
 @app.post("/escape")
