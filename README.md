@@ -6,7 +6,18 @@ Cocoon polls the terminal through tmux, parses the raw output, and renders it as
 
 ## Why not use the API?
 
-Claude Code is a CLI tool. It manages its own context, tools, memory, and permission system. The API gives you a raw model — Claude Code gives you an agent. Cocoon lets you use that agent from anywhere with a browser.
+Claude Code is a full agent — not just a model. By wrapping the CLI instead of the API, cocoon inherits everything Claude Code already does for free:
+
+- **Tools** — file editing, bash, web search, all built in
+- **MCP servers** — connect to any external service without writing integration code
+- **Memory** — persistent across sessions, managed by Claude Code itself
+- **Hooks** — trigger shell commands on events (message sent, tool called, etc.)
+- **Permissions** — fine-grained control over what Claude can do
+- **Context management** — automatic summarization, `/compact`, session continuity
+- **Slash commands** — `/init`, `/review`, `/cost`, everything works as-is
+- **Multi-model** — switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use
+
+If you build on the raw API, you'd reimplement all of the above from scratch. Cocoon gives you a chat UI on top of the full agent — no information loss, no feature gaps.
 
 ## How it works
 
@@ -105,6 +116,12 @@ cocoon/
     ├── uploads.py    # file upload handling
     └── ui.py         # chat UI (HTML/CSS/JS)
 ```
+
+## Limitations
+
+**Cocoon depends on Claude Code's terminal output format.** The chat UI parses raw terminal text into messages. If a Claude Code update changes how output is rendered (new progress bars, different formatting, UI chrome changes), the parser may need updating. The terminal view (`/terminal`) always shows the unprocessed output as a fallback.
+
+**Web only.** Cocoon renders to a browser. It doesn't include renderers for messaging platforms (Telegram, Discord, etc.) — but the architecture makes this straightforward to add: the `/output` API returns parsed JSON that any client can consume.
 
 ## Troubleshooting
 
