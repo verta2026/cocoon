@@ -192,7 +192,7 @@ Then on your phone: `http://192.168.x.x:8080/chat`
 
 Works from anywhere — home, café, commute. No ports to open, no domain to buy, encrypted by default.
 
-### Domain + VPS (~8 RMB/year)
+### Domain + VPS
 
 Buy a cheap domain, proxy through Cloudflare (free HTTPS + CDN), point to your VPS. Full step-by-step guide:
 
