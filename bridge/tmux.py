@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import time
+import re
 
 
 def tmux_exists(session_name: str) -> bool:
@@ -33,6 +34,8 @@ def pane_command(session_name: str) -> str:
         ["tmux", "list-panes", "-t", session_name, "-F", "#{pane_current_command}"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return r.stdout.strip().splitlines()[0] if r.stdout.strip() else ""
 
@@ -42,12 +45,39 @@ def tmux_capture(session_name: str, lines: int = 200) -> str:
         ["tmux", "capture-pane", "-t", session_name, "-p", "-S", f"-{lines}"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return r.stdout
 
 
+def claude_running(session_name: str) -> bool:
+    if not tmux_exists(session_name):
+        return False
+    command = pane_command(session_name).lower()
+    if command in ("claude", "claude.exe"):
+        return True
+    if command not in ("cmd.exe", "powershell.exe", "pwsh.exe"):
+        return False
+    screen = tmux_capture(session_name, 80)
+    tail = "\n".join(screen.splitlines()[-40:])
+    last_line = next((line.strip() for line in reversed(tail.splitlines()) if line.strip()), "")
+    if re.match(r"^(?:PS\s+)?[A-Za-z]:\\.*>\s*$", last_line):
+        return False
+    return any(
+        marker in tail
+        for marker in (
+            "Claude Code v",
+            "? for shortcuts",
+            "esc to interrupt",
+            "Try \"",
+            "Enter to confirm",
+        )
+    )
+
+
 def claude_busy(session_name: str) -> bool:
-    if not tmux_exists(session_name) or pane_command(session_name) != "claude":
+    if not claude_running(session_name):
         return False
     screen = tmux_capture(session_name, 80)
     busy_markers = (

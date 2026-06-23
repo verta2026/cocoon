@@ -1,14 +1,17 @@
 """Cocoon configuration — all settings in one place."""
 
 import os
+import tempfile
 from pathlib import Path
 
 SESSION_NAME = os.environ.get("COCOON_SESSION", "cocoon-cc")
 WORK_DIR = os.environ.get("COCOON_WORK_DIR", os.getcwd())
 PORT = int(os.environ.get("COCOON_PORT", "8080"))
 TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
-UPLOAD_DIR = Path(os.environ.get("COCOON_UPLOAD_DIR", "/tmp/cocoon-uploads"))
-TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", "/tmp/cocoon-tts"))
+UPLOAD_DIR = Path(
+    os.environ.get("COCOON_UPLOAD_DIR", str(Path(tempfile.gettempdir()) / "cocoon-uploads"))
+)
+TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", str(Path(tempfile.gettempdir()) / "cocoon-tts")))
 TTS_PROVIDER = os.environ.get("COCOON_TTS_PROVIDER", "none").strip().lower()
 
 ASSISTANT_NAME = os.environ.get("COCOON_ASSISTANT_NAME", "Claude")

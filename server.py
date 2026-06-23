@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import SESSION_NAME, WORK_DIR, TOKEN, UPLOAD_DIR, TTS_DIR
 from bridge.tmux import (
     claude_busy as _claude_busy,
+    claude_running as _claude_running,
     pane_command as _pane_command,
     tmux_capture as _tmux_capture,
     tmux_clear_input as _tmux_clear_input,
@@ -89,8 +90,36 @@ def claude_busy():
     return _claude_busy(SESSION_NAME)
 
 
+def claude_running():
+    return _claude_running(SESSION_NAME)
+
+
 def tmux_capture(lines=200):
     return _tmux_capture(SESSION_NAME, lines)
+
+
+def tmux_new_session():
+    args = [
+        "tmux", "new-session", "-d", "-s", SESSION_NAME,
+        "-x", "500", "-y", "50",
+    ]
+    if os.name == "nt":
+        args.extend(["cmd.exe", "/K"])
+    else:
+        args.extend(["-c", WORK_DIR])
+    result = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "tmux new-session failed").strip()
+        raise HTTPException(500, detail)
+    if os.name == "nt":
+        safe_work_dir = WORK_DIR.replace('"', "")
+        tmux_send(f'cd /d "{safe_work_dir}"')
 
 
 def dismiss_resume_summary_prompt():
@@ -120,7 +149,7 @@ async def status(request: Request):
     verify_token(request)
     alive = tmux_exists()
     command = pane_command() if alive else ""
-    running = command == "claude"
+    running = claude_running() if alive else False
     dismissed_resume = dismiss_resume_summary_prompt() if running else False
     dismissed_trust = _dismiss_trust_prompt(SESSION_NAME) if alive else False
     return {
@@ -138,7 +167,7 @@ async def status(request: Request):
 async def start_session(request: Request):
     verify_token(request)
     if tmux_exists():
-        if pane_command() == "claude":
+        if claude_running():
             return {"message": "Session already running"}
         tmux_clear_input()
         tmux_clear_scrollback()
@@ -148,11 +177,7 @@ async def start_session(request: Request):
 
     subprocess.run(["tmux", "set-option", "-g", "history-limit", "20000"],
                    capture_output=True)
-    subprocess.run([
-        "tmux", "new-session", "-d", "-s", SESSION_NAME,
-        "-x", "500", "-y", "50",
-        "-c", WORK_DIR,
-    ], check=True)
+    tmux_new_session()
     await asyncio.sleep(1)
     tmux_send("claude")
     await asyncio.sleep(3)
@@ -165,7 +190,7 @@ async def send_message(msg: Message, request: Request):
     if not tmux_exists():
         raise HTTPException(404, "No active session")
 
-    if pane_command() != "claude":
+    if not claude_running():
         tmux_send("claude")
         if msg.text and wait_for_claude_ready():
             tmux_send(msg.text.strip())
@@ -201,12 +226,12 @@ async def new_session(request: Request):
     verify_token(request)
     if not tmux_exists():
         raise HTTPException(404, "No active session")
-    if pane_command() == "claude":
+    if claude_running():
         tmux_clear_input()
         tmux_send("/exit")
         for _ in range(40):
             await asyncio.sleep(0.5)
-            if pane_command() != "claude":
+            if not claude_running():
                 tmux_send("claude")
                 await asyncio.sleep(3)
                 return {"message": "New session started"}

@@ -5,11 +5,11 @@ from __future__ import annotations
 import subprocess
 import time
 
-from bridge.tmux import pane_command, tmux_capture, tmux_exists
+from bridge.tmux import claude_running, tmux_capture, tmux_exists
 
 
 def dismiss_resume_summary_prompt(session_name: str):
-    if not tmux_exists(session_name) or pane_command(session_name) != "claude":
+    if not claude_running(session_name):
         return False
     screen = tmux_capture(session_name, 80)
     if "Resume from summary" in screen and "Enter to confirm" in screen:
@@ -19,7 +19,7 @@ def dismiss_resume_summary_prompt(session_name: str):
 
 
 def dismiss_rating_prompt(session_name: str):
-    if not tmux_exists(session_name) or pane_command(session_name) != "claude":
+    if not claude_running(session_name):
         return False
     screen = tmux_capture(session_name, 80)
     if "How is Claude doing this session" in screen and "0: Dismiss" in screen:
@@ -29,7 +29,7 @@ def dismiss_rating_prompt(session_name: str):
 
 
 def dismiss_settings_warning_prompt(session_name: str):
-    if not tmux_exists(session_name) or pane_command(session_name) != "claude":
+    if not claude_running(session_name):
         return False
     screen = tmux_capture(session_name, 80)
     if "Settings Warning" in screen and "Enter to confirm" in screen and "Continue" in screen:
@@ -51,7 +51,7 @@ def dismiss_trust_prompt(session_name: str):
 def wait_for_claude_ready(session_name: str, timeout=70):
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if not tmux_exists(session_name) or pane_command(session_name) != "claude":
+        if not claude_running(session_name):
             time.sleep(1)
             continue
         if dismiss_resume_summary_prompt(session_name):

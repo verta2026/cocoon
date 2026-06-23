@@ -380,17 +380,20 @@ function openLightbox(src) {
   document.getElementById('lightbox').style.display = 'flex';
 }
 
+function basenameFromPath(path) {
+  return (path || '').trim().split(/[\\/]/).pop();
+}
+
 function renderFileRefs(html) {
-  html = html.replace(/\[image\]\s*\/tmp\/[^\s]+\.(jpg|jpeg|png|gif|webp)/gi, function(m) {
-    var match = m.match(/\/tmp\/[^\s]+/);
-    if (!match) return m;
-    var url = '/files/' + encodeURIComponent(match[0].split('/').pop()) + '?token=' + encodeURIComponent(TOKEN);
+  html = html.replace(/\[image\]\s*([^\r\n]+\.(jpg|jpeg|png|gif|webp))/gi, function(m, path) {
+    var name = basenameFromPath(path);
+    if (!name) return m;
+    var url = '/files/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(TOKEN);
     return '<img src="' + url + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0.3em 0;display:block;cursor:pointer;border:1px solid var(--border);" loading="lazy" onclick="openLightbox(this.src)">';
   });
-  html = html.replace(/\[file\]\s*\/tmp\/[^\s]+/gi, function(m) {
-    var match = m.match(/\/tmp\/[^\s]+/);
-    if (!match) return m;
-    var name = match[0].split('/').pop();
+  html = html.replace(/\[file\]\s*([^\r\n]+)/gi, function(m, path) {
+    var name = basenameFromPath(path);
+    if (!name) return m;
     var url = '/files/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(TOKEN);
     return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3em;background:var(--code-bg);padding:0.25em 0.6em;border-radius:5px;font-size:0.82em;color:inherit;text-decoration:none;">file</a>';
   });

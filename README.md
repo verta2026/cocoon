@@ -89,8 +89,9 @@ All settings are environment variables:
 | `COCOON_TOKEN` | `cocoon-default-token` | Auth token for the web UI |
 | `COCOON_SESSION` | `cocoon-cc` | tmux session name |
 | `COCOON_WORK_DIR` | current directory | Working directory for Claude Code |
+| `COCOON_UPLOAD_DIR` | system temp / `cocoon-uploads` | Directory for uploaded files |
 | `COCOON_TTS_PROVIDER` | `none` | Optional TTS provider. Set to `minimax` to enable `/tts/say` |
-| `COCOON_TTS_DIR` | `/tmp/cocoon-tts` | Directory for generated TTS audio |
+| `COCOON_TTS_DIR` | system temp / `cocoon-tts` | Directory for generated TTS audio |
 | `MINIMAX_API_KEY` | empty | MiniMax API key, required when `COCOON_TTS_PROVIDER=minimax` |
 | `MINIMAX_VOICE_ID` | empty | MiniMax voice ID, required when TTS is enabled |
 | `MINIMAX_TTS_MODEL` | `speech-2.8-hd` | MiniMax TTS model |
