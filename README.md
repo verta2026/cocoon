@@ -112,7 +112,7 @@ cocoon/
 
 **Web only.** Cocoon renders to a browser. It doesn't include renderers for messaging platforms (Telegram, Discord, etc.) — but the architecture makes this straightforward to add: the `/output` API returns parsed JSON that any client can consume.
 
-**Single conversation, no reroll.** The default setup is one tmux session, one conversation at a time, no regenerate button. Cocoon wraps the full Claude Code CLI, so all native features (slash commands, MCP servers, `Esc Esc` to reroll, `CLAUDE.md` for personality) work as-is. If you need parallel sessions or a reroll button in the UI, the architecture doesn't prevent it — PRs welcome.
+**Single conversation, no reroll.** The default setup is one tmux session, one conversation at a time, no regenerate button. Cocoon wraps the full Claude Code CLI, so all native features (slash commands, MCP servers, `Esc Esc` to reroll, `CLAUDE.md` for personality) work as-is. If you need parallel sessions or a reroll button in the UI, the architecture doesn't prevent it.
 
 **Don't run as root.** Claude Code disables `--dangerously-skip-permissions` when run as root, which means every tool call will prompt for confirmation. Create a normal user and run cocoon from there.
 
