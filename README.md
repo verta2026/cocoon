@@ -180,25 +180,11 @@ Then on your phone: `http://192.168.x.x:8080/chat`
 
 Works from anywhere — home, café, commute. No ports to open, no domain to buy, encrypted by default.
 
-### Domain + VPS (advanced)
+### Domain + VPS (~8 RMB/year)
 
-For a permanent setup with a custom URL like `https://chat.example.com`:
+Buy a cheap domain, proxy through Cloudflare (free HTTPS + CDN), point to your VPS. Full step-by-step guide:
 
-1. Get a VPS (any cloud provider) and a domain
-2. Run cocoon on the VPS with a strong token:
-   ```bash
-   COCOON_TOKEN=$(openssl rand -hex 16) ./start.sh
-   ```
-3. Set up a reverse proxy (nginx/caddy) with HTTPS:
-   ```nginx
-   server {
-       server_name chat.example.com;
-       location / {
-           proxy_pass http://127.0.0.1:8080;
-       }
-   }
-   ```
-4. Use Let's Encrypt for free SSL: `certbot --nginx -d chat.example.com`
+**[docs/domain-guide.md](docs/domain-guide.md)** — Spaceship + Cloudflare + Caddy/nginx, total cost ~8 RMB/year.
 
 ### SSH tunnel (quick & secure)
 
