@@ -166,6 +166,13 @@ body::before {
   max-height: 200px; overflow-y: auto;
 }
 .msg-system { align-self: center; font-size: 0.7rem; color: var(--muted); font-style: italic; }
+.msg-channel {
+  align-self: flex-start; max-width: min(88%, 760px);
+  font-size: 0.78rem; line-height: 1.55; color: var(--muted);
+  background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: 7px; padding: 0.42rem 0.62rem;
+}
+.msg-channel strong { color: var(--accent); font-weight: 500; }
 .typing-bubble { display: inline-flex; align-items: center; gap: 0.28rem; padding: 0.6rem 0.75rem; }
 .typing-dot {
   width: 0.36rem; height: 0.36rem; border-radius: 50%; background: var(--muted);
@@ -419,6 +426,7 @@ function renderOutput(raw) {
 
   const SEP = /^[─━╌]{10,}/;
   const PROMPT = /^❯/;
+  const CHANNEL = /^← (\S+) · ([^:]+):\s*(.*)/;
   const TOOL_CALL = /^●\s+(?:Read|Write|Edit|Bash|Grep|Glob|Search|WebFetch|WebSearch|Agent|Task|Monitor|Skill|mcp__\w+)[\(\[{:/ ]/;
   const TOOL_STATUS = /^●\s+(?:Called|Calling|Ran|Running|Read|Wrote|Edited|Updated|Searched|Listed)\b/;
   const TOOL_RESULT = /^\s+(?:⎿|↳)/;
@@ -434,6 +442,10 @@ function renderOutput(raw) {
     if (/How is Claude doing/.test(line) || /^\s+\d: (Bad|Fine|Good|Dismiss)/.test(line)) { continue; }
 
     if (TIMER.test(line)) { flush(); blocks.push({ type: 'system', text: line.replace(/^✻\s*/, '') }); continue; }
+
+    var chm = line.match(CHANNEL);
+    if (chm) { flush(); current = { type: 'channel', platform: chm[1], sender: chm[2].trim(), lines: chm[3] ? [chm[3]] : [] }; continue; }
+    if (current && current.type === 'channel' && /^  /.test(line) && line.trim()) { current.lines.push(line.trimStart()); continue; }
 
     if (PROMPT.test(line)) {
       flush();
@@ -484,6 +496,10 @@ function renderOutput(raw) {
       html += '<details class="msg-tool"><summary>' + escHtml(summary) + '</summary>';
       if (body) html += '<pre>' + escHtml(body) + '</pre>';
       html += '</details>';
+    } else if (b.type === 'channel') {
+      const label = escHtml((b.platform || '') + ' · ' + (b.sender || ''));
+      const body = escHtml(b.lines.join('\n').trim()).replace(/\n/g, '<br>');
+      if (body) html += '<div class="msg-channel"><strong>' + label + '</strong><br>' + body + '</div>';
     } else if (b.type === 'system') {
       html += '<div class="msg-system">' + escHtml(b.text) + '</div>';
     }
