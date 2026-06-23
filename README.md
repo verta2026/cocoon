@@ -123,7 +123,23 @@ cocoon/
 
 **Web only.** Cocoon renders to a browser. It doesn't include renderers for messaging platforms (Telegram, Discord, etc.) — but the architecture makes this straightforward to add: the `/output` API returns parsed JSON that any client can consume.
 
-**Single conversation, no reroll.** The default setup is one tmux session, one conversation at a time — no branching, no parallel threads, no "regenerate response" button. This was a deliberate choice for our own use (companionship doesn't need undo), but if you need parallel sessions or reroll, the architecture doesn't prevent it — `tmux` supports multiple sessions natively, and adding a regenerate button is a straightforward frontend change. PRs welcome.
+**Single conversation, no reroll.** The default setup is one tmux session, one conversation at a time — no branching, no parallel threads, no "regenerate response" button. This was a deliberate choice for our own use (companionship doesn't need undo), but if you need these features, here are some starting points:
+
+## Tips & Extensions
+
+A few things that aren't in cocoon's UI but work out of the box because Claude Code supports them natively:
+
+**Reroll (regenerate response).** Press `Esc` twice in the Claude Code terminal to interrupt and re-answer. Cocoon's `/terminal` view lets you access the raw terminal if you need this. A frontend reroll button would just send `Esc Esc` to the tmux pane — straightforward to add.
+
+**Parallel conversations.** `tmux` supports multiple sessions. You could run several cocoon instances on different ports (`PORT=8081 ./start.sh`, `PORT=8082 ./start.sh`) and switch between them. Each gets its own Claude Code process and conversation.
+
+**Slash commands.** Claude Code's built-in commands (`/compact`, `/clear`, `/model`, etc.) work as-is — just type them in the cocoon chat input. `/compact` is especially useful for long conversations to free up context window.
+
+**MCP servers.** If you've configured MCP servers for Claude Code, they're available through cocoon automatically — cocoon wraps the full CLI, not a subset of it.
+
+**Custom system prompts.** Drop a `CLAUDE.md` file in the working directory Claude Code opens in. Claude reads it on startup. This is how you give your companion its personality, name, and memory.
+
+PRs for any of the above are welcome.
 
 ## Troubleshooting
 
