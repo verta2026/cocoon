@@ -164,11 +164,7 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 
 **Phone can't reach localhost**
 
-`localhost` only works on the machine running cocoon. To access from your phone on the same WiFi:
-
-1. Find your computer's local IP: `hostname -I` (Linux) or `ifconfig | grep inet` (macOS)
-2. Open `http://<your-ip>:8080/chat` on your phone
-3. Make sure your firewall allows port 8080
+`localhost` only works on the machine running cocoon. See [Accessing from your phone](#accessing-from-your-phone-or-anywhere) below.
 
 ## Accessing from your phone (or anywhere)
 
