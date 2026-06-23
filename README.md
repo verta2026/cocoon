@@ -153,21 +153,61 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 2. Open `http://<your-ip>:8080/chat` on your phone
 3. Make sure your firewall allows port 8080
 
-## Accessing remotely
+## Accessing from your phone (or anywhere)
 
-If running on a VPS, set a strong token and expose the port:
+### Same WiFi (simplest)
+
+Find your computer's local IP and open it on your phone:
 
 ```bash
-COCOON_TOKEN=$(openssl rand -hex 16) ./start.sh
+# Linux
+hostname -I
+
+# macOS
+ifconfig | grep "inet " | grep -v 127.0.0.1
 ```
 
-Use SSH port forwarding for secure access:
+Then on your phone: `http://192.168.x.x:8080/chat`
+
+### From anywhere — Tailscale (recommended)
+
+[Tailscale](https://tailscale.com/) creates a private network between your devices. Free for personal use, zero configuration.
+
+1. Install Tailscale on your computer and phone ([download](https://tailscale.com/download))
+2. Sign in on both devices
+3. Your computer gets a fixed IP like `100.x.x.x` — find it with `tailscale ip`
+4. On your phone: `http://100.x.x.x:8080/chat`
+
+Works from anywhere — home, café, commute. No ports to open, no domain to buy, encrypted by default.
+
+### Domain + VPS (advanced)
+
+For a permanent setup with a custom URL like `https://chat.example.com`:
+
+1. Get a VPS (any cloud provider) and a domain
+2. Run cocoon on the VPS with a strong token:
+   ```bash
+   COCOON_TOKEN=$(openssl rand -hex 16) ./start.sh
+   ```
+3. Set up a reverse proxy (nginx/caddy) with HTTPS:
+   ```nginx
+   server {
+       server_name chat.example.com;
+       location / {
+           proxy_pass http://127.0.0.1:8080;
+       }
+   }
+   ```
+4. Use Let's Encrypt for free SSL: `certbot --nginx -d chat.example.com`
+
+### SSH tunnel (quick & secure)
+
+If cocoon runs on a remote server and you just want access from your laptop:
 
 ```bash
 ssh -L 8080:localhost:8080 user@your-server
+# then open http://localhost:8080/chat locally
 ```
-
-Or put it behind a reverse proxy (nginx, caddy) with HTTPS.
 
 ## License
 
