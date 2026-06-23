@@ -15,13 +15,14 @@ import sys
 import time
 import os
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from config import SESSION_NAME, WORK_DIR, TOKEN, UPLOAD_DIR
+from config import SESSION_NAME, WORK_DIR, TOKEN, UPLOAD_DIR, TTS_DIR
 from bridge.tmux import (
     claude_busy as _claude_busy,
     pane_command as _pane_command,
@@ -42,9 +43,15 @@ from bridge.uploads import (
     save_upload_file as _save_upload_file,
     serve_upload_file as _serve_upload_file,
 )
+from bridge.tts import (
+    latest_tts as _latest_tts,
+    serve_tts_audio as _serve_tts_audio,
+    synthesize_tts as _synthesize_tts,
+)
 from bridge.ui import CHAT_HTML, TERMINAL_HTML
 
 UPLOAD_DIR.mkdir(exist_ok=True)
+TTS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Cocoon", docs_url=None)
 
@@ -100,6 +107,12 @@ def wait_for_claude_ready(timeout=70):
 
 class Message(BaseModel):
     text: str
+
+
+class TtsRequest(BaseModel):
+    text: str
+    emotion: Optional[str] = None
+    source: str = "frontend"
 
 
 @app.get("/status")
@@ -219,6 +232,30 @@ async def serve_file(filename: str, request: Request, token: str = None):
     else:
         raise HTTPException(403, "Bad token")
     return _serve_upload_file(UPLOAD_DIR, filename)
+
+
+@app.get("/tts/latest")
+async def tts_latest(request: Request):
+    verify_token(request)
+    return _latest_tts(TTS_DIR)
+
+
+@app.post("/tts/say")
+async def tts_say(req: TtsRequest, request: Request):
+    verify_token(request)
+    return _synthesize_tts(TTS_DIR, req.text, emotion=req.emotion, source=req.source)
+
+
+@app.get("/tts/audio/{audio_name}")
+async def tts_audio(audio_name: str, request: Request, token: str = None):
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer ") and auth.split(" ", 1)[1] == TOKEN:
+        pass
+    elif token == TOKEN:
+        pass
+    else:
+        raise HTTPException(403, "Bad token")
+    return _serve_tts_audio(TTS_DIR, audio_name)
 
 
 @app.get("/terminal")

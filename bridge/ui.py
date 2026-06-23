@@ -184,6 +184,23 @@ body::before {
   0%, 70%, 100% { transform: translateY(0); opacity: 0.35; }
   30% { transform: translateY(-0.26rem); opacity: 0.9; }
 }
+.voice-note {
+  display: flex; align-items: center; gap: 0.55rem; min-width: 180px; max-width: 260px;
+  padding: 0.12rem 0; color: var(--text);
+}
+.voice-play {
+  width: 28px; height: 28px; border-radius: 50%; border: none; flex-shrink: 0;
+  background: var(--accent-strong); color: #fff; cursor: pointer; font-size: 0.72rem;
+}
+.voice-track {
+  position: relative; flex: 1; height: 4px; overflow: hidden; border-radius: 999px;
+  background: var(--border);
+}
+.voice-fill {
+  position: absolute; inset: 0 auto 0 0; width: 0%;
+  background: var(--accent); border-radius: inherit;
+}
+.voice-time { min-width: 2.1rem; font-size: 0.68rem; color: var(--muted); text-align: right; }
 
 .input-area {
   position: fixed; bottom: 0; left: 0; right: 0; padding: 10px;
@@ -354,7 +371,7 @@ function resetChatLook() {
 }
 applyChatLook();
 
-let _lastHtml = '', _paintedHtml = '', _isBusy = false;
+let _lastHtml = '', _paintedHtml = '', _deferredPaintHtml = '', _isBusy = false;
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -376,6 +393,23 @@ function renderFileRefs(html) {
     var name = match[0].split('/').pop();
     var url = '/files/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(TOKEN);
     return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3em;background:var(--code-bg);padding:0.25em 0.6em;border-radius:5px;font-size:0.82em;color:inherit;text-decoration:none;">file</a>';
+  });
+  return html;
+}
+
+function renderVoiceNote(id) {
+  id = (id || '').toLowerCase();
+  if (!/^[a-f0-9]{16,64}$/.test(id)) return '';
+  var src = '/tts/audio/' + encodeURIComponent(id + '.mp3') + '?token=' + encodeURIComponent(TOKEN);
+  return '<div class="voice-note" data-voice-id="' + id + '"><button class="voice-play" type="button" aria-label="play voice">play</button><div class="voice-track"><span class="voice-fill"></span></div><span class="voice-time">0:00</span><audio preload="metadata" src="' + src + '"></audio></div>';
+}
+
+function renderVoiceRefs(html) {
+  html = html.replace(/\[\[(?:cocoon_voice|voice):([a-f0-9]{16,64})\]\]/gi, function(_, id) {
+    return renderVoiceNote(id);
+  });
+  html = html.replace(/(^|[\s(>])(?:\/bridge)?\/tts\/audio\/([a-f0-9]{16,64})\.mp3(?=$|[\s<)])/gi, function(_, prefix, id) {
+    return prefix + renderVoiceNote(id);
   });
   return html;
 }
@@ -423,6 +457,7 @@ function renderMessageContent(text, role) {
     text = renderMarkdownTables(text);
   }
   text = renderFileRefs(text);
+  text = renderVoiceRefs(text);
   return text;
 }
 
@@ -519,7 +554,67 @@ function typingHtml() {
   return '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div></div>';
 }
 
+function formatVoiceTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  var m = Math.floor(sec / 60);
+  var s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function isVoicePlaying() {
+  return Array.prototype.some.call(chat.querySelectorAll('.voice-note audio'), function(audio) {
+    return !audio.paused && !audio.ended;
+  });
+}
+
+function flushDeferredPaint() {
+  if (!_deferredPaintHtml || isVoicePlaying()) return;
+  var html = _deferredPaintHtml;
+  _deferredPaintHtml = '';
+  paintChat(html);
+}
+
+function bindVoicePlayers() {
+  chat.querySelectorAll('.voice-note').forEach(function(note) {
+    if (note.dataset.bound === '1') return;
+    note.dataset.bound = '1';
+    var audio = note.querySelector('audio');
+    var btn = note.querySelector('.voice-play');
+    var fill = note.querySelector('.voice-fill');
+    var time = note.querySelector('.voice-time');
+    if (!audio || !btn || !fill || !time) return;
+
+    function update() {
+      var duration = audio.duration || 0;
+      var pct = duration ? Math.min(100, (audio.currentTime / duration) * 100) : 0;
+      fill.style.width = pct + '%';
+      time.textContent = formatVoiceTime(audio.currentTime || duration || 0);
+    }
+
+    btn.addEventListener('click', function() {
+      if (audio.paused) {
+        chat.querySelectorAll('.voice-note audio').forEach(function(other) {
+          if (other !== audio) other.pause();
+        });
+        audio.play().catch(function() {});
+      } else {
+        audio.pause();
+      }
+    });
+    audio.addEventListener('play', function() { btn.textContent = 'pause'; });
+    audio.addEventListener('pause', function() { btn.textContent = 'play'; flushDeferredPaint(); });
+    audio.addEventListener('ended', function() { btn.textContent = 'play'; update(); flushDeferredPaint(); });
+    audio.addEventListener('loadedmetadata', update);
+    audio.addEventListener('timeupdate', update);
+    audio.addEventListener('error', function() { btn.textContent = 'error'; flushDeferredPaint(); });
+  });
+}
+
 function paintChat(baseHtml) {
+  if (isVoicePlaying()) {
+    _deferredPaintHtml = baseHtml || '';
+    return;
+  }
   const nextHtml = (baseHtml || '') + typingHtml();
   if (nextHtml === _paintedHtml) return;
   const wasAtBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 30;
@@ -528,6 +623,7 @@ function paintChat(baseHtml) {
   chat.innerHTML = nextHtml;
   _paintedHtml = nextHtml;
   chat.querySelectorAll('details').forEach(function(d, i) { if (openIdx.has(i)) d.open = true; });
+  bindVoicePlayers();
   if (wasAtBottom) {
     bindBottomOnMediaLoad();
     scrollChatToBottom();
@@ -677,7 +773,7 @@ async function sendMsg() {
 
 async function newSession() {
   try { await fetch('/new-session', { method: 'POST', headers }); } catch(e) {}
-  _lastHtml = ''; _paintedHtml = '';
+  _lastHtml = ''; _paintedHtml = ''; _deferredPaintHtml = '';
   chat.innerHTML = '<div class="msg-system">starting new session...</div>';
   setTimeout(getOutput, 3000);
 }

@@ -89,6 +89,12 @@ All settings are environment variables:
 | `COCOON_TOKEN` | `cocoon-default-token` | Auth token for the web UI |
 | `COCOON_SESSION` | `cocoon-cc` | tmux session name |
 | `COCOON_WORK_DIR` | current directory | Working directory for Claude Code |
+| `COCOON_TTS_PROVIDER` | `none` | Optional TTS provider. Set to `minimax` to enable `/tts/say` |
+| `COCOON_TTS_DIR` | `/tmp/cocoon-tts` | Directory for generated TTS audio |
+| `MINIMAX_API_KEY` | empty | MiniMax API key, required when `COCOON_TTS_PROVIDER=minimax` |
+| `MINIMAX_VOICE_ID` | empty | MiniMax voice ID, required when TTS is enabled |
+| `MINIMAX_TTS_MODEL` | `speech-2.8-hd` | MiniMax TTS model |
+| `MINIMAX_TTS_URL` | `https://api.minimaxi.chat/v1/t2a_v2` | MiniMax TTS endpoint |
 
 Example:
 
@@ -96,12 +102,32 @@ Example:
 COCOON_TOKEN=my-secret COCOON_PORT=3000 COCOON_WORK_DIR=/path/to/project ./start.sh
 ```
 
+### Optional TTS
+
+Cocoon can expose a small TTS API and render generated audio as voice bubbles. TTS is off by default.
+
+```bash
+COCOON_TTS_PROVIDER=minimax \
+MINIMAX_API_KEY=your-api-key \
+MINIMAX_VOICE_ID=your-voice-id \
+./start.sh
+```
+
+Endpoints:
+
+- `POST /tts/say` with `{"text":"hello"}` generates an mp3 and returns its URL
+- `GET /tts/latest` returns the latest generated audio metadata
+- `GET /tts/audio/<id>.mp3` serves generated audio with the same token protection as uploads
+
+The chat UI renders voice markers like `[[cocoon_voice:<id>]]` and direct `/tts/audio/<id>.mp3` links as playable voice bubbles.
+
 ## Features
 
 - **Chat UI** — messages parsed from terminal output into clean bubbles
 - **Markdown rendering** — bold, italic, code blocks, tables, lists, links
 - **Tool call folding** — file reads, bash commands, etc. collapsed by default
 - **File upload** — attach images and files to messages
+- **Optional TTS** - generate mp3 audio and render voice bubbles when configured
 - **Light / dark theme** — follows system preference, toggleable
 - **Custom avatars & background** — stored in localStorage
 - **Auto-start** — opens Claude Code automatically on first visit
@@ -123,6 +149,7 @@ cocoon/
     ├── tmux.py       # tmux interaction (capture, send, status)
     ├── prompts.py    # auto-dismiss Claude Code prompts
     ├── uploads.py    # file upload handling
+    ├── tts.py        # optional TTS generation and audio serving
     └── ui.py         # chat UI (HTML/CSS/JS)
 ```
 
