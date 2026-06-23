@@ -88,6 +88,8 @@ COCOON_TOKEN=my-secret COCOON_PORT=3000 COCOON_WORK_DIR=/path/to/project ./start
 - **Mobile-friendly** — designed for phones, works on desktop too
 - **Typing indicator** — shows when Claude is thinking
 - **Auto-dismiss prompts** — handles resume, rating, and settings prompts automatically
+- **Terminal view** — see raw Claude Code output via sidebar toggle
+- **Any API backend** — cocoon wraps the terminal, not the API. Use [CC Switch](https://github.com/farion1231/cc-switch) to switch Claude Code between Anthropic, AWS Bedrock, Google Vertex, OpenRouter, or any supported provider — your chat UI stays the same
 
 ## Architecture
 
