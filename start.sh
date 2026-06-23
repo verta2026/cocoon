@@ -19,7 +19,7 @@ fi
 
 if ! python3 -c "import fastapi" 2>/dev/null; then
   echo "installing dependencies..."
-  pip3 install -r requirements.txt
+  pip3 install -r requirements.txt 2>/dev/null || pip3 install --break-system-packages -r requirements.txt
 fi
 
 if ! command -v claude &>/dev/null; then

@@ -19,7 +19,9 @@ def save_upload_file(upload_dir: Path, file: UploadFile):
 
 
 def serve_upload_file(upload_dir: Path, filename: str):
-    path = upload_dir / Path(filename).name
+    path = (upload_dir / Path(filename).name).resolve()
+    if not path.is_relative_to(upload_dir.resolve()):
+        raise HTTPException(403, "Forbidden")
     if not path.exists():
         raise HTTPException(404, "File not found")
     return FileResponse(path)

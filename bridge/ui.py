@@ -240,7 +240,7 @@ body::before {
   <div class="sidebar-header"><h2><span>&mdash;</span> cocoon</h2></div>
   <nav class="sidebar-nav">
     <button class="sidebar-item" onclick="newSession();toggleSidebar()"><span class="si-icon">+</span>new session</button>
-    <button class="sidebar-item" onclick="window.location.href='/terminal?token='+TOKEN"><span class="si-icon">&gt;_</span>terminal</button>
+    <button class="sidebar-item" onclick="window.location.href='/terminal'"><span class="si-icon">&gt;_</span>terminal</button>
     <div class="sidebar-sep"></div>
     <button class="sidebar-item" id="theme-btn" onclick="toggleTheme()"><span class="si-icon">&#9789;</span>toggle theme</button>
     <div class="sidebar-sep"></div>
@@ -271,7 +271,7 @@ body::before {
 </div>
 <script>
 const TOKEN = localStorage.getItem('cocoon_token') || prompt('Enter your token:');
-if (TOKEN) localStorage.setItem('cocoon_token', TOKEN);
+if (TOKEN) { localStorage.setItem('cocoon_token', TOKEN); document.cookie = 'token=' + TOKEN + '; path=/; SameSite=Strict'; }
 const headers = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
@@ -662,29 +662,28 @@ setInterval(checkStatus, 8000);
 """
 
 
-def terminal_html(token: str) -> str:
-    return f"""<!DOCTYPE html>
+TERMINAL_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>cocoon terminal</title>
 <style>
-* {{ margin:0; padding:0; box-sizing:border-box; }}
-body {{ background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; font-size:13px; height:100vh; display:flex; flex-direction:column; }}
-.toolbar {{ background:#16132a; padding:8px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #333; flex-shrink:0; }}
-.toolbar a {{ color:#c8b496; text-decoration:none; font-size:0.85rem; }}
-.toolbar a:hover {{ text-decoration:underline; }}
-.toolbar .title {{ color:#888; font-size:0.8rem; }}
-#terminal {{ flex:1; overflow-y:auto; padding:12px; white-space:pre-wrap; word-break:break-all; line-height:1.5; }}
-.input-row {{ display:flex; gap:8px; padding:8px 12px; background:#16132a; border-top:1px solid #333; flex-shrink:0; }}
-.input-row input {{ flex:1; background:#222; border:1px solid #444; color:#e0e0e0; padding:8px 12px; border-radius:6px; font-family:inherit; font-size:13px; }}
-.input-row button {{ background:#c8b496; color:#1a1a2e; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; }}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; font-size:13px; height:100vh; display:flex; flex-direction:column; }
+.toolbar { background:#16132a; padding:8px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #333; flex-shrink:0; }
+.toolbar a { color:#c8b496; text-decoration:none; font-size:0.85rem; }
+.toolbar a:hover { text-decoration:underline; }
+.toolbar .title { color:#888; font-size:0.8rem; }
+#terminal { flex:1; overflow-y:auto; padding:12px; white-space:pre-wrap; word-break:break-all; line-height:1.5; }
+.input-row { display:flex; gap:8px; padding:8px 12px; background:#16132a; border-top:1px solid #333; flex-shrink:0; }
+.input-row input { flex:1; background:#222; border:1px solid #444; color:#e0e0e0; padding:8px 12px; border-radius:6px; font-family:inherit; font-size:13px; }
+.input-row button { background:#c8b496; color:#1a1a2e; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; }
 </style>
 </head>
 <body>
 <div class="toolbar">
-  <a href="/chat?token={token}">&larr; chat</a>
+  <a href="/chat">&larr; chat</a>
   <span class="title">raw terminal</span>
 </div>
 <pre id="terminal">loading...</pre>
@@ -693,27 +692,31 @@ body {{ background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; 
   <button onclick="sendRaw()">send</button>
 </div>
 <script>
-const TOKEN = '{token}';
-const H = {{'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}};
-async function refresh() {{
-  try {{
-    const r = await fetch('/output?token=' + TOKEN);
-    const d = await r.json();
+const TOKEN = localStorage.getItem('cocoon_token') || new URLSearchParams(location.search).get('token') || '';
+const H = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'};
+async function refresh() {
+  try {
+    const r = await fetch('/output', { headers: H });
     const el = document.getElementById('terminal');
-    el.textContent = d.raw || d.output || '(empty)';
+    el.textContent = r.ok ? (await r.text()) || '(empty)' : '(no output)';
     el.scrollTop = el.scrollHeight;
-  }} catch(e) {{}}
-}}
-async function sendRaw() {{
+  } catch(e) {}
+}
+async function sendRaw() {
   const inp = document.getElementById('raw-input');
   const text = inp.value.trim();
   if (!text) return;
-  await fetch('/send', {{method:'POST', headers:H, body:JSON.stringify({{text}})}});
+  await fetch('/send', {method:'POST', headers:H, body:JSON.stringify({text})});
   inp.value = '';
   setTimeout(refresh, 500);
-}}
+}
 refresh();
 setInterval(refresh, 2000);
 </script>
 </body>
-</html>"""
+</html>
+"""
+
+
+def terminal_html() -> str:
+    return TERMINAL_HTML

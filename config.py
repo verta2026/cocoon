@@ -8,7 +8,6 @@ WORK_DIR = os.environ.get("COCOON_WORK_DIR", os.getcwd())
 PORT = int(os.environ.get("COCOON_PORT", "8080"))
 TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
 UPLOAD_DIR = Path(os.environ.get("COCOON_UPLOAD_DIR", "/tmp/cocoon-uploads"))
-CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 
 ASSISTANT_NAME = os.environ.get("COCOON_ASSISTANT_NAME", "Claude")
 ASSISTANT_AVATAR = os.environ.get("COCOON_ASSISTANT_AVATAR", "")

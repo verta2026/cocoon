@@ -9,6 +9,7 @@ POST /start   — start Claude Code session
 GET  /chat    — chat UI
 """
 
+import asyncio
 import subprocess
 import sys
 import time
@@ -41,7 +42,7 @@ from bridge.uploads import (
     save_upload_file as _save_upload_file,
     serve_upload_file as _serve_upload_file,
 )
-from bridge.ui import CHAT_HTML, terminal_html as _terminal_html
+from bridge.ui import CHAT_HTML, TERMINAL_HTML
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -129,7 +130,7 @@ async def start_session(request: Request):
         tmux_clear_input()
         tmux_clear_scrollback()
         tmux_send("claude")
-        time.sleep(3)
+        await asyncio.sleep(3)
         return {"message": "Claude started in existing session"}
 
     subprocess.run(["tmux", "set-option", "-g", "history-limit", "20000"],
@@ -139,9 +140,9 @@ async def start_session(request: Request):
         "-x", "500", "-y", "50",
         "-c", WORK_DIR,
     ], check=True)
-    time.sleep(1)
+    await asyncio.sleep(1)
     tmux_send("claude")
-    time.sleep(3)
+    await asyncio.sleep(3)
     return {"message": "Session started", "session": SESSION_NAME}
 
 
@@ -191,14 +192,14 @@ async def new_session(request: Request):
         tmux_clear_input()
         tmux_send("/exit")
         for _ in range(40):
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
             if pane_command() != "claude":
                 tmux_send("claude")
-                time.sleep(3)
+                await asyncio.sleep(3)
                 return {"message": "New session started"}
         raise HTTPException(409, "Claude did not exit; try again")
     tmux_send("claude")
-    time.sleep(3)
+    await asyncio.sleep(3)
     return {"message": "Claude started"}
 
 
@@ -223,7 +224,7 @@ async def serve_file(filename: str, request: Request, token: str = None):
 @app.get("/terminal")
 async def terminal_page(request: Request):
     verify_token(request)
-    return HTMLResponse(_terminal_html(TOKEN))
+    return HTMLResponse(TERMINAL_HTML)
 
 
 @app.post("/escape")
