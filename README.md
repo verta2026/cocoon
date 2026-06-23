@@ -1,23 +1,12 @@
 # cocoon
 
-A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — no extra API setup needed.
+A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 Cocoon polls the terminal through tmux, parses the raw output, and renders it as a chat interface in your browser. You talk to Claude Code exactly as it runs in the terminal, but through a clean, mobile-friendly web page.
 
-## Why not use the API?
+## Why wrap Claude Code?
 
-Claude Code is a full agent — not just a model. By wrapping the CLI instead of the API, cocoon inherits everything Claude Code already does for free:
-
-- **Tools** — file editing, bash, web search, all built in
-- **MCP servers** — connect to any external service without writing integration code
-- **Memory** — persistent across sessions, managed by Claude Code itself
-- **Hooks** — trigger shell commands on events (message sent, tool called, etc.)
-- **Permissions** — fine-grained control over what Claude can do
-- **Context management** — automatic summarization, `/compact`, session continuity
-- **Slash commands** — `/init`, `/review`, `/cost`, everything works as-is
-- **Multi-model** — switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use
-
-If you build on the raw API, you'd reimplement all of the above from scratch. Cocoon gives you a chat UI on top of the full agent — no information loss, no feature gaps.
+Claude Code is a full agent with tools, memory, hooks, permissions, context management, MCP servers, and slash commands built in. Cocoon gives you a chat UI on top of all of that — nothing is lost, nothing needs to be reimplemented. Switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use.
 
 ## How it works
 
