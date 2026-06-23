@@ -1,12 +1,17 @@
 # cocoon
 
-A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — turn the terminal into a chat room.
 
-Cocoon polls the terminal through tmux, parses the raw output, and renders it as a chat interface in your browser. You talk to Claude Code exactly as it runs in the terminal, but through a clean, mobile-friendly web page.
+## Who is this for?
 
-## Why wrap Claude Code?
+- You want to **chat with Claude from your phone** — but Claude Code only runs in a terminal
+- You're building an **AI companion** and need a cozy UI, not a developer console
+- You want the full power of Claude Code (tools, memory, hooks, MCP) but with a **chat interface your non-technical partner / friend can use**
+- You run Claude Code on a server / desktop and want to **talk to it from anywhere**
 
-Claude Code is a full agent with tools, memory, hooks, permissions, context management, MCP servers, and slash commands built in. Cocoon gives you a chat UI on top of all of that — nothing is lost, nothing needs to be reimplemented. Switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use.
+## What it does
+
+Cocoon polls the terminal through tmux, parses the raw output, and renders it as a chat interface in your browser. You talk to Claude Code exactly as it runs in the terminal, but through a clean, mobile-friendly web page. All Claude Code features (tools, memory, hooks, MCP servers, slash commands) work as-is — cocoon is a rendering layer, not a replacement. Switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use.
 
 ## How it works
 
