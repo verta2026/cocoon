@@ -231,14 +231,17 @@ async def new_session(request: Request):
         tmux_send("/exit")
         for _ in range(40):
             await asyncio.sleep(0.5)
+            _dismiss_rating_prompt(SESSION_NAME)
             if not claude_running():
-                tmux_send("claude")
-                await asyncio.sleep(3)
-                return {"message": "New session started"}
-        raise HTTPException(409, "Claude did not exit; try again")
+                break
+        else:
+            raise HTTPException(409, "Claude did not exit; try again")
+    tmux_clear_scrollback()
     tmux_send("claude")
-    await asyncio.sleep(3)
-    return {"message": "Claude started"}
+    ready = await asyncio.to_thread(_wait_for_claude_ready, SESSION_NAME)
+    if not ready:
+        return {"message": "Claude started but may still be loading"}
+    return {"message": "New session started"}
 
 
 @app.post("/upload")

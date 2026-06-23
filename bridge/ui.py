@@ -775,10 +775,10 @@ async function sendMsg() {
 }
 
 async function newSession() {
-  try { await fetch('/new-session', { method: 'POST', headers }); } catch(e) {}
   _lastHtml = ''; _paintedHtml = ''; _deferredPaintHtml = '';
   chat.innerHTML = '<div class="msg-system">starting new session...</div>';
-  setTimeout(getOutput, 3000);
+  try { await fetch('/new-session', { method: 'POST', headers, signal: AbortSignal.timeout(90000) }); } catch(e) {}
+  setTimeout(getOutput, 500);
 }
 
 document.getElementById('send').addEventListener('click', sendMsg);
