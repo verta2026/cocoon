@@ -1,6 +1,6 @@
 # cocoon
 
-A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — no API key needed.
+A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — no extra API setup needed.
 
 Cocoon polls the terminal through tmux, parses the raw output, and renders it as a chat interface in your browser. You talk to Claude Code exactly as it runs in the terminal, but through a clean, mobile-friendly web page.
 
@@ -45,7 +45,7 @@ Open `http://localhost:8080/chat` in your browser. Enter the token when prompted
 ### Requirements
 
 - **Python 3.9+**
-- **tmux** — cocoon runs Claude Code inside a tmux session. This is how it captures output without needing an API key
+- **tmux** — cocoon runs Claude Code inside a tmux session. This is how it captures output without needing a separate API integration
 - **[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)** — installed and authenticated (`claude` command works in terminal)
 
 #### Installing tmux
@@ -68,7 +68,7 @@ wsl --install          # if you don't have WSL yet
 sudo apt install tmux  # inside WSL
 ```
 
-> **Why tmux?** Claude Code is a terminal application — there's no API to talk to it programmatically. Cocoon uses tmux as a virtual terminal: it sends your messages via `tmux send-keys` and reads Claude's responses via `tmux capture-pane`. This is the same terminal you'd interact with manually, just automated. No API key, no token limits, no extra cost.
+> **Why tmux?** Claude Code is a terminal application — there's no API to talk to it programmatically. Cocoon uses tmux as a virtual terminal: it sends your messages via `tmux send-keys` and reads Claude's responses via `tmux capture-pane`. This is the same terminal you'd interact with manually, just automated. Cocoon itself doesn't call any API — Claude Code handles all the model communication. You just need a working Claude Code installation (which requires an Anthropic account or API access through Bedrock/Vertex).
 
 ### Configuration
 
