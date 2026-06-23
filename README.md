@@ -123,7 +123,7 @@ cocoon/
 
 **Web only.** Cocoon renders to a browser. It doesn't include renderers for messaging platforms (Telegram, Discord, etc.) — but the architecture makes this straightforward to add: the `/output` API returns parsed JSON that any client can consume.
 
-**Single conversation, no reroll.** One tmux session, one conversation at a time. There's no branching, no parallel threads, no "regenerate response" button. What was said was said. This is deliberate — cocoon was built for companionship, not productivity. If you want a different answer, say so in the chat like you would with a person.
+**Single conversation, no reroll.** The default setup is one tmux session, one conversation at a time — no branching, no parallel threads, no "regenerate response" button. This was a deliberate choice for our own use (companionship doesn't need undo), but if you need parallel sessions or reroll, the architecture doesn't prevent it — `tmux` supports multiple sessions natively, and adding a regenerate button is a straightforward frontend change. PRs welcome.
 
 ## Troubleshooting
 
