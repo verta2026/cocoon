@@ -371,7 +371,15 @@ function resetChatLook() {
 }
 applyChatLook();
 
-let _lastHtml = '', _paintedHtml = '', _deferredPaintHtml = '', _isBusy = false;
+let _blocks = [], _isBusy = false, _lastRawHash = 0, _unchangedPolls = 0;
+let _optimisticText = null, _typingEl = null, _deferredBlocks = null;
+let _statusIv = null;
+
+function simpleHash(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
+}
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -464,25 +472,54 @@ function renderMessageContent(text, role) {
   return text;
 }
 
-function renderOutput(raw) {
-  const lines = raw.split('\n');
-  const blocks = [];
-  let current = null;
+function renderBlockHtml(b) {
+  if (b.type === 'user') {
+    var text = escHtml(b.lines.join('\n').trim());
+    text = renderFileRefs(text).replace(/\n/g, '<br>');
+    if (!text) return null;
+    return { type: 'user', text: b.lines.join('\n').trim(), html: '<div class="msg-wrap msg-wrap-user"><div class="avatar avatar-user">' + avatarContent('user') + '</div><div><div class="msg msg-user">' + text + '</div></div></div>' };
+  } else if (b.type === 'assistant') {
+    var text = renderMessageContent(b.lines.join('\n').trim(), 'assistant');
+    text = text.replace(/\n/g, '<br>').replace(/^(<br>\s*)+|(<br>\s*)+$/g, '').trim();
+    if (!text) return null;
+    return { type: 'assistant', text: b.lines.join('\n').trim(), html: '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant">' + text + '</div></div></div>' };
+  } else if (b.type === 'tool') {
+    var summary = b.lines[0] || 'tool';
+    var body = b.lines.slice(1).join('\n').trim();
+    var h = '<details class="msg-tool"><summary>' + escHtml(summary) + '</summary>';
+    if (body) h += '<pre>' + escHtml(body) + '</pre>';
+    h += '</details>';
+    return { type: 'tool', html: h };
+  } else if (b.type === 'channel') {
+    var label = escHtml((b.platform || '') + ' · ' + (b.sender || ''));
+    var body = escHtml(b.lines.join('\n').trim()).replace(/\n/g, '<br>');
+    if (!body) return null;
+    return { type: 'channel', html: '<div class="msg-channel"><strong>' + label + '</strong><br>' + body + '</div>' };
+  } else if (b.type === 'system') {
+    return { type: 'system', html: '<div class="msg-system">' + escHtml(b.text) + '</div>' };
+  }
+  return null;
+}
 
-  const SEP = /^[─━╌]{10,}/;
-  const PROMPT = /^❯/;
-  const CHANNEL = /^← (\S+) · ([^:]+):\s*(.*)/;
-  const TOOL_CALL = /^●\s+(?:Read|Write|Edit|Bash|Grep|Glob|Search|WebFetch|WebSearch|Agent|Task|Monitor|Skill|mcp__\w+)[\(\[{:/ ]/;
-  const TOOL_STATUS = /^●\s+(?:Called|Calling|Ran|Running|Read|Wrote|Edited|Updated|Searched|Listed)\b/;
-  const TOOL_RESULT = /^\s+(?:⎿|↳)/;
-  const ASSISTANT_START = /^● /;
-  const TIMER = /^✻/;
-  const NOISE = /Claude Code v|^\s*▐▛|^\s*▝▜|^Resume this|^\s*\? for shortcuts|^\s*Opus \d|^\s*Create file|^╭|^╰/;
+function parseBlocks(raw) {
+  var lines = raw.split('\n');
+  var blocks = [];
+  var current = null;
+
+  var SEP = /^[─━╌]{10,}/;
+  var PROMPT = /^❯/;
+  var CHANNEL = /^← (\S+) · ([^:]+):\s*(.*)/;
+  var TOOL_CALL = /^●\s+(?:Read|Write|Edit|Bash|Grep|Glob|Search|WebFetch|WebSearch|Agent|Task|Monitor|Skill|mcp__\w+)[\(\[{:/ ]/;
+  var TOOL_STATUS = /^●\s+(?:Called|Calling|Ran|Running|Read|Wrote|Edited|Updated|Searched|Listed)\b/;
+  var TOOL_RESULT = /^\s+(?:⎿|↳)/;
+  var ASSISTANT_START = /^● /;
+  var TIMER = /^✻/;
+  var NOISE = /Claude Code v|^\s*▐▛|^\s*▝▜|^Resume this|^\s*\? for shortcuts|^\s*Opus \d|^\s*Create file|^╭|^╰/;
 
   function flush() { if (current) { blocks.push(current); current = null; } }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
     if (SEP.test(line) || NOISE.test(line)) { continue; }
     if (/How is Claude doing/.test(line) || /^\s+\d: (Bad|Fine|Good|Dismiss)/.test(line)) { continue; }
 
@@ -494,7 +531,7 @@ function renderOutput(raw) {
 
     if (PROMPT.test(line)) {
       flush();
-      const msg = line.replace(/^❯[\s\xa0]*/, '');
+      var msg = line.replace(/^❯[\s\xa0]*/, '');
       if (msg && !/^Try "/.test(msg)) current = { type: 'user', lines: [msg] };
       continue;
     }
@@ -518,44 +555,23 @@ function renderOutput(raw) {
   }
   flush();
 
-  const merged = [];
-  for (const b of blocks) {
-    const prev = merged.length > 0 ? merged[merged.length-1] : null;
+  var merged = [];
+  for (var j = 0; j < blocks.length; j++) {
+    var b = blocks[j];
+    var prev = merged.length > 0 ? merged[merged.length-1] : null;
     if (b.type === 'assistant' && prev && prev.type === 'assistant') { prev.lines.push('', ...b.lines); }
     else { merged.push(b); }
   }
 
-  let html = '';
-  for (const b of merged) {
-    if (b.type === 'user') {
-      let text = escHtml(b.lines.join('\n').trim());
-      text = renderFileRefs(text).replace(/\n/g, '<br>');
-      if (text) html += '<div class="msg-wrap msg-wrap-user"><div class="avatar avatar-user">' + avatarContent('user') + '</div><div><div class="msg msg-user">' + text + '</div></div></div>';
-    } else if (b.type === 'assistant') {
-      let text = renderMessageContent(b.lines.join('\n').trim(), 'assistant');
-      text = text.replace(/\n/g, '<br>').replace(/^(<br>\s*)+|(<br>\s*)+$/g, '').trim();
-      if (text) html += '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant">' + text + '</div></div></div>';
-    } else if (b.type === 'tool') {
-      const summary = b.lines[0] || 'tool';
-      const body = b.lines.slice(1).join('\n').trim();
-      html += '<details class="msg-tool"><summary>' + escHtml(summary) + '</summary>';
-      if (body) html += '<pre>' + escHtml(body) + '</pre>';
-      html += '</details>';
-    } else if (b.type === 'channel') {
-      const label = escHtml((b.platform || '') + ' · ' + (b.sender || ''));
-      const body = escHtml(b.lines.join('\n').trim()).replace(/\n/g, '<br>');
-      if (body) html += '<div class="msg-channel"><strong>' + label + '</strong><br>' + body + '</div>';
-    } else if (b.type === 'system') {
-      html += '<div class="msg-system">' + escHtml(b.text) + '</div>';
-    }
+  var result = [];
+  for (var k = 0; k < merged.length; k++) {
+    var rendered = renderBlockHtml(merged[k]);
+    if (rendered) result.push(rendered);
   }
-  return html || '<div class="msg-system">waiting...</div>';
+  return result;
 }
 
-function typingHtml() {
-  if (!_isBusy) return '';
-  return '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div></div>';
-}
+var _typingBubbleHtml = '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div></div>';
 
 function formatVoiceTime(sec) {
   if (!isFinite(sec) || sec < 0) sec = 0;
@@ -571,10 +587,10 @@ function isVoicePlaying() {
 }
 
 function flushDeferredPaint() {
-  if (!_deferredPaintHtml || isVoicePlaying()) return;
-  var html = _deferredPaintHtml;
-  _deferredPaintHtml = '';
-  paintChat(html);
+  if (!_deferredBlocks || isVoicePlaying()) return;
+  var b = _deferredBlocks;
+  _deferredBlocks = null;
+  paintChat(b);
 }
 
 function bindVoicePlayers() {
@@ -613,24 +629,59 @@ function bindVoicePlayers() {
   });
 }
 
-function paintChat(baseHtml) {
-  if (isVoicePlaying()) {
-    _deferredPaintHtml = baseHtml || '';
-    return;
+function appendBlockEl(block, beforeEl) {
+  var tmp = document.createElement('div');
+  tmp.innerHTML = block.html;
+  var el = tmp.firstElementChild || tmp.firstChild;
+  if (!el) return null;
+  el._bh = block.html;
+  if (beforeEl) chat.insertBefore(el, beforeEl);
+  else chat.appendChild(el);
+  return el;
+}
+
+function paintChat(newBlocks) {
+  if (isVoicePlaying()) { _deferredBlocks = newBlocks; return; }
+  var wasAtBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 30;
+
+  if (_typingEl && _typingEl.parentNode) _typingEl.remove();
+
+  var optEl = document.getElementById('optimistic-msg');
+  if (optEl && _optimisticText) {
+    for (var oi = 0; oi < newBlocks.length; oi++) {
+      if (newBlocks[oi].type === 'user' && newBlocks[oi].text && newBlocks[oi].text.trim() === _optimisticText.trim()) {
+        optEl.remove(); optEl = null; _optimisticText = null; break;
+      }
+    }
   }
-  const nextHtml = (baseHtml || '') + typingHtml();
-  if (nextHtml === _paintedHtml) return;
-  const wasAtBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 30;
-  const openIdx = new Set();
-  chat.querySelectorAll('details').forEach(function(d, i) { if (d.open) openIdx.add(i); });
-  chat.innerHTML = nextHtml;
-  _paintedHtml = nextHtml;
-  chat.querySelectorAll('details').forEach(function(d, i) { if (openIdx.has(i)) d.open = true; });
+
+  var msgEls = [];
+  for (var ci = 0; ci < chat.children.length; ci++) {
+    var c = chat.children[ci];
+    if (c.id !== 'optimistic-msg' && c.id !== 'typing-indicator') msgEls.push(c);
+  }
+
+  var same = 0;
+  while (same < msgEls.length && same < newBlocks.length) {
+    if (msgEls[same]._bh !== newBlocks[same].html) break;
+    same++;
+  }
+
+  for (var ri = msgEls.length - 1; ri >= same; ri--) msgEls[ri].remove();
+
+  var anchor = document.getElementById('optimistic-msg');
+  for (var ai = same; ai < newBlocks.length; ai++) appendBlockEl(newBlocks[ai], anchor);
+
+  _blocks = newBlocks;
+
+  if (_isBusy) {
+    if (!_typingEl) { _typingEl = document.createElement('div'); _typingEl.id = 'typing-indicator'; }
+    _typingEl.innerHTML = _typingBubbleHtml;
+    chat.appendChild(_typingEl);
+  }
+
   bindVoicePlayers();
-  if (wasAtBottom) {
-    bindBottomOnMediaLoad();
-    scrollChatToBottom();
-  }
+  if (wasAtBottom) { bindBottomOnMediaLoad(); scrollChatToBottom(); }
 }
 
 function scrollChatToBottom() {
@@ -654,11 +705,18 @@ function bindBottomOnMediaLoad() {
   });
 }
 
+function startStatusPoll(ms) {
+  if (_statusIv) clearInterval(_statusIv);
+  _statusIv = setInterval(checkStatus, ms);
+}
+
 function setBusy(busy) {
-  const next = !!busy;
+  var next = !!busy;
   if (_isBusy === next) return;
   _isBusy = next;
-  if (_lastHtml) paintChat(_lastHtml);
+  startStatusPoll(next ? 3000 : 8000);
+  if (!next && _typingEl && _typingEl.parentNode) _typingEl.remove();
+  else if (next && _blocks.length) paintChat(_blocks);
 }
 
 async function checkStatus() {
@@ -679,25 +737,34 @@ async function checkStatus() {
 let _autoStartTried = false;
 async function getOutput() {
   try {
-    const r = await fetch('/output?lines=1500', { headers });
+    var r = await fetch('/output?lines=1500', { headers });
     if (!r.ok) {
       if (!_autoStartTried && (r.status === 404 || r.status === 409)) {
         _autoStartTried = true;
         chat.innerHTML = '<div class="msg-system">starting session...</div>';
         try { await fetch('/start', { method: 'POST', headers }); } catch(e) {}
         setTimeout(getOutput, 5000);
-      } else if (!_lastHtml) {
+      } else if (!_blocks.length) {
         chat.innerHTML = '<div class="msg-system">session stopped</div>';
       }
       return;
     }
-    const text = await r.text();
-    const html = renderOutput(text);
-    if (html === _lastHtml) { paintChat(_lastHtml); return; }
-    _lastHtml = html;
-    paintChat(html);
+    var text = await r.text();
+    var hash = simpleHash(text);
+
+    if (hash === _lastRawHash) {
+      _unchangedPolls++;
+      if (_unchangedPolls >= 2 && _isBusy) checkStatus();
+      return;
+    }
+
+    _lastRawHash = hash;
+    _unchangedPolls = 0;
+
+    var blocks = parseBlocks(text);
+    paintChat(blocks);
   } catch(e) {
-    if (!_lastHtml) chat.innerHTML = '<div class="msg-system">bridge offline</div>';
+    if (!_blocks.length) chat.innerHTML = '<div class="msg-system">bridge offline</div>';
   }
 }
 
@@ -752,13 +819,13 @@ function clearAttach() {
 
 let _lastSend = 0;
 async function sendMsg() {
-  const now = Date.now();
+  var now = Date.now();
   if (now - _lastSend < 600) return;
   _lastSend = now;
-  let text = input.value;
+  var text = input.value;
   if (pendingFiles.length > 0) {
-    const refs = pendingFiles.map(function(d) {
-      const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(d.filename);
+    var refs = pendingFiles.map(function(d) {
+      var isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(d.filename);
       return (isImg ? '[image]' : '[file]') + ' ' + d.path;
     }).join('\n');
     text = text.trim() ? refs + '\n' + text.trim() : refs;
@@ -767,7 +834,15 @@ async function sendMsg() {
     text = text.trim();
   }
   if (!text) return;
-  input.value = ''; input.style.height = 'auto'; input.blur();
+  input.value = ''; input.style.height = 'auto';
+
+  _optimisticText = text;
+  var displayText = renderFileRefs(escHtml(text)).replace(/\n/g, '<br>');
+  var optHtml = '<div class="msg-wrap msg-wrap-user" id="optimistic-msg"><div class="avatar avatar-user">' + avatarContent('user') + '</div><div><div class="msg msg-user">' + displayText + '</div></div></div>';
+  if (_typingEl && _typingEl.parentNode) _typingEl.insertAdjacentHTML('beforebegin', optHtml);
+  else chat.insertAdjacentHTML('beforeend', optHtml);
+  scrollChatToBottom();
+
   setBusy(true);
   try { await fetch('/send', { method: 'POST', headers, body: JSON.stringify({ text }) }); } catch(e) {}
   setTimeout(getOutput, 800);
@@ -775,7 +850,8 @@ async function sendMsg() {
 }
 
 async function newSession() {
-  _lastHtml = ''; _paintedHtml = ''; _deferredPaintHtml = '';
+  _blocks = []; _deferredBlocks = null; _lastRawHash = 0; _unchangedPolls = 0;
+  _optimisticText = null; _typingEl = null;
   chat.innerHTML = '<div class="msg-system">starting new session...</div>';
   try { await fetch('/new-session', { method: 'POST', headers, signal: AbortSignal.timeout(90000) }); } catch(e) {}
   setTimeout(getOutput, 500);
@@ -793,7 +869,7 @@ input.addEventListener('input', function() {
 getOutput();
 checkStatus();
 setInterval(getOutput, 2000);
-setInterval(checkStatus, 8000);
+startStatusPoll(8000);
 </script>
 </body>
 </html>
