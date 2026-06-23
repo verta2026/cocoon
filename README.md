@@ -2,6 +2,8 @@
 
 A web chat UI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — turn the terminal into a chat room.
 
+Cocoon is a starting point, not a finished product. The codebase is small (~800 lines) and meant to be forked and modified. Swap the theme, add features, connect it to Telegram or Discord, change whatever you want.
+
 ## Who is this for?
 
 - You want to **chat with Claude from your phone** — but Claude Code only runs in a terminal
