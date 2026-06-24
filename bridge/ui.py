@@ -115,6 +115,7 @@ body::before {
   padding: calc(49px + 0.5rem) 0.85rem calc(74px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 0.65rem; scroll-behavior: smooth;
 }
+.msg-group { display: contents; }
 .msg-wrap { display: flex; gap: 0.45rem; align-items: flex-start; max-width: min(90%, 800px); }
 .msg-wrap-user { align-self: flex-end; flex-direction: row-reverse; }
 .msg-wrap-assistant { align-self: flex-start; }
@@ -392,6 +393,30 @@ function basenameFromPath(path) {
   return (path || '').trim().split(/[\\/]/).pop();
 }
 
+function nlToBr(text) {
+  return text.replace(/\n/g, '<br>').replace(/(<br>\s*){2,}/g, '<br><span style="display:block;margin-top:0.5em"></span>');
+}
+
+function collapseLines(lines) {
+  var out = [];
+  var buf = '';
+  var BREAK_PAT = /^(?:[-*>\u2022|]|[\u2500-\u257F])|^#{1,3} |^\d+[.)] |^```/;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (line.trim() === '') {
+      if (buf) { out.push(buf); buf = ''; }
+      out.push('');
+    } else if (BREAK_PAT.test(line.trimStart())) {
+      if (buf) { out.push(buf); buf = ''; }
+      buf = line;
+    } else {
+      buf += line;
+    }
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+
 function renderFileRefs(html) {
   html = html.replace(/\[image\]\s*([^\r\n]+\.(jpg|jpeg|png|gif|webp))/gi, function(m, path) {
     var name = basenameFromPath(path);
@@ -442,11 +467,15 @@ function renderMarkdownTables(text) {
     }
     return html + '</table></div>';
   });
+  text = text.replace(/((?:^|\n)[\u2500-\u257F][^\n]*(?:\n[\u2500-\u257F][^\n]*)+)/g, function(block) {
+    var body = block.replace(/^\n/, '').replace(/\n/g, '&#10;');
+    return '<pre class="box-table">' + body + '</pre>';
+  });
   return text;
 }
 
 function renderMessageContent(text, role) {
-  text = (text || '').trim();
+  text = role === 'assistant' ? collapseLines((text || '').split('\n')).join('\n').trim() : (text || '').trim();
   text = escHtml(text);
   if (role === 'assistant') {
     text = text.replace(/```([\s\S]*?)```/g, function(m,c) {
@@ -472,17 +501,36 @@ function renderMessageContent(text, role) {
   return text;
 }
 
+function renderMessageParts(html, role, rawText) {
+  var isUser = role === 'user';
+  var wrapCls = isUser ? 'msg-wrap-user' : 'msg-wrap-assistant';
+  var avatarCls = isUser ? 'avatar-user' : 'avatar-assistant';
+  var avatarHtml = avatarContent(isUser ? 'user' : 'assistant');
+  var msgCls = isUser ? 'msg-user' : 'msg-assistant';
+  var parts = html.split(/(<img[^>]+>)/g);
+  var out = '';
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i];
+    if (!part) continue;
+    if (/^<img/.test(part)) {
+      out += '<div class="msg-wrap ' + wrapCls + '"><div class="avatar ' + avatarCls + '">' + avatarHtml + '</div><div>' + part + '</div></div>';
+    } else {
+      part = nlToBr(part).replace(/^(<br>\s*)+|(<br>\s*)+$/g, '').trim();
+      if (part) out += '<div class="msg-wrap ' + wrapCls + '"><div class="avatar ' + avatarCls + '">' + avatarHtml + '</div><div><div class="msg ' + msgCls + '">' + part + '</div></div></div>';
+    }
+  }
+  return out ? { type: role, text: rawText, html: '<div class="msg-group">' + out + '</div>' } : null;
+}
+
 function renderBlockHtml(b) {
   if (b.type === 'user') {
-    var text = escHtml(b.lines.join('\n').trim());
-    text = renderFileRefs(text).replace(/\n/g, '<br>');
-    if (!text) return null;
-    return { type: 'user', text: b.lines.join('\n').trim(), html: '<div class="msg-wrap msg-wrap-user"><div class="avatar avatar-user">' + avatarContent('user') + '</div><div><div class="msg msg-user">' + text + '</div></div></div>' };
+    var rawUserText = b.lines.join('\n').trim();
+    var userText = renderFileRefs(escHtml(rawUserText));
+    return renderMessageParts(userText, 'user', rawUserText);
   } else if (b.type === 'assistant') {
-    var text = renderMessageContent(b.lines.join('\n').trim(), 'assistant');
-    text = text.replace(/\n/g, '<br>').replace(/^(<br>\s*)+|(<br>\s*)+$/g, '').trim();
-    if (!text) return null;
-    return { type: 'assistant', text: b.lines.join('\n').trim(), html: '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant">' + text + '</div></div></div>' };
+    var rawAssistantText = b.lines.join('\n').trim();
+    var assistantText = renderMessageContent(rawAssistantText, 'assistant');
+    return renderMessageParts(assistantText, 'assistant', rawAssistantText);
   } else if (b.type === 'tool') {
     var summary = b.lines[0] || 'tool';
     var body = b.lines.slice(1).join('\n').trim();
@@ -517,10 +565,34 @@ function parseBlocks(raw) {
   var NOISE = /Claude Code v|^\s*▐▛|^\s*▝▜|^Resume this|^\s*\? for shortcuts|^\s*Opus \d|^\s*Create file|^╭|^╰/;
 
   function flush() { if (current) { blocks.push(current); current = null; } }
+  var TOOL_CALL_EXTRA = /^●\s+(?:MultiEdit|Update|Notebook|PowerShell|TodoWrite|ExitPlanMode|EnterPlanMode|EnterWorktree|ExitWorktree|ToolSearch|AskUserQuestion|ScheduleWakeup|TaskCreate|TaskGet|TaskList|TaskOutput|TaskStop|TaskUpdate|CronCreate|CronDelete|CronList|NotebookEdit|PushNotification|RemoteTrigger|SendMessage|ListMcpResourcesTool|ReadMcpResourceTool|functions\.[A-Za-z_]\w*|mcp__[A-Za-z0-9_]+|multi_tool_use\.[A-Za-z_]\w*|web\.[A-Za-z_]\w*|image_gen\.[A-Za-z_]\w*|tool_search\.[A-Za-z_]\w*|browser_[A-Za-z_]\w*)(?:[\(\[{:：/ ]|$)/;
+  var TOOL_STATUS_EXTRA = /^●\s+(?:Uploaded|Downloaded)\b/;
+  var COLLAPSED_READ = /^\s+(?:Read \d+ file|listed \d+ dir|\d+ (?:lines?|items?|files?) |Exit code:|Wall time:|Output:)/;
+  var TOOL_JSON = /^\s*(?:[{[]\s*"?(?:tool_uses|recipient_name|parameters|command|code|path|files|prompt|provider|sandbox_permissions|justification|timeout_ms|workdir)"?|"?(?:tool_uses|recipient_name|parameters|command|code|path|files|prompt|provider|sandbox_permissions|justification|timeout_ms|workdir)"?\s*:)/;
+  var DIFF_LINE = /^\s{4,}\d+[\s\u2502|]/;
+  var TABLE_LINE = /^\s*(?:\|.+\||[\u2500-\u257F].*)\s*$/;
+  function isDisplayNoise(line) {
+    return /<local-command-caveat>|<command-name>|<command-message>|<command-args>|<local-command-stdout>|<local-command-stderr>|This session is being continued from a previous conversation|Continue the conversation from where it left off|Compacted PreCompact|PostCompact /.test(line || '');
+  }
+  function isPreLaunchNoise(line) {
+    return /\[pre-launch\]|memory pipeline started|injection hint written|"source_events"|"sanitized_events"|"kept_events"|"estimated_tokens_(?:scanned|kept)"|"raw_cut_index"|"keep_start_index"|"thinking_blocks_kept"|\/backups\/forge_reload\//.test(line || '');
+  }
+  function isStandaloneUploadNoise(line) {
+    var t = (line || '').trim();
+    if (!t) return false;
+    if (/^\[(?:image|file)\]\s+/.test(t)) return false;
+    if (/^\/(?:tmp\/)?(?:cocoon-uploads|uploads)\/[^\s]+$/i.test(t)) return true;
+    if (/^(?:file(?:name)?|uploaded file)[:：]\s*[\w.-]+\.[a-z0-9]{2,8}$/i.test(t)) return true;
+    if (/^[a-f0-9]{16,}\.(?:jpg|jpeg|png|gif|webp|heic|bmp|pdf|docx?|xlsx?|txt|zip)$/i.test(t)) return true;
+    return false;
+  }
 
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
-    if (SEP.test(line) || NOISE.test(line)) { continue; }
+    if (SEP.test(line) || NOISE.test(line) || DIFF_LINE.test(line)) { continue; }
+    if (isDisplayNoise(line)) { flush(); continue; }
+    if (isPreLaunchNoise(line)) { flush(); continue; }
+    if (isStandaloneUploadNoise(line)) { continue; }
     if (/How is Claude doing/.test(line) || /^\s+\d: (Bad|Fine|Good|Dismiss)/.test(line)) { continue; }
 
     if (TIMER.test(line)) { flush(); blocks.push({ type: 'system', text: line.replace(/^✻\s*/, '') }); continue; }
@@ -538,12 +610,12 @@ function parseBlocks(raw) {
     if (current && current.type === 'user' && /^  /.test(line) && line.trim()) { current.lines.push(line.trimStart()); continue; }
     if (current && current.type === 'user' && line.trim() === '') { current.lines.push(''); continue; }
 
-    if (TOOL_CALL.test(line) || TOOL_STATUS.test(line)) { flush(); current = { type: 'tool', lines: [line.replace(/^● /, '')] }; continue; }
+    if (TOOL_CALL.test(line) || TOOL_STATUS.test(line) || TOOL_CALL_EXTRA.test(line) || TOOL_STATUS_EXTRA.test(line)) { flush(); current = { type: 'tool', lines: [line.replace(/^● /, '')] }; continue; }
     if (current && current.type === 'tool') {
-      if (PROMPT.test(line) || ASSISTANT_START.test(line) || TIMER.test(line) || TOOL_CALL.test(line) || TOOL_STATUS.test(line)) { flush(); }
+      if (PROMPT.test(line) || ASSISTANT_START.test(line) || TIMER.test(line) || TOOL_CALL.test(line) || TOOL_STATUS.test(line) || TOOL_CALL_EXTRA.test(line) || TOOL_STATUS_EXTRA.test(line) || TABLE_LINE.test(line)) { flush(); }
       else { current.lines.push(line); continue; }
     }
-    if (TOOL_RESULT.test(line)) { flush(); current = { type: 'tool', lines: [line.trim()] }; continue; }
+    if (COLLAPSED_READ.test(line) || TOOL_JSON.test(line) || TOOL_RESULT.test(line)) { flush(); current = { type: 'tool', lines: [line.trim()] }; continue; }
 
     if (ASSISTANT_START.test(line)) { flush(); current = { type: 'assistant', lines: [line.replace(/^● /, '')] }; continue; }
     if (current && current.type === 'assistant' && /^  /.test(line)) { current.lines.push(line.replace(/^  /, '')); continue; }
