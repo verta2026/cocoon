@@ -329,17 +329,33 @@ function avatarContent(role) {
   return role === 'user' ? 'U' : 'A';
 }
 
+function typingBubbleHtml() {
+  return '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div></div>';
+}
+
+function refreshAvatarNodes() {
+  const userHtml = avatarContent('user');
+  const assistantHtml = avatarContent('assistant');
+  document.querySelectorAll('.avatar-user').forEach(function(el) { el.innerHTML = userHtml; });
+  document.querySelectorAll('.avatar-assistant').forEach(function(el) { el.innerHTML = assistantHtml; });
+  var typing = document.getElementById('typing-indicator');
+  if (typing) typing.innerHTML = typingBubbleHtml();
+}
+
 function applyChatLook() {
   const bg = localStorage.getItem(LOOK_KEYS.bg);
   if (bg) document.documentElement.style.setProperty('--chat-bg-image', 'url("' + bg + '")');
   else document.documentElement.style.removeProperty('--chat-bg-image');
+  refreshAvatarNodes();
 }
 
 function fitImageFile(file, maxSide, quality, done) {
   if (!file || !file.type || !file.type.startsWith('image/')) { setLookNote('choose an image'); return; }
   const reader = new FileReader();
+  reader.onerror = function() { setLookNote('image read failed'); };
   reader.onload = function() {
     const img = new Image();
+    img.onerror = function() { setLookNote('image load failed'); };
     img.onload = function() {
       let w = img.naturalWidth, h = img.naturalHeight;
       const scale = Math.min(1, maxSide / Math.max(w, h));
@@ -365,6 +381,7 @@ function pickAvatar(role) { pendingAvatarTarget = role; document.getElementById(
 function handleAvatarFile(file) {
   const key = pendingAvatarTarget === 'user' ? LOOK_KEYS.userAvatar : LOOK_KEYS.assistantAvatar;
   fitImageFile(file, 512, 0.86, function(d) { saveLookValue(key, d, 'avatar changed'); });
+  document.getElementById('avatar-input').value = '';
 }
 function resetChatLook() {
   Object.values(LOOK_KEYS).forEach(function(k) { localStorage.removeItem(k); });
@@ -643,8 +660,6 @@ function parseBlocks(raw) {
   return result;
 }
 
-var _typingBubbleHtml = '<div class="msg-wrap msg-wrap-assistant"><div class="avatar avatar-assistant">' + avatarContent('assistant') + '</div><div><div class="msg msg-assistant typing-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div></div>';
-
 function formatVoiceTime(sec) {
   if (!isFinite(sec) || sec < 0) sec = 0;
   var m = Math.floor(sec / 60);
@@ -748,7 +763,7 @@ function paintChat(newBlocks) {
 
   if (_isBusy) {
     if (!_typingEl) { _typingEl = document.createElement('div'); _typingEl.id = 'typing-indicator'; }
-    _typingEl.innerHTML = _typingBubbleHtml;
+    _typingEl.innerHTML = typingBubbleHtml();
     chat.appendChild(_typingEl);
   }
 
