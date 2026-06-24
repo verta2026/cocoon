@@ -3,9 +3,16 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 : "${COCOON_PORT:=8080}"
+: "${COCOON_HOST:=127.0.0.1}"
 : "${COCOON_TOKEN:=cocoon-default-token}"
 : "${COCOON_SESSION:=cocoon-cc}"
 : "${COCOON_WORK_DIR:=$(pwd)}"
+
+if [[ "${COCOON_TOKEN}" == "cocoon-default-token" && "${COCOON_HOST}" != "127.0.0.1" && "${COCOON_HOST}" != "localhost" ]]; then
+  echo "error: refusing to bind ${COCOON_HOST} with the default token"
+  echo "set a strong COCOON_TOKEN before exposing cocoon outside this machine"
+  exit 1
+fi
 
 if ! command -v tmux &>/dev/null; then
   echo "error: tmux is required. install it first (apt install tmux / brew install tmux)"
@@ -28,12 +35,13 @@ if ! command -v claude &>/dev/null; then
   exit 1
 fi
 
-export COCOON_PORT COCOON_TOKEN COCOON_SESSION COCOON_WORK_DIR
+export COCOON_HOST COCOON_PORT COCOON_TOKEN COCOON_SESSION COCOON_WORK_DIR
 
-echo "cocoon starting on http://localhost:${COCOON_PORT}/chat"
+echo "cocoon starting on http://${COCOON_HOST}:${COCOON_PORT}/chat"
+echo "  host:     ${COCOON_HOST}"
 echo "  session:  ${COCOON_SESSION}"
 echo "  workdir:  ${COCOON_WORK_DIR}"
 echo "  token:    ${COCOON_TOKEN}"
 echo ""
 
-exec python3 -m uvicorn server:app --host 0.0.0.0 --port "${COCOON_PORT}"
+exec python3 -m uvicorn server:app --host "${COCOON_HOST}" --port "${COCOON_PORT}"

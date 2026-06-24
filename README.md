@@ -42,11 +42,11 @@ Open `http://localhost:8080/chat` in your browser. Enter the token when prompted
 >
 > Cocoon gives web access to a real Claude Code terminal. Anyone with your token can read/write files, run shell commands, and use every tool Claude Code has access to. This is not a sandboxed chatbot — it's full terminal control through a browser.
 >
-> **Change the default token immediately.** The default is `cocoon-default-token` and the server binds `0.0.0.0` (all interfaces). If you're on a VPS with a public IP and forget to change the token, anyone can find and control your terminal.
+> By default cocoon binds to `127.0.0.1`, so it is only reachable from the same machine. To expose it to another device, set `COCOON_HOST=0.0.0.0` and change the default token first. The start script refuses non-local binds with the default token.
 >
 > ```bash
 > # Always set a strong random token
-> COCOON_TOKEN=$(openssl rand -hex 24) ./start.sh
+> COCOON_TOKEN=$(openssl rand -hex 24) COCOON_HOST=0.0.0.0 ./start.sh
 > ```
 >
 > **For remote access, use a private network** — Tailscale, SSH tunnel, or VPN. Exposing cocoon directly to the public internet (even with a strong token) is not recommended. If you must, put it behind HTTPS + Cloudflare with a long random token, and understand the risk: a leaked token = full terminal access.
@@ -73,8 +73,11 @@ sudo dnf install tmux
 sudo pacman -S tmux
 
 # Windows (use WSL)
-wsl --install          # if you don't have WSL yet
-sudo apt install tmux  # inside WSL
+wsl --install -d Ubuntu-24.04
+# restart Windows if WSL asks you to, then open Ubuntu
+sudo apt update
+sudo apt install -y tmux python3 python3-pip python3-venv nodejs npm
+npm install -g @anthropic-ai/claude-code
 ```
 
 > **Why tmux?** Claude Code is a terminal application — there's no API to talk to it programmatically. Cocoon uses tmux as a virtual terminal: it sends your messages via `tmux send-keys` and reads Claude's responses via `tmux capture-pane`. This is the same terminal you'd interact with manually, just automated. Cocoon itself doesn't call any API — Claude Code handles all the model communication. You just need a working Claude Code installation (which requires an Anthropic account or API access through Bedrock/Vertex).
@@ -85,6 +88,7 @@ All settings are environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
+| `COCOON_HOST` | `127.0.0.1` | Server bind address. Use `0.0.0.0` only when you intentionally expose cocoon to another device |
 | `COCOON_PORT` | `8080` | Server port |
 | `COCOON_TOKEN` | `cocoon-default-token` | Auth token for the web UI |
 | `COCOON_SESSION` | `cocoon-cc` | tmux session name |
@@ -101,6 +105,9 @@ Example:
 
 ```bash
 COCOON_TOKEN=my-secret COCOON_PORT=3000 COCOON_WORK_DIR=/path/to/project ./start.sh
+
+# Expose to another device on your private network:
+COCOON_TOKEN=$(openssl rand -hex 24) COCOON_HOST=0.0.0.0 ./start.sh
 ```
 
 ### Optional TTS
@@ -179,6 +186,16 @@ tmux doesn't run on Windows directly. You need WSL (Windows Subsystem for Linux)
 
 Everything (cocoon, claude, tmux) must run inside the same WSL environment. Don't mix Windows and WSL paths.
 
+If `wsl --install -d Ubuntu-24.04` installs the app but does not finish the first Linux setup, run `ubuntu2404.exe install --root` once from PowerShell, then open Ubuntu again. If `apt install` is very slow in WSL, switch Ubuntu to a faster mirror before installing packages. For example:
+
+```bash
+sudo cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources.bak
+sudo sed -i 's#http://archive.ubuntu.com/ubuntu#https://mirrors.tuna.tsinghua.edu.cn/ubuntu#g; s#http://security.ubuntu.com/ubuntu#https://mirrors.tuna.tsinghua.edu.cn/ubuntu#g' /etc/apt/sources.list.d/ubuntu.sources
+sudo apt update
+```
+
+When launching cocoon from Windows, keep the WSL process alive. A short command like `wsl ... "nohup ... &"` may exit and stop the server with it. Prefer opening an Ubuntu terminal and running `./start.sh` there, or use a long-lived WSL process manager.
+
 **Claude Code shows "trust this folder" prompt and hangs**
 
 Cocoon auto-dismisses this prompt. If it still hangs, the prompt may have appeared before cocoon's status check. Visit `/status` in your browser (e.g. `http://localhost:8080/status?token=your-token`) to trigger the dismiss, or restart with `POST /start`.
@@ -213,7 +230,13 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 
 ### Same WiFi (simplest)
 
-Find your computer's local IP and open it on your phone:
+Start cocoon with a non-default host and a strong token:
+
+```bash
+COCOON_TOKEN=$(openssl rand -hex 24) COCOON_HOST=0.0.0.0 ./start.sh
+```
+
+Then find your computer's local IP and open it on your phone:
 
 ```bash
 # Linux

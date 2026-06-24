@@ -6,6 +6,7 @@ from pathlib import Path
 
 SESSION_NAME = os.environ.get("COCOON_SESSION", "cocoon-cc")
 WORK_DIR = os.environ.get("COCOON_WORK_DIR", os.getcwd())
+HOST = os.environ.get("COCOON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("COCOON_PORT", "8080"))
 TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
 UPLOAD_DIR = Path(
