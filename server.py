@@ -214,7 +214,7 @@ async def send_message(msg: Message, request: Request):
 
 
 @app.get("/output")
-async def get_output(request: Request, lines: int = 100):
+async def get_output(request: Request, lines: int = 1500):
     verify_token(request)
     if not tmux_exists():
         raise HTTPException(404, "No active session")

@@ -8,9 +8,24 @@ cd "$(dirname "$0")"
 : "${COCOON_SESSION:=cocoon-cc}"
 : "${COCOON_WORK_DIR:=$(pwd)}"
 
+if [[ "${1:-}" == "--doctor" || "${1:-}" == "doctor" ]]; then
+  if ! command -v python3 &>/dev/null; then
+    echo "error: python3 is required to run cocoon doctor"
+    exit 1
+  fi
+  exec python3 -m bridge.doctor
+fi
+
 if [[ "${COCOON_TOKEN}" == "cocoon-default-token" && "${COCOON_HOST}" != "127.0.0.1" && "${COCOON_HOST}" != "localhost" ]]; then
   echo "error: refusing to bind ${COCOON_HOST} with the default token"
   echo "set a strong COCOON_TOKEN before exposing cocoon outside this machine"
+  exit 1
+fi
+
+if [[ "$(id -u)" == "0" && "${COCOON_ALLOW_ROOT:-}" != "1" ]]; then
+  echo "error: refusing to run cocoon as root"
+  echo "Claude login state is per user; run as a normal Linux user instead"
+  echo "set COCOON_ALLOW_ROOT=1 only if you intentionally want a separate root Claude session"
   exit 1
 fi
 
@@ -23,6 +38,8 @@ if ! command -v python3 &>/dev/null; then
   echo "error: python3 is required"
   exit 1
 fi
+
+python3 -m bridge.doctor --strict
 
 if ! python3 -c "import fastapi" 2>/dev/null; then
   echo "installing dependencies..."

@@ -7,6 +7,71 @@ import time
 import re
 
 
+OSC_RE = re.compile(r"\x1b\].*?(?:\x07|\x1b\\)")
+OSC8_LINK_RE = re.compile(
+    r"\x1b\]8;[^;]*;([^\x07\x1b]*)(?:\x07|\x1b\\)(.*?)\x1b\]8;;(?:\x07|\x1b\\)",
+    re.DOTALL,
+)
+CSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
+
+
+def ansi_to_markdown(text: str) -> str:
+    """Keep simple terminal emphasis from tmux while dropping control codes."""
+    def link_repl(match: re.Match[str]) -> str:
+        url = match.group(1).strip()
+        label = CSI_RE.sub("", OSC_RE.sub("", match.group(2))).strip()
+        if not url or not label:
+            return label
+        return f"[{label}]({url})"
+
+    text = OSC8_LINK_RE.sub(link_repl, text)
+    text = OSC_RE.sub("", text)
+    out: list[str] = []
+    pos = 0
+    bold = False
+    italic = False
+
+    def close_all() -> None:
+        nonlocal bold, italic
+        if italic:
+            out.append("*")
+            italic = False
+        if bold:
+            out.append("**")
+            bold = False
+
+    for match in SGR_RE.finditer(text):
+        out.append(text[pos:match.start()])
+        raw = match.group(1) or "0"
+        codes = [0 if c == "" else int(c) for c in raw.split(";") if c == "" or c.isdigit()]
+        if not codes:
+            codes = [0]
+        for code in codes:
+            if code == 0:
+                close_all()
+            elif code == 1 and not bold:
+                out.append("**")
+                bold = True
+            elif code == 3 and not italic:
+                out.append("*")
+                italic = True
+            elif code == 22 and bold:
+                if italic:
+                    out.append("*")
+                    italic = False
+                out.append("**")
+                bold = False
+            elif code == 23 and italic:
+                out.append("*")
+                italic = False
+        pos = match.end()
+
+    out.append(text[pos:])
+    close_all()
+    return CSI_RE.sub("", "".join(out))
+
+
 def tmux_exists(session_name: str) -> bool:
     r = subprocess.run(["tmux", "has-session", "-t", session_name], capture_output=True)
     return r.returncode == 0
@@ -42,13 +107,13 @@ def pane_command(session_name: str) -> str:
 
 def tmux_capture(session_name: str, lines: int = 200) -> str:
     r = subprocess.run(
-        ["tmux", "capture-pane", "-t", session_name, "-p", "-S", f"-{lines}"],
+        ["tmux", "capture-pane", "-e", "-t", session_name, "-p", "-S", f"-{lines}"],
         capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",
     )
-    return r.stdout
+    return ansi_to_markdown(r.stdout)
 
 
 def claude_running(session_name: str) -> bool:

@@ -38,7 +38,7 @@ CHAT_HTML = r"""<!DOCTYPE html>
 }
 [data-theme="dark"] {
   --bg: #0e0c14; --panel: rgba(22,19,30,0.72); --card: rgba(26,23,34,0.68);
-  --assistant-bg: rgba(22,19,30,0.65); --user-bg: rgba(38,32,24,0.68);
+  --assistant-bg: rgba(22,19,30,0.92); --user-bg: rgba(38,32,24,0.92);
   --text: #d4ccbc; --muted: #8a7e6a;
   --accent: #c8a060; --accent-strong: #dab878;
   --border: #2a2434; --user-border: #3a3028;
@@ -146,8 +146,11 @@ body::before {
 .msg a:not(.copy-btn) { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .msg .md-bq { border-left: 2px solid var(--accent); padding-left: 0.6em; margin: 0.2em 0; color: var(--muted); display: block; }
 .msg .md-h { font-weight: 600; display: block; margin: 0.35em 0 0.15em; }
-.msg .md-li { display: block; padding-left: 1.2em; text-indent: -0.8em; }
+.msg .md-list { margin: 0.25em 0 0.25em 1.2em; padding-left: 0.85em; }
+.msg .md-list .md-list { margin-top: 0.15em; margin-bottom: 0.1em; }
+.msg .md-list li { margin: 0.12em 0; padding-left: 0.15em; }
 .msg .md-hr { border: none; border-top: 1px solid var(--border); margin: 0.5em 0; display: block; }
+.msg .md-gap { display: block; height: 0.45em; }
 .md-table-scroll { overflow-x: auto; max-width: 100%; margin: 0.35em 0; }
 .box-table {
   margin: 0.45em 0; padding: 0.55em 0.65em; background: var(--code-bg);
@@ -209,13 +212,13 @@ body::before {
   background: transparent; display: flex; flex-direction: column; z-index: 20;
 }
 .input-area-inner {
-  display: flex; align-items: flex-end; width: 100%; min-height: 44px;
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px;
   background: #fff8ec; border: 1px solid #e6d8c4; border-radius: 8px;
-  padding: 9px 11px 9px 16px;
+  padding: 9px 11px;
 }
 [data-theme="dark"] .input-area-inner { background: rgba(26,23,34,0.85); border-color: #3a3028; }
 .input-area textarea {
-  flex: 1; font-family: inherit; font-size: 12px; padding: 0;
+  flex: 1; min-width: 0; font-family: inherit; font-size: 12px; padding: 0;
   border: none; border-radius: 0; background: transparent; color: var(--text);
   resize: none; outline: none; min-height: 24px; max-height: 120px; line-height: 20px; overflow-y: auto;
 }
@@ -228,8 +231,10 @@ body::before {
 }
 #send:active { opacity: 0.8; }
 .btn-attach {
+  display: flex !important; align-items: center; justify-content: center; flex: 0 0 25px;
   font-size: 1.3rem; background: transparent !important; border: none !important;
-  color: var(--muted) !important; cursor: pointer; margin-right: 8px; line-height: 1;
+  color: var(--muted) !important; cursor: pointer; margin-right: 0 !important; line-height: 1;
+  padding: 0 !important; min-height: 25px !important; width: 25px !important; height: 25px !important;
 }
 #file-input { display: none; }
 .img-preview {
@@ -294,6 +299,7 @@ const headers = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'applicati
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const statusEl = document.getElementById('status');
+const OUTPUT_LINES = 1500;
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -311,9 +317,16 @@ function toggleTheme() {
     localStorage.setItem('theme', 'dark');
     document.querySelector('#meta-theme').setAttribute('content', '#14111B');
   }
+  applyChatLook();
 }
 
-const LOOK_KEYS = { bg: 'cocoon_chat_bg', userAvatar: 'cocoon_avatar_user', assistantAvatar: 'cocoon_avatar_assistant' };
+const LOOK_KEYS = {
+  bgLight: 'cocoon_chat_bg_light',
+  bgDark: 'cocoon_chat_bg_dark',
+  bgLegacy: 'cocoon_chat_bg',
+  userAvatar: 'cocoon_avatar_user',
+  assistantAvatar: 'cocoon_avatar_assistant'
+};
 let pendingAvatarTarget = 'assistant';
 
 function setLookNote(text) { var el = document.getElementById('look-note'); if (el) el.textContent = text || ''; }
@@ -342,8 +355,16 @@ function refreshAvatarNodes() {
   if (typing) typing.innerHTML = typingBubbleHtml();
 }
 
+function currentThemeName() {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+
+function currentBgKey() {
+  return currentThemeName() === 'dark' ? LOOK_KEYS.bgDark : LOOK_KEYS.bgLight;
+}
+
 function applyChatLook() {
-  const bg = localStorage.getItem(LOOK_KEYS.bg);
+  const bg = localStorage.getItem(currentBgKey()) || localStorage.getItem(LOOK_KEYS.bgLegacy);
   if (bg) document.documentElement.style.setProperty('--chat-bg-image', 'url("' + bg + '")');
   else document.documentElement.style.removeProperty('--chat-bg-image');
   refreshAvatarNodes();
@@ -376,7 +397,11 @@ function saveLookValue(key, value, okText) {
 }
 
 function pickChatBg() { document.getElementById('chat-bg-input').click(); }
-function handleChatBgFile(file) { fitImageFile(file, 1600, 0.82, function(d) { saveLookValue(LOOK_KEYS.bg, d, 'background changed'); }); }
+function handleChatBgFile(file) {
+  fitImageFile(file, 1600, 0.82, function(d) {
+    saveLookValue(currentBgKey(), d, currentThemeName() + ' background changed');
+  });
+}
 function pickAvatar(role) { pendingAvatarTarget = role; document.getElementById('avatar-input').click(); }
 function handleAvatarFile(file) {
   const key = pendingAvatarTarget === 'user' ? LOOK_KEYS.userAvatar : LOOK_KEYS.assistantAvatar;
@@ -411,13 +436,19 @@ function basenameFromPath(path) {
 }
 
 function nlToBr(text) {
-  return text.replace(/\n/g, '<br>').replace(/(<br>\s*){2,}/g, '<br><span style="display:block;margin-top:0.5em"></span>');
+  var gap = '%%COCOON_GAP%%';
+  var html = text.replace(/\n{2,}/g, gap).replace(/\n/g, '<br>').split(gap).join('<span class="md-gap"></span>');
+  html = html.replace(/(<span class="md-(?:li|bq|h|hr)"[^>]*>[\s\S]*?<\/span>)<br>/g, '$1');
+  html = html.replace(/(<\/?(?:ul|ol|li)\b[^>]*>)<br>/g, '$1');
+  html = html.replace(/<br>(<\/?(?:ul|ol|li)\b[^>]*>)/g, '$1');
+  return html;
 }
 
 function collapseLines(lines) {
   var out = [];
   var buf = '';
-  var BREAK_PAT = /^(?:[-*>\u2022|]|[\u2500-\u257F])|^#{1,3} |^\d+[.)] |^```/;
+  var BREAK_PAT = /^(?:[-*>\u2022|]|▎|[\u2500-\u257F])|^#{1,3} |^\d+[.)] |^```|^(?:const|let|var|function|class|if|for|while|return|import|export|console\.|[});\]}];?\s*$)/;
+  var NO_APPEND_PAT = /^(?:---+|\*\*\*+|___+)$|^(?:\||[\u250C\u252C\u2510\u251C\u253C\u2524\u2514\u2534\u2518\u2502])/;
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     if (line.trim() === '') {
@@ -427,7 +458,12 @@ function collapseLines(lines) {
       if (buf) { out.push(buf); buf = ''; }
       buf = line;
     } else {
-      buf += line;
+      if (buf && NO_APPEND_PAT.test(buf.trimStart())) {
+        out.push(buf);
+        buf = line;
+      } else {
+        buf += buf ? ' ' + line.trimStart() : line;
+      }
     }
   }
   if (buf) out.push(buf);
@@ -468,11 +504,33 @@ function renderVoiceRefs(html) {
 }
 
 function renderMarkdownTables(text) {
-  text = text.replace(/((?:^|\n)\|[^\n]+\|(?:\n\|[\s:|-]+\|)(?:\n\|[^\n]+\|)+)/g, function(block) {
+  function renderBoxDrawingTable(block) {
+    var lines = block.replace(/^\n/, '').split('\n')
+      .map(function(line) { return line.replace(/^[ \t]+(?=[\u2500-\u257F])/, ''); })
+      .filter(function(line) { return line.trim(); });
+    var rows = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (!/^[\u2502\u2503]/.test(lines[i])) continue;
+      var cells = lines[i].split(/[\u2502\u2503]/).slice(1, -1).map(function(cell) { return cell.trim(); });
+      if (cells.length) rows.push(cells);
+    }
+    if (!rows.length) {
+      var body = lines.join('\n').replace(/\n/g, '&#10;');
+      return '<pre class="box-table">' + body + '</pre>';
+    }
+    var html = '<div class="md-table-scroll"><table>';
+    for (var ri = 0; ri < rows.length; ri++) {
+      var tag = ri === 0 ? 'th' : 'td';
+      html += '<tr>' + rows[ri].map(function(cell) { return '<' + tag + '>' + cell + '</' + tag + '>'; }).join('') + '</tr>';
+    }
+    return html + '</table></div>';
+  }
+
+  text = text.replace(/((?:^|\n)[ \t]*\|[^\n]+\|(?:\n[ \t]*\|[\s:|-]+\|)(?:\n[ \t]*\|[^\n]+\|)+)/g, function(block) {
     var rows = block.replace(/^\n/, '').split('\n').filter(function(r) { return r.trim(); });
     if (rows.length < 2) return block;
     var isSep = function(r) { return /^\|[\s:|-]+\|$/.test(r.trim()); };
-    var parseRow = function(r) { return r.replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c) { return c.trim(); }); };
+    var parseRow = function(r) { return r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c) { return c.trim(); }); };
     var html = '<div class="md-table-scroll"><table>';
     var headerDone = false;
     for (var ri = 0; ri < rows.length; ri++) {
@@ -484,33 +542,127 @@ function renderMarkdownTables(text) {
     }
     return html + '</table></div>';
   });
-  text = text.replace(/((?:^|\n)[\u2500-\u257F][^\n]*(?:\n[\u2500-\u257F][^\n]*)+)/g, function(block) {
-    var body = block.replace(/^\n/, '').replace(/\n/g, '&#10;');
-    return '<pre class="box-table">' + body + '</pre>';
+  text = text.replace(/((?:^|\n)[ \t]*[\u250C\u252C\u2510\u251C\u253C\u2524\u2514\u2534\u2518\u2502][^\n]*(?:\n[ \t]*[\u250C\u252C\u2510\u251C\u253C\u2524\u2514\u2534\u2518\u2502][^\n]*)+)/g, function(block) {
+    return renderBoxDrawingTable(block);
   });
   return text;
 }
 
+function renderMarkdownLists(text) {
+  var lines = (text || '').split('\n');
+  var out = [];
+  var stack = [];
+  var listIndents = [];
+
+  for (var bi = 0; bi < lines.length; bi++) {
+    var bm = lines[bi].match(/^(\s*)([-\u2022]|\d+[.)])\s+/);
+    if (bm) listIndents.push((bm[1] || '').length);
+  }
+  var baseIndent = listIndents.length ? Math.min.apply(null, listIndents) : 0;
+
+  function closeTop() {
+    var top = stack.pop();
+    if (!top) return;
+    if (top.openLi) out.push('</li>');
+    out.push('</' + top.type + '>');
+  }
+  function closeTo(depth) {
+    while (stack.length > depth) closeTop();
+  }
+  function openList(type) {
+    out.push('<' + type + ' class="md-list">');
+    stack.push({ type: type, openLi: false });
+  }
+  function closeCurrentLi() {
+    var top = stack[stack.length - 1];
+    if (top && top.openLi) {
+      out.push('</li>');
+      top.openLi = false;
+    }
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var m = line.match(/^(\s*)([-•]|\d+[.)])\s+(.+)$/);
+    if (!m) {
+      closeTo(0);
+      out.push(line);
+      continue;
+    }
+
+    var depth = Math.min(4, Math.floor(Math.max(0, (m[1] || '').length - baseIndent) / 2));
+    var type = /\d/.test(m[2]) ? 'ol' : 'ul';
+    var content = m[3];
+
+    closeTo(depth + 1);
+    if (!stack[depth] || stack[depth].type !== type) {
+      closeTo(depth);
+      openList(type);
+    }
+    while (stack.length < depth + 1) openList(type);
+    closeCurrentLi();
+    out.push('<li>' + content);
+    stack[stack.length - 1].openLi = true;
+  }
+  closeTo(0);
+  return out.join('\n');
+}
+
+function stashTerminalCodeBlocks(text, stash) {
+  var lines = (text || '').split('\n');
+  var out = [];
+  var buf = [];
+  var CODE_PAT = /^\s*(?:const|let|var|function|class|if|for|while|return|import|export|console\.|[});\]}];?\s*$)|^\s{4,}\S/;
+  var NOT_CODE_PAT = /^\s*(?:[-\u2022]\s+|\d+[.)]\s+|\u258e|[\u2500-\u257F]|\||(?:---+|\*\*\*+|___+)\s*$)/;
+  function flushCode() {
+    if (buf.length >= 2) {
+      var key = '%%COCOON_CODE_' + stash.length + '%%';
+      stash.push({ key: key, text: buf.join('\n') });
+      out.push(key);
+    } else {
+      for (var i = 0; i < buf.length; i++) out.push(buf[i]);
+    }
+    buf = [];
+  }
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (CODE_PAT.test(line) && !NOT_CODE_PAT.test(line)) {
+      buf.push(line);
+    } else {
+      flushCode();
+      out.push(line);
+    }
+  }
+  flushCode();
+  return out.join('\n');
+}
+
 function renderMessageContent(text, role) {
   text = role === 'assistant' ? collapseLines((text || '').split('\n')).join('\n').trim() : (text || '').trim();
+  var codeStash = [];
+  if (role === 'assistant') text = stashTerminalCodeBlocks(text, codeStash);
   text = escHtml(text);
   if (role === 'assistant') {
+    codeStash.forEach(function(item) {
+      text = text.replace(item.key, '<pre class="box-table">' + escHtml(item.text) + '</pre>');
+    });
     text = text.replace(/```([\s\S]*?)```/g, function(m,c) {
       return '<details class="msg-tool"><summary>code</summary><pre>'+c.trim()+'</pre></details>';
     });
     text = text.replace(/`([^`]+)`/g, '<code style="background:var(--code-bg);padding:0.1em 0.3em;border-radius:3px;font-size:0.8em;">$1</code>');
+    text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
     text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
     text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    text = text.replace(/^(#{1,3})\s+(.+)$/gm, function(m, h, c) {
+    text = text.replace(/^[ \t]{0,3}(#{1,3})\s+(.+)$/gm, function(m, h, c) {
       var s = h.length === 1 ? '1.05em' : h.length === 2 ? '0.95em' : '0.88em';
       return '<span class="md-h" style="font-size:'+s+'">'+c+'</span>';
     });
-    text = text.replace(/^&gt;\s?(.*)$/gm, '<span class="md-bq">$1</span>');
-    text = text.replace(/^(?:---+|\*\*\*+|___+)\s*$/gm, '<span class="md-hr"></span>');
-    text = text.replace(/^[-•]\s+(.+)$/gm, '<span class="md-li">• $1</span>');
-    text = text.replace(/^(\d+)[.)]\s+(.+)$/gm, '<span class="md-li">$1. $2</span>');
+    text = text.replace(/^[ \t]{0,3}&gt;\s?(.*)$/gm, '<span class="md-bq">$1</span>');
+    text = text.replace(/^[ \t]{0,3}\u258e\s?(.*)$/gm, '<span class="md-bq">$1</span>');
+    text = text.replace(/^[ \t]{0,3}(?:---+|\*\*\*+|___+)\s*$/gm, '<span class="md-hr"></span>');
+    text = renderMarkdownLists(text);
     text = renderMarkdownTables(text);
   }
   text = renderFileRefs(text);
@@ -549,12 +701,7 @@ function renderBlockHtml(b) {
     var assistantText = renderMessageContent(rawAssistantText, 'assistant');
     return renderMessageParts(assistantText, 'assistant', rawAssistantText);
   } else if (b.type === 'tool') {
-    var summary = b.lines[0] || 'tool';
-    var body = b.lines.slice(1).join('\n').trim();
-    var h = '<details class="msg-tool"><summary>' + escHtml(summary) + '</summary>';
-    if (body) h += '<pre>' + escHtml(body) + '</pre>';
-    h += '</details>';
-    return { type: 'tool', html: h };
+    return null;
   } else if (b.type === 'channel') {
     var label = escHtml((b.platform || '') + ' · ' + (b.sender || ''));
     var body = escHtml(b.lines.join('\n').trim()).replace(/\n/g, '<br>');
@@ -588,6 +735,22 @@ function parseBlocks(raw) {
   var TOOL_JSON = /^\s*(?:[{[]\s*"?(?:tool_uses|recipient_name|parameters|command|code|path|files|prompt|provider|sandbox_permissions|justification|timeout_ms|workdir)"?|"?(?:tool_uses|recipient_name|parameters|command|code|path|files|prompt|provider|sandbox_permissions|justification|timeout_ms|workdir)"?\s*:)/;
   var DIFF_LINE = /^\s{4,}\d+[\s\u2502|]/;
   var TABLE_LINE = /^\s*(?:\|.+\||[\u2500-\u257F].*)\s*$/;
+  var ASSISTANT_TABLE_LINE = /^\s*(?:\|.+\||[\u250C\u252C\u2510\u251C\u253C\u2524\u2514\u2534\u2518].*|[\u2502\u2503].*[\u2502\u2503]\s*)$/;
+  function isClaudeUiNoise(line) {
+    var t = (line || '').trim();
+    if (!t) return false;
+    if (/^[│┃]/.test(t)) return true;
+    if (/^[│┃|]+$/.test(t)) return true;
+    if (/^(?:Haiku|Sonnet|Opus)\s+\d|Claude\s+(?:Pro|Max|Code)|Organization|\/[A-Za-z0-9_.\/-]+\/cocoon\b/i.test(t)) return true;
+    if (/^[│┃|]?\s*(?:Welcome back|Tips for getting started|Run \/init to create a CLAUDE\.md file|What's new|\/release-notes for more|Added sandbox\.credentials|Added org-configured model restrictions|Added mouse click support)\b/i.test(t)) return true;
+    if (/^[│┃|]\s*$/.test(line || '')) return true;
+    if (/^\s*[│┃|].*(?:Welcome back|Tips for getting started|Run \/init|What's new|\/release-notes|Added sandbox\.credentials|Added org-configured|Added mouse click support)/i.test(line || '')) return true;
+    if (/^\s*\|?\s*(?:Welcome back|Tips for getting started)\b/i.test(line || '')) return true;
+    if (/^\*?\s*(?:✶|✽|✻|✢|✳|✸|✹|✺|✱|✲|✦|✧)\s*\*?.*(?:Thinking|Thought|Brewed|Brewing|Cooked|Saut[eé]ed|思考|Elapsed|Took|Used|\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|秒|ms|m)\b)/i.test(t)) return true;
+    if (/^\*?\s*(?:✶|✽|✻|✢|✳|✸|✹|✺|✱|✲|✦|✧)\s*\*?(?:Thinking|Thought|Brewed|Brewing|Cooked|Saut[eé]ed|思考|Elapsed|Took|Used)?\s*(?:for\s*)?\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|秒|ms|m)\*?$/i.test(t)) return true;
+    if (/^\*?\s*(?:Thinking|Thought|Brewed|Brewing|Cooked|Saut[eé]ed|思考|Elapsed|Took|Used)\s*(?:for\s*)?\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|秒|ms|m)\*?$/i.test(t)) return true;
+    return false;
+  }
   function isDisplayNoise(line) {
     return /<local-command-caveat>|<command-name>|<command-message>|<command-args>|<local-command-stdout>|<local-command-stderr>|This session is being continued from a previous conversation|Continue the conversation from where it left off|Compacted PreCompact|PostCompact /.test(line || '');
   }
@@ -606,13 +769,18 @@ function parseBlocks(raw) {
 
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
+    if (current && current.type === 'assistant' && ASSISTANT_TABLE_LINE.test(line)) {
+      current.lines.push(line.replace(/^  /, ''));
+      continue;
+    }
     if (SEP.test(line) || NOISE.test(line) || DIFF_LINE.test(line)) { continue; }
+    if (isClaudeUiNoise(line)) { flush(); continue; }
     if (isDisplayNoise(line)) { flush(); continue; }
     if (isPreLaunchNoise(line)) { flush(); continue; }
     if (isStandaloneUploadNoise(line)) { continue; }
     if (/How is Claude doing/.test(line) || /^\s+\d: (Bad|Fine|Good|Dismiss)/.test(line)) { continue; }
 
-    if (TIMER.test(line)) { flush(); blocks.push({ type: 'system', text: line.replace(/^✻\s*/, '') }); continue; }
+    if (TIMER.test(line)) { flush(); continue; }
 
     var chm = line.match(CHANNEL);
     if (chm) { flush(); current = { type: 'channel', platform: chm[1], sender: chm[2].trim(), lines: chm[3] ? [chm[3]] : [] }; continue; }
@@ -621,6 +789,10 @@ function parseBlocks(raw) {
     if (PROMPT.test(line)) {
       flush();
       var msg = line.replace(/^❯[\s\xa0]*/, '');
+      if (/^\/[A-Za-z][\w-]*(?:\s|$)/.test(msg)) {
+        current = { type: 'tool', lines: [msg] };
+        continue;
+      }
       if (msg && !/^Try "/.test(msg)) current = { type: 'user', lines: [msg] };
       continue;
     }
@@ -639,8 +811,9 @@ function parseBlocks(raw) {
     if (current && current.type === 'assistant' && line.trim() === '') { current.lines.push(''); continue; }
 
     if (line.trim() === '') continue;
-    if (!current || current.type !== 'assistant') { flush(); current = { type: 'assistant', lines: [line] }; }
-    else { current.lines.push(line); }
+    // Match the live VPS renderer: chat is a transcript, not a raw terminal mirror.
+    // Stray terminal/status lines are ignored instead of becoming assistant bubbles.
+    if (current && current.type === 'assistant') { current.lines.push(line); }
   }
   flush();
 
@@ -824,7 +997,7 @@ async function checkStatus() {
 let _autoStartTried = false;
 async function getOutput() {
   try {
-    var r = await fetch('/output?lines=1500', { headers });
+    var r = await fetch('/output?lines=' + OUTPUT_LINES, { headers });
     if (!r.ok) {
       if (!_autoStartTried && (r.status === 404 || r.status === 409)) {
         _autoStartTried = true;
@@ -995,12 +1168,29 @@ body { background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; f
 <script>
 const TOKEN = localStorage.getItem('cocoon_token') || new URLSearchParams(location.search).get('token') || '';
 const H = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'};
+function isClaudeUiNoise(line) {
+  const t = (line || '').trim();
+  if (!t) return false;
+  if (/^[│┃]/.test(t)) return true;
+  if (/^[│┃|]+$/.test(t)) return true;
+  if (/^(?:Haiku|Sonnet|Opus)\s+\d|Claude\s+(?:Pro|Max|Code)|Organization|\/[A-Za-z0-9_.\/-]+\/cocoon\b/i.test(t)) return true;
+  if (/^[│┃|]?\s*(?:Welcome back|Tips for getting started|Run \/init to create a CLAUDE\.md file|What's new|\/release-notes for more|Added sandbox\.credentials|Added org-configured model restrictions|Added mouse click support)\b/i.test(t)) return true;
+  if (/^\s*[│┃|].*(?:Welcome back|Tips for getting started|Run \/init|What's new|\/release-notes|Added sandbox\.credentials|Added org-configured|Added mouse click support)/i.test(line || '')) return true;
+  if (/^\*?\s*(?:✶|✽|✻|✢|✳|✸|✹|✺|✱|✲|✦|✧)\s*\*?.*(?:Thinking|Thought|Brewed|Brewing|Cooked|Saut[eé]ed|思考|Elapsed|Took|Used|\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|秒|ms|m)\b)/i.test(t)) return true;
+  if (/^\*?\s*(?:✶|✽|✻|✢|✳|✸|✹|✺|✱|✲|✦|✧)\s*\*?(?:Thinking|Thought|Brewed|Brewing|Cooked|Saut[eé]ed|思考|Elapsed|Took|Used)?\s*(?:for\s*)?\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|秒|ms|m)\*?$/i.test(t)) return true;
+  if (/^\*?\s*(?:Thinking|Thought|Brewed|Brewing|Cooked|Saut[eé]ed|思考|Elapsed|Took|Used)\s*(?:for\s*)?\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|秒|ms|m)\*?$/i.test(t)) return true;
+  return false;
+}
+function filterRawOutput(text) {
+  return (text || '').split('\n').filter(line => !isClaudeUiNoise(line)).join('\n').trim();
+}
 async function refresh() {
   try {
-    const r = await fetch('/output', { headers: H });
+    const r = await fetch('/output?lines=1500', { headers: H });
     const el = document.getElementById('terminal');
-    el.textContent = r.ok ? (await r.text()) || '(empty)' : '(no output)';
-    el.scrollTop = el.scrollHeight;
+    const wasNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    el.textContent = r.ok ? filterRawOutput(await r.text()) || '(empty)' : '(no output)';
+    if (wasNearBottom) el.scrollTop = el.scrollHeight;
   } catch(e) {}
 }
 async function sendRaw() {

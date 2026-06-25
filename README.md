@@ -33,6 +33,7 @@ browser ←→ FastAPI server ←→ tmux session ←→ Claude Code CLI
 git clone https://github.com/verta2026/cocoon.git
 cd cocoon
 chmod +x start.sh
+./start.sh --doctor
 ./start.sh
 ```
 
@@ -169,9 +170,17 @@ cocoon/
 
 **Single conversation, no reroll.** The default setup is one tmux session, one conversation at a time, no regenerate button. Cocoon wraps the full Claude Code CLI, so all native features (slash commands, MCP servers, `Esc Esc` to reroll, `CLAUDE.md` for personality) work as-is. If you need parallel sessions or a reroll button in the UI, the architecture doesn't prevent it.
 
-**Don't run as root.** Claude Code disables `--dangerously-skip-permissions` when run as root, which means every tool call will prompt for confirmation. Create a normal user and run cocoon from there.
+**Don't run as root.** Claude login state is per user, so root and your normal Linux user have separate Claude sessions. Cocoon refuses root by default. Create a normal user and run cocoon there. If you intentionally want root anyway, set `COCOON_ALLOW_ROOT=1`.
 
 ## Troubleshooting
+
+Run the doctor first:
+
+```bash
+./start.sh --doctor
+```
+
+It checks the common setup mistakes before the server starts: missing `tmux`, missing `claude`, root user, Windows `claude.exe` inside WSL, unsafe default token exposure, and port availability.
 
 **Windows: tmux is not available natively**
 
@@ -180,11 +189,12 @@ tmux doesn't run on Windows directly. You need WSL (Windows Subsystem for Linux)
 1. Open PowerShell **as Administrator** and run `wsl --install`
 2. Restart your computer
 3. Open the Ubuntu terminal that appears in Start Menu
-4. Inside WSL, install everything: `sudo apt install tmux python3 python3-pip`
-5. Install Claude Code inside WSL: `npm install -g @anthropic-ai/claude-code`
-6. Run cocoon from WSL — not from PowerShell or cmd
+4. Inside Ubuntu/WSL, install everything: `sudo apt update && sudo apt install -y tmux python3 python3-pip python3-venv nodejs npm`
+5. Install Claude Code inside Ubuntu/WSL: `npm install -g @anthropic-ai/claude-code`
+6. Run `claude` inside Ubuntu/WSL once and finish login/authentication there
+7. Clone and run cocoon inside Ubuntu/WSL: `./start.sh --doctor && ./start.sh`
 
-Everything (cocoon, claude, tmux) must run inside the same WSL environment. Don't mix Windows and WSL paths.
+Everything (cocoon, claude, tmux) must run inside the same WSL environment and the same Linux user. Don't mix Windows and WSL paths. Don't use the Windows `claude.exe` from WSL; install the Linux Claude Code CLI inside Ubuntu/WSL.
 
 If `wsl --install -d Ubuntu-24.04` installs the app but does not finish the first Linux setup, run `ubuntu2404.exe install --root` once from PowerShell, then open Ubuntu again. If `apt install` is very slow in WSL, switch Ubuntu to a faster mirror before installing packages. For example:
 
@@ -195,6 +205,27 @@ sudo apt update
 ```
 
 When launching cocoon from Windows, keep the WSL process alive. A short command like `wsl ... "nohup ... &"` may exit and stop the server with it. Prefer opening an Ubuntu terminal and running `./start.sh` there, or use a long-lived WSL process manager.
+
+**Claude login disappeared after restart**
+
+You probably restarted cocoon as a different Linux user, often `root`. Claude Code stores login/session state under the current user's home directory, so root cannot see the normal user's Claude login.
+
+Expected shape:
+
+```text
+same normal Linux user owns: uvicorn server:app, tmux cocoon session, claude
+root owns: none of the cocoon uvicorn/tmux/claude processes
+```
+
+Fix it by stopping the wrong root-owned server/session, then start cocoon again as your normal Linux user. In WSL, prefer opening the Ubuntu terminal as that user and running `./start.sh` there. If you must launch from PowerShell, specify the user explicitly, for example:
+
+```powershell
+wsl -u cocoon -- bash -lc 'cd /path/to/cocoon && ./start.sh'
+```
+
+**PowerShell quoting or non-ASCII text looks wrong in WSL**
+
+PowerShell can expand `$()` and variables before WSL sees the Linux command. For complex Linux commands, run them inside Ubuntu instead of wrapping them in PowerShell. Also avoid using PowerShell-to-WSL command strings to validate non-ASCII chat text; test real chat input through the browser.
 
 **Claude Code shows "trust this folder" prompt and hangs**
 
