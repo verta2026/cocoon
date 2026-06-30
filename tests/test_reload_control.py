@@ -8,6 +8,7 @@ from bridge.reload_control import (
     active_context_threshold,
     actual_model_from_session,
     auto_reload_status,
+    choose_reload_action,
     choose_reload_reason,
     context_window_is_1m,
     log_auto_reload,
@@ -203,6 +204,21 @@ class ReloadControlTest(unittest.TestCase):
         )
 
         self.assertEqual(reason, "")
+
+    def test_choose_reload_action_skips_without_reason(self):
+        self.assertEqual(choose_reload_action("", recent=False, force=False, dryrun=False), "skip")
+
+    def test_choose_reload_action_skips_recent_non_force_reload(self):
+        self.assertEqual(choose_reload_action("api-error", recent=True, force=False, dryrun=False), "skip")
+
+    def test_choose_reload_action_dryruns_non_force_reload(self):
+        self.assertEqual(choose_reload_action("api-error", recent=False, force=False, dryrun=True), "dry-run")
+
+    def test_choose_reload_action_force_bypasses_recent_and_dryrun(self):
+        self.assertEqual(choose_reload_action("manual-force", recent=True, force=True, dryrun=True), "fire")
+
+    def test_choose_reload_action_fires_regular_reload(self):
+        self.assertEqual(choose_reload_action("api-error", recent=False, force=False, dryrun=False), "fire")
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:

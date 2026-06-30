@@ -117,6 +117,16 @@ def choose_reload_reason(
     return ""
 
 
+def choose_reload_action(reason: str, *, recent: bool, force: bool, dryrun: bool) -> str:
+    if not reason:
+        return "skip"
+    if recent and not force:
+        return "skip"
+    if dryrun and not force:
+        return "dry-run"
+    return "fire"
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():
