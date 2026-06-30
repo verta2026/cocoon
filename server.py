@@ -314,6 +314,17 @@ async def set_forge_auto_reload(req: AutoReloadRequest, request: Request):
     return _set_auto_reload_paused(AUTO_RELOAD_PAUSE_FILE, AUTO_RELOAD_LOG_FILE, req.paused)
 
 
+@app.get("/reload-status")
+async def reload_status(request: Request):
+    verify_token(request)
+    return {
+        "reload_configured": bool(RELOAD_COMMAND),
+        "auto_reload_paused": AUTO_RELOAD_PAUSE_FILE.exists(),
+        "reload_lock_exists": RELOAD_LOCK_DIR.exists(),
+        "reload_lock_stale_seconds": RELOAD_LOCK_STALE_SECONDS,
+    }
+
+
 @app.post("/new-session")
 async def new_session(request: Request):
     verify_token(request)
