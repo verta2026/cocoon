@@ -31,6 +31,7 @@ from config import (
     SESSION_NAME,
     START_COMMAND,
     TOKEN,
+    TMUX_HISTORY_LIMIT,
     TTS_DIR,
     UPLOAD_DIR,
     WORK_DIR,
@@ -207,7 +208,7 @@ async def start_session(request: Request):
         await asyncio.sleep(3)
         return {"message": "Claude started in existing session"}
 
-    subprocess.run(["tmux", "set-option", "-g", "history-limit", "20000"],
+    subprocess.run(["tmux", "set-option", "-g", "history-limit", str(TMUX_HISTORY_LIMIT)],
                    capture_output=True)
     tmux_new_session()
     await asyncio.sleep(1)

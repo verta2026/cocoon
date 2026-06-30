@@ -97,6 +97,7 @@ All settings are environment variables:
 | `COCOON_PORT` | `8080` | Server port |
 | `COCOON_TOKEN` | `cocoon-default-token` | Auth token for the web UI |
 | `COCOON_SESSION` | `cocoon-cc` | tmux session name |
+| `COCOON_TMUX_HISTORY_LIMIT` | `20000` | tmux scrollback/history lines retained for capture |
 | `COCOON_WORK_DIR` | current directory | Working directory for Claude Code |
 | `COCOON_START_COMMAND` | `claude` | Command sent inside tmux when cocoon starts or reloads Claude Code |
 | `COCOON_LAUNCHER_PATTERN` | empty | Optional `pgrep -f` pattern used to avoid interrupting a custom launcher while it is still starting |

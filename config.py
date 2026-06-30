@@ -14,6 +14,7 @@ CONVERSATIONS_DIR = Path(
 HOST = os.environ.get("COCOON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("COCOON_PORT", "8080"))
 TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
+TMUX_HISTORY_LIMIT = int(os.environ.get("COCOON_TMUX_HISTORY_LIMIT", "20000"))
 UPLOAD_DIR = Path(
     os.environ.get("COCOON_UPLOAD_DIR", str(Path(tempfile.gettempdir()) / "cocoon-uploads"))
 )
