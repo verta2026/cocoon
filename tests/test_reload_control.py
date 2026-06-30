@@ -1,8 +1,10 @@
 import tempfile
 import unittest
+import os
+import time
 from pathlib import Path
 
-from bridge.reload_control import auto_reload_status, log_auto_reload, set_auto_reload_paused
+from bridge.reload_control import auto_reload_status, log_auto_reload, reload_lock, set_auto_reload_paused
 
 
 class ReloadControlTest(unittest.TestCase):
@@ -31,6 +33,31 @@ class ReloadControlTest(unittest.TestCase):
             text = log_file.read_text(encoding="utf-8")
             self.assertIn("first", text)
             self.assertNotIn("second", text)
+
+    def test_reload_lock_blocks_concurrent_acquire(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lock_dir = Path(tmp) / ".reload.lock"
+
+            with reload_lock(lock_dir, stale_seconds=60) as first:
+                self.assertTrue(first)
+                with reload_lock(lock_dir, stale_seconds=60) as second:
+                    self.assertFalse(second)
+
+            self.assertFalse(lock_dir.exists())
+
+    def test_reload_lock_reclaims_stale_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lock_dir = Path(tmp) / ".reload.lock"
+            lock_dir.mkdir()
+            old = time.time() - 120
+            os.utime(lock_dir, (old, old))
+
+            with reload_lock(lock_dir, stale_seconds=60) as acquired:
+                self.assertTrue(acquired)
+                owner = (lock_dir / "owner.json").read_text(encoding="utf-8")
+                self.assertIn("stale_reclaimed", owner)
+
+            self.assertFalse(lock_dir.exists())
 
 
 if __name__ == "__main__":
