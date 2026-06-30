@@ -6,7 +6,6 @@ import base64
 import datetime
 import hashlib
 import json
-import os
 import re
 import time
 import urllib.error
@@ -17,6 +16,7 @@ from typing import Optional
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
 
+from bridge.json_store import read_json, write_json_atomic
 from config import (
     MINIMAX_API_KEY,
     MINIMAX_TTS_MODEL,
@@ -67,13 +67,6 @@ def _public_meta(meta: dict) -> dict:
     }
 
 
-def _write_json(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
-
-
 def _cleanup_audio_files(tts_dir: Path) -> None:
     files = []
     for path in tts_dir.glob("*.mp3"):
@@ -104,7 +97,7 @@ def _save_latest(
         "bytes": size,
         "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
     }
-    _write_json(_latest_path(tts_dir), meta)
+    write_json_atomic(_latest_path(tts_dir), meta)
     _cleanup_audio_files(tts_dir)
     return meta
 
@@ -113,10 +106,7 @@ def latest_tts(tts_dir: Path) -> dict:
     path = _latest_path(tts_dir)
     if not path.exists():
         return {"ok": True, "latest": _public_meta({})}
-    try:
-        meta = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        meta = {}
+    meta = read_json(path, default={})
     return {"ok": True, "latest": _public_meta(meta)}
 
 
