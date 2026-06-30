@@ -23,6 +23,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
     LAUNCHER_PROCESS_PATTERN,
+    MAX_UPLOAD_BYTES,
     SESSION_NAME,
     START_COMMAND,
     TOKEN,
@@ -247,7 +248,7 @@ async def new_session(request: Request):
 @app.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(...)):
     verify_token(request)
-    return _save_upload_file(UPLOAD_DIR, file)
+    return _save_upload_file(UPLOAD_DIR, file, MAX_UPLOAD_BYTES)
 
 
 @app.get("/files/{filename}")

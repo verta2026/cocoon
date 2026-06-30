@@ -14,6 +14,8 @@ TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
 UPLOAD_DIR = Path(
     os.environ.get("COCOON_UPLOAD_DIR", str(Path(tempfile.gettempdir()) / "cocoon-uploads"))
 )
+MAX_UPLOAD_MB = float(os.environ.get("COCOON_MAX_UPLOAD_MB", "0"))
+MAX_UPLOAD_BYTES = int(MAX_UPLOAD_MB * 1024 * 1024) if MAX_UPLOAD_MB > 0 else 0
 TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", str(Path(tempfile.gettempdir()) / "cocoon-tts")))
 TTS_PROVIDER = os.environ.get("COCOON_TTS_PROVIDER", "none").strip().lower()
 

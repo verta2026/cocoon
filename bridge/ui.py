@@ -1036,9 +1036,10 @@ function renderAttachPreview() {
   list.innerHTML = '';
   pendingFiles.forEach(function(fi) {
     const url = '/files/' + encodeURIComponent(fi.filename) + '?token=' + encodeURIComponent(TOKEN);
+    const displayName = fi.original_filename || fi.filename;
     const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fi.filename);
     const card = document.createElement(isImg ? 'div' : 'a');
-    card.className = 'attach-card'; card.title = fi.filename;
+    card.className = 'attach-card'; card.title = displayName;
     if (isImg) card.onclick = function() { openLightbox(url); };
     else { card.href = url; card.target = '_blank'; }
     const thumb = document.createElement('span');
@@ -1060,8 +1061,13 @@ async function handleFileUpload(inputEl) {
     const fd = new FormData(); fd.append('file', file);
     try {
       const r = await fetch('/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN }, body: fd });
+      if (!r.ok) {
+        let detail = r.statusText || 'upload failed';
+        try { const err = await r.json(); detail = err.detail || detail; } catch(e) {}
+        throw new Error(detail);
+      }
       pendingFiles.push(await r.json());
-    } catch(e) { alert('upload failed: ' + file.name); }
+    } catch(e) { alert('upload failed: ' + file.name + (e.message ? ': ' + e.message : '')); }
   }
   if (pendingFiles.length > 0) {
     renderAttachPreview();

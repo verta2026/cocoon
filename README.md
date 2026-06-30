@@ -97,6 +97,7 @@ All settings are environment variables:
 | `COCOON_START_COMMAND` | `claude` | Command sent inside tmux when cocoon starts or reloads Claude Code |
 | `COCOON_LAUNCHER_PATTERN` | empty | Optional `pgrep -f` pattern used to avoid interrupting a custom launcher while it is still starting |
 | `COCOON_UPLOAD_DIR` | system temp / `cocoon-uploads` | Directory for uploaded files |
+| `COCOON_MAX_UPLOAD_MB` | `0` | Optional upload size cap in MB. `0` keeps uploads unlimited |
 | `COCOON_TTS_PROVIDER` | `none` | Optional TTS provider. Set to `minimax` to enable `/tts/say` |
 | `COCOON_TTS_DIR` | system temp / `cocoon-tts` | Directory for generated TTS audio |
 | `MINIMAX_API_KEY` | empty | MiniMax API key, required when `COCOON_TTS_PROVIDER=minimax` |
