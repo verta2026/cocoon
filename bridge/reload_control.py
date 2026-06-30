@@ -19,6 +19,21 @@ def normalized_reload_command(command: str | None) -> str:
     return (command or "").strip()
 
 
+def recent_auto_reload(state_file: Path, cooldown_seconds: int) -> bool:
+    try:
+        data = json.loads(state_file.read_text(encoding="utf-8"))
+        return time.time() - float(data.get("time", 0)) < cooldown_seconds
+    except Exception:
+        return False
+
+
+def mark_auto_reload(state_file: Path, reason: str, context_tokens: int = 0) -> dict:
+    data = {"time": time.time(), "reason": reason, "tokens": context_tokens}
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return data
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():

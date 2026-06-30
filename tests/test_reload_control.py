@@ -7,7 +7,9 @@ from pathlib import Path
 from bridge.reload_control import (
     auto_reload_status,
     log_auto_reload,
+    mark_auto_reload,
     normalized_reload_command,
+    recent_auto_reload,
     reload_lock,
     send_reload_command,
     set_auto_reload_paused,
@@ -52,6 +54,25 @@ class ReloadControlTest(unittest.TestCase):
 
         self.assertEqual(sent, "")
         self.assertEqual(calls, [])
+
+    def test_mark_and_recent_auto_reload_track_cooldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_file = Path(tmp) / "reload.json"
+
+            data = mark_auto_reload(state_file, "manual-force", context_tokens=123)
+
+            self.assertEqual(data["reason"], "manual-force")
+            self.assertEqual(data["tokens"], 123)
+            self.assertTrue(recent_auto_reload(state_file, cooldown_seconds=3600))
+            self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=0))
+
+    def test_recent_auto_reload_ignores_missing_or_invalid_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_file = Path(tmp) / "reload.json"
+
+            self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=3600))
+            state_file.write_text("{bad", encoding="utf-8")
+            self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=3600))
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
