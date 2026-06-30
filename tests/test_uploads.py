@@ -48,6 +48,15 @@ class UploadsTest(unittest.TestCase):
 
             self.assertEqual(ctx.exception.status_code, 404)
 
+    def test_serve_sets_download_filename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            upload_dir = Path(tmp)
+            (upload_dir / "stored.txt").write_text("hello", encoding="utf-8")
+
+            response = serve_upload_file(upload_dir, "stored.txt")
+
+            self.assertIn('filename="stored.txt"', response.headers["content-disposition"])
+
 
 if __name__ == "__main__":
     unittest.main()

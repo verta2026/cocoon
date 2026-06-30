@@ -44,4 +44,5 @@ def serve_upload_file(upload_dir: Path, filename: str):
         raise HTTPException(403, "Forbidden")
     if not path.exists():
         raise HTTPException(404, "File not found")
-    return FileResponse(path)
+    safe_name = Path(filename).name
+    return FileResponse(path, filename=safe_name)
