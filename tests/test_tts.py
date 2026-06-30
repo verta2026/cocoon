@@ -36,6 +36,30 @@ class TtsTest(unittest.TestCase):
             self.assertTrue(mid.exists())
             self.assertTrue(new.exists())
 
+    def test_serve_tts_audio_rejects_traversal_and_wrong_suffix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            audio_id = "a" * 16
+            (root / f"{audio_id}.txt").write_text("not audio", encoding="utf-8")
+
+            with self.assertRaises(HTTPException) as invalid:
+                tts.serve_tts_audio(root, "../" + audio_id + ".mp3")
+            self.assertEqual(invalid.exception.status_code, 400)
+
+            with self.assertRaises(HTTPException) as wrong_suffix:
+                tts.serve_tts_audio(root, audio_id + ".txt")
+            self.assertEqual(wrong_suffix.exception.status_code, 400)
+
+    def test_serve_tts_audio_sets_private_cache_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            audio_name = "b" * 16 + ".mp3"
+            (root / audio_name).write_bytes(b"mp3")
+
+            response = tts.serve_tts_audio(root, audio_name)
+
+            self.assertEqual(response.headers["cache-control"], "private, max-age=86400")
+
 
 if __name__ == "__main__":
     unittest.main()

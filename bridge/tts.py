@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from fastapi.responses import FileResponse
 
 from bridge.json_store import read_json, write_json_atomic
+from bridge.paths import safe_child_path
 from config import (
     MINIMAX_API_KEY,
     MINIMAX_TTS_MODEL,
@@ -193,11 +194,7 @@ def synthesize_tts(
 def serve_tts_audio(tts_dir: Path, audio_name: str):
     if not AUDIO_NAME_RE.match(audio_name):
         raise HTTPException(400, "invalid audio id")
-    path = (tts_dir / audio_name).resolve()
-    if not path.is_relative_to(tts_dir.resolve()):
-        raise HTTPException(403, "Forbidden")
-    if not path.exists():
-        raise HTTPException(404, "Audio not found")
+    path = safe_child_path(tts_dir, audio_name, not_found="Audio not found", suffix=".mp3")
     return FileResponse(
         path,
         media_type="audio/mpeg",
