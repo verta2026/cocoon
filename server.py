@@ -25,6 +25,8 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
     AUTO_DISMISS_PROMPTS,
+    AUTO_RELOAD_LOG_FILE,
+    AUTO_RELOAD_PAUSE_FILE,
     CONVERSATIONS_DIR,
     EXTENSIONS_FILE,
     LAUNCHER_PROCESS_PATTERN,
@@ -47,6 +49,10 @@ from bridge.history import (
     read_conversation_messages as _read_conversation_messages,
 )
 from bridge.extensions import list_extensions as _list_extensions
+from bridge.reload_control import (
+    auto_reload_status as _auto_reload_status,
+    set_auto_reload_paused as _set_auto_reload_paused,
+)
 from bridge.tmux import (
     claude_busy as _claude_busy,
     claude_running as _claude_running,
@@ -180,6 +186,10 @@ class TtsRequest(BaseModel):
     source: str = "frontend"
 
 
+class AutoReloadRequest(BaseModel):
+    paused: bool
+
+
 @app.get("/status")
 async def status(request: Request):
     verify_token(request)
@@ -280,6 +290,18 @@ async def history_messages(file_id: str, request: Request):
 async def extensions(request: Request):
     verify_token(request)
     return {"extensions": _list_extensions(EXTENSIONS_FILE)}
+
+
+@app.get("/forge-auto-reload")
+async def get_forge_auto_reload(request: Request):
+    verify_token(request)
+    return _auto_reload_status(AUTO_RELOAD_PAUSE_FILE)
+
+
+@app.post("/forge-auto-reload")
+async def set_forge_auto_reload(req: AutoReloadRequest, request: Request):
+    verify_token(request)
+    return _set_auto_reload_paused(AUTO_RELOAD_PAUSE_FILE, AUTO_RELOAD_LOG_FILE, req.paused)
 
 
 @app.post("/new-session")

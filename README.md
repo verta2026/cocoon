@@ -99,10 +99,13 @@ All settings are environment variables:
 | `COCOON_SESSION` | `cocoon-cc` | tmux session name |
 | `COCOON_TMUX_HISTORY_LIMIT` | `20000` | tmux scrollback/history lines retained for capture |
 | `COCOON_WORK_DIR` | current directory | Working directory for Claude Code |
+| `COCOON_STATE_DIR` | `COCOON_WORK_DIR/.cocoon` | Directory for cocoon state files |
 | `COCOON_START_COMMAND` | `claude` | Command sent inside tmux when cocoon starts or reloads Claude Code |
 | `COCOON_LAUNCHER_PATTERN` | empty | Optional `pgrep -f` pattern used to avoid interrupting a custom launcher while it is still starting |
 | `COCOON_CONVERSATIONS_DIR` | `COCOON_WORK_DIR/.cocoon/conversations` | Optional read-only JSONL history directory for `/history` |
 | `COCOON_EXTENSIONS_FILE` | `COCOON_WORK_DIR/.cocoon/extensions.json` | Optional read-only extension/link registry for `/extensions` |
+| `COCOON_AUTO_RELOAD_PAUSE_FILE` | `COCOON_STATE_DIR/.forge_auto_reload_paused` | Pause marker used by optional reload integrations |
+| `COCOON_AUTO_RELOAD_LOG_FILE` | `COCOON_STATE_DIR/.forge_auto_reload.log` | Log file used by optional reload integrations |
 | `COCOON_UPLOAD_DIR` | system temp / `cocoon-uploads` | Directory for uploaded files |
 | `COCOON_MAX_UPLOAD_MB` | `0` | Optional upload size cap in MB. `0` keeps uploads unlimited |
 | `COCOON_TTS_PROVIDER` | `none` | Optional TTS provider. Set to `minimax` to enable `/tts/say` |
