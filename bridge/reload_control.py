@@ -34,6 +34,63 @@ def mark_auto_reload(state_file: Path, reason: str, context_tokens: int = 0) -> 
     return data
 
 
+def session_idle_seconds(current_jsonl_path: Callable[[], Path | None]) -> float:
+    path = current_jsonl_path()
+    if not path:
+        return 0
+    try:
+        return time.time() - path.stat().st_mtime
+    except OSError:
+        return 0
+
+
+def actual_model_from_session(current_jsonl_path: Callable[[], Path | None]) -> str:
+    path = current_jsonl_path()
+    if not path:
+        return ""
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, 2)
+            handle.seek(max(0, handle.tell() - 262144))
+            chunk = handle.read().decode("utf-8", "ignore")
+    except OSError:
+        return ""
+
+    for line in reversed(chunk.splitlines()):
+        try:
+            event = json.loads(line)
+        except Exception:
+            continue
+        if event.get("type") != "assistant" or event.get("isSidechain"):
+            continue
+        model = (event.get("message") or {}).get("model") or ""
+        if model:
+            return model
+    return ""
+
+
+def context_window_is_1m(current_jsonl_path: Callable[[], Path | None], settings_file: Path) -> bool:
+    actual = actual_model_from_session(current_jsonl_path)
+    if actual:
+        return "[1m]" in actual
+    try:
+        config = json.loads(settings_file.read_text(encoding="utf-8"))
+        return "[1m]" in (config.get("model") or "")
+    except Exception:
+        return False
+
+
+def active_context_threshold(
+    current_jsonl_path: Callable[[], Path | None],
+    settings_file: Path,
+    threshold: int,
+    threshold_1m: int,
+) -> int:
+    if context_window_is_1m(current_jsonl_path, settings_file):
+        return threshold_1m
+    return threshold
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():

@@ -5,7 +5,10 @@ import time
 from pathlib import Path
 
 from bridge.reload_control import (
+    active_context_threshold,
+    actual_model_from_session,
     auto_reload_status,
+    context_window_is_1m,
     log_auto_reload,
     mark_auto_reload,
     normalized_reload_command,
@@ -13,6 +16,7 @@ from bridge.reload_control import (
     reload_lock,
     send_reload_command,
     set_auto_reload_paused,
+    session_idle_seconds,
 )
 
 
@@ -74,6 +78,59 @@ class ReloadControlTest(unittest.TestCase):
             state_file.write_text("{bad", encoding="utf-8")
             self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=3600))
 
+    def test_session_idle_seconds_returns_age_for_existing_jsonl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.jsonl"
+            path.write_text("{}", encoding="utf-8")
+            old = time.time() - 90
+            os.utime(path, (old, old))
+
+            idle = session_idle_seconds(lambda: path)
+
+            self.assertGreaterEqual(idle, 80)
+            self.assertLess(idle, 120)
+            self.assertEqual(session_idle_seconds(lambda: None), 0)
+
+    def test_actual_model_from_session_uses_latest_assistant_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.jsonl"
+            rows = [
+                {"type": "assistant", "message": {"model": "claude-sonnet"}},
+                {"type": "assistant", "isSidechain": True, "message": {"model": "ignored[1m]"}},
+                {"type": "user", "message": {"model": "ignored-user"}},
+                {"type": "assistant", "message": {"model": "claude-opus[1m]"}},
+            ]
+            path.write_text("\n".join(json_dumps(row) for row in rows), encoding="utf-8")
+
+            self.assertEqual(actual_model_from_session(lambda: path), "claude-opus[1m]")
+
+    def test_context_window_uses_session_model_then_settings_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            session_path = root / "session.jsonl"
+            settings_file = root / "settings.json"
+
+            session_path.write_text(
+                json_dumps({"type": "assistant", "message": {"model": "claude-sonnet"}}),
+                encoding="utf-8",
+            )
+            settings_file.write_text('{"model": "claude-opus[1m]"}', encoding="utf-8")
+
+            self.assertFalse(context_window_is_1m(lambda: session_path, settings_file))
+            self.assertEqual(active_context_threshold(lambda: session_path, settings_file, 100, 500), 100)
+
+            self.assertTrue(context_window_is_1m(lambda: None, settings_file))
+            self.assertEqual(active_context_threshold(lambda: None, settings_file, 100, 500), 500)
+
+    def test_context_window_helpers_tolerate_missing_or_invalid_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_session = Path(tmp) / "missing.jsonl"
+            settings_file = Path(tmp) / "settings.json"
+            settings_file.write_text("{bad", encoding="utf-8")
+
+            self.assertEqual(actual_model_from_session(lambda: missing_session), "")
+            self.assertFalse(context_window_is_1m(lambda: missing_session, settings_file))
+
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -124,6 +181,12 @@ class ReloadControlTest(unittest.TestCase):
                 self.assertIn("stale_reclaimed", owner)
 
             self.assertFalse(lock_dir.exists())
+
+
+def json_dumps(data):
+    import json
+
+    return json.dumps(data, ensure_ascii=False)
 
 
 if __name__ == "__main__":
