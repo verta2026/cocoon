@@ -135,6 +135,7 @@ Endpoints:
 - `POST /tts/say` with `{"text":"hello"}` generates an mp3 and returns its URL
 - `GET /tts/latest` returns the latest generated audio metadata
 - `GET /tts/audio/<id>.mp3` serves generated audio with the same token protection as uploads
+- `GET /raw-output` mirrors `/output` for clients that need the unprocessed terminal capture
 
 The chat UI renders voice markers like `[[cocoon_voice:<id>]]` and direct `/tts/audio/<id>.mp3` links as playable voice bubbles.
 

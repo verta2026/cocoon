@@ -6,6 +6,7 @@ POST /send    — send a message to Claude Code
 GET  /output  — get latest terminal output
 GET  /status  — session status
 POST /start   — start Claude Code session
+GET  /raw-output — get latest raw terminal output
 GET  /chat    — chat UI
 """
 
@@ -147,6 +148,12 @@ def wait_for_claude_ready(timeout=70):
     return _wait_for_claude_ready(SESSION_NAME, timeout)
 
 
+def captured_output_or_404(lines=1500):
+    if not tmux_exists():
+        raise HTTPException(404, "No active session")
+    return tmux_capture(lines)
+
+
 class Message(BaseModel):
     text: str
 
@@ -231,9 +238,13 @@ async def send_message(msg: Message, request: Request):
 @app.get("/output")
 async def get_output(request: Request, lines: int = 1500):
     verify_token(request)
-    if not tmux_exists():
-        raise HTTPException(404, "No active session")
-    return PlainTextResponse(tmux_capture(lines))
+    return PlainTextResponse(captured_output_or_404(lines))
+
+
+@app.get("/raw-output")
+async def get_raw_output(request: Request, lines: int = 1500):
+    verify_token(request)
+    return PlainTextResponse(captured_output_or_404(lines))
 
 
 @app.get("/history")
