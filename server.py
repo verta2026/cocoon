@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
     AUTO_DISMISS_PROMPTS,
     CONVERSATIONS_DIR,
+    EXTENSIONS_FILE,
     LAUNCHER_PROCESS_PATTERN,
     MAX_UPLOAD_BYTES,
     SESSION_NAME,
@@ -45,6 +46,7 @@ from bridge.history import (
     list_conversation_sessions as _list_conversation_sessions,
     read_conversation_messages as _read_conversation_messages,
 )
+from bridge.extensions import list_extensions as _list_extensions
 from bridge.tmux import (
     claude_busy as _claude_busy,
     claude_running as _claude_running,
@@ -271,6 +273,12 @@ async def history(request: Request):
 async def history_messages(file_id: str, request: Request):
     verify_token(request)
     return {"file": file_id, "messages": _read_conversation_messages(CONVERSATIONS_DIR, file_id)}
+
+
+@app.get("/extensions")
+async def extensions(request: Request):
+    verify_token(request)
+    return {"extensions": _list_extensions(EXTENSIONS_FILE)}
 
 
 @app.post("/new-session")

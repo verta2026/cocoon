@@ -11,6 +11,7 @@ LAUNCHER_PROCESS_PATTERN = os.environ.get("COCOON_LAUNCHER_PATTERN", "")
 CONVERSATIONS_DIR = Path(
     os.environ.get("COCOON_CONVERSATIONS_DIR", str(Path(WORK_DIR) / ".cocoon" / "conversations"))
 )
+EXTENSIONS_FILE = Path(os.environ.get("COCOON_EXTENSIONS_FILE", str(Path(WORK_DIR) / ".cocoon" / "extensions.json")))
 HOST = os.environ.get("COCOON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("COCOON_PORT", "8080"))
 TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
