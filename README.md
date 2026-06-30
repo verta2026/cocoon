@@ -105,6 +105,7 @@ All settings are environment variables:
 | `COCOON_MAX_UPLOAD_MB` | `0` | Optional upload size cap in MB. `0` keeps uploads unlimited |
 | `COCOON_TTS_PROVIDER` | `none` | Optional TTS provider. Set to `minimax` to enable `/tts/say` |
 | `COCOON_TTS_DIR` | system temp / `cocoon-tts` | Directory for generated TTS audio |
+| `COCOON_AUTO_DISMISS_PROMPTS` | `1` | Auto-dismiss common Claude Code terminal prompts. Set to `0` to require manual confirmation |
 | `MINIMAX_API_KEY` | empty | MiniMax API key, required when `COCOON_TTS_PROVIDER=minimax` |
 | `MINIMAX_VOICE_ID` | empty | MiniMax voice ID, required when TTS is enabled |
 | `MINIMAX_TTS_MODEL` | `speech-2.8-hd` | MiniMax TTS model |

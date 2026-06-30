@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
+    AUTO_DISMISS_PROMPTS,
     CONVERSATIONS_DIR,
     LAUNCHER_PROCESS_PATTERN,
     MAX_UPLOAD_BYTES,
@@ -137,15 +138,25 @@ def start_claude():
 
 
 def dismiss_resume_summary_prompt():
+    if not AUTO_DISMISS_PROMPTS:
+        return False
     return _dismiss_resume_summary_prompt(SESSION_NAME)
 
 
 def dismiss_rating_prompt():
+    if not AUTO_DISMISS_PROMPTS:
+        return False
     return _dismiss_rating_prompt(SESSION_NAME)
 
 
+def dismiss_trust_prompt():
+    if not AUTO_DISMISS_PROMPTS:
+        return False
+    return _dismiss_trust_prompt(SESSION_NAME)
+
+
 def wait_for_claude_ready(timeout=70):
-    return _wait_for_claude_ready(SESSION_NAME, timeout)
+    return _wait_for_claude_ready(SESSION_NAME, timeout, auto_dismiss=AUTO_DISMISS_PROMPTS)
 
 
 def captured_output_or_404(lines=1500):
@@ -171,7 +182,7 @@ async def status(request: Request):
     command = pane_command() if alive else ""
     running = claude_running() if alive else False
     dismissed_resume = dismiss_resume_summary_prompt() if running else False
-    dismissed_trust = _dismiss_trust_prompt(SESSION_NAME) if alive else False
+    dismissed_trust = dismiss_trust_prompt() if alive else False
     return {
         "session": SESSION_NAME,
         "alive": alive,
@@ -269,7 +280,7 @@ async def new_session(request: Request):
         tmux_send("/exit")
         for _ in range(40):
             await asyncio.sleep(0.5)
-            _dismiss_rating_prompt(SESSION_NAME)
+            dismiss_rating_prompt()
             if not claude_running():
                 break
         else:
@@ -278,7 +289,7 @@ async def new_session(request: Request):
     if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
         raise HTTPException(409, "Launcher already in progress; not interrupting")
     start_claude()
-    ready = await asyncio.to_thread(_wait_for_claude_ready, SESSION_NAME)
+    ready = await asyncio.to_thread(wait_for_claude_ready)
     if not ready:
         return {"message": "Claude started but may still be loading"}
     return {"message": "New session started"}

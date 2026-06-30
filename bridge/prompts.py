@@ -48,24 +48,25 @@ def dismiss_trust_prompt(session_name: str):
     return False
 
 
-def wait_for_claude_ready(session_name: str, timeout=70):
+def wait_for_claude_ready(session_name: str, timeout=70, auto_dismiss: bool = True):
     deadline = time.time() + timeout
     while time.time() < deadline:
         if not claude_running(session_name):
             time.sleep(1)
             continue
-        if dismiss_resume_summary_prompt(session_name):
-            time.sleep(2)
-            continue
-        if dismiss_rating_prompt(session_name):
-            time.sleep(1)
-            continue
-        if dismiss_settings_warning_prompt(session_name):
-            time.sleep(2)
-            continue
-        if dismiss_trust_prompt(session_name):
-            time.sleep(2)
-            continue
+        if auto_dismiss:
+            if dismiss_resume_summary_prompt(session_name):
+                time.sleep(2)
+                continue
+            if dismiss_rating_prompt(session_name):
+                time.sleep(1)
+                continue
+            if dismiss_settings_warning_prompt(session_name):
+                time.sleep(2)
+                continue
+            if dismiss_trust_prompt(session_name):
+                time.sleep(2)
+                continue
         screen = tmux_capture(session_name, 80)
         tail = "\n".join(screen.splitlines()[-24:])
         if "? for shortcuts" in tail and "esc to interrupt" not in tail and "Compacting conversation" not in tail:

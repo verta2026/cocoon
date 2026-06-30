@@ -21,6 +21,12 @@ MAX_UPLOAD_MB = float(os.environ.get("COCOON_MAX_UPLOAD_MB", "0"))
 MAX_UPLOAD_BYTES = int(MAX_UPLOAD_MB * 1024 * 1024) if MAX_UPLOAD_MB > 0 else 0
 TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", str(Path(tempfile.gettempdir()) / "cocoon-tts")))
 TTS_PROVIDER = os.environ.get("COCOON_TTS_PROVIDER", "none").strip().lower()
+AUTO_DISMISS_PROMPTS = os.environ.get("COCOON_AUTO_DISMISS_PROMPTS", "1").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
 
 ASSISTANT_NAME = os.environ.get("COCOON_ASSISTANT_NAME", "Claude")
 ASSISTANT_AVATAR = os.environ.get("COCOON_ASSISTANT_AVATAR", "")
