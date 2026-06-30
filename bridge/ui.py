@@ -474,13 +474,13 @@ function renderFileRefs(html) {
   html = html.replace(/\[image\]\s*([^\r\n]+\.(jpg|jpeg|png|gif|webp))/gi, function(m, path) {
     var name = basenameFromPath(path);
     if (!name) return m;
-    var url = '/files/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(TOKEN);
+    var url = '/files/' + encodeURIComponent(name);
     return '<img src="' + url + '" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0.3em 0;display:block;cursor:pointer;border:1px solid var(--border);" loading="lazy" onclick="openLightbox(this.src)">';
   });
   html = html.replace(/\[file\]\s*([^\r\n]+)/gi, function(m, path) {
     var name = basenameFromPath(path);
     if (!name) return m;
-    var url = '/files/' + encodeURIComponent(name) + '?token=' + encodeURIComponent(TOKEN);
+    var url = '/files/' + encodeURIComponent(name);
     return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3em;background:var(--code-bg);padding:0.25em 0.6em;border-radius:5px;font-size:0.82em;color:inherit;text-decoration:none;">file</a>';
   });
   return html;
@@ -489,7 +489,7 @@ function renderFileRefs(html) {
 function renderVoiceNote(id) {
   id = (id || '').toLowerCase();
   if (!/^[a-f0-9]{16,64}$/.test(id)) return '';
-  var src = '/tts/audio/' + encodeURIComponent(id + '.mp3') + '?token=' + encodeURIComponent(TOKEN);
+  var src = '/tts/audio/' + encodeURIComponent(id + '.mp3');
   return '<div class="voice-note" data-voice-id="' + id + '"><button class="voice-play" type="button" aria-label="play voice">play</button><div class="voice-track"><span class="voice-fill"></span></div><span class="voice-time">0:00</span><audio preload="metadata" src="' + src + '"></audio></div>';
 }
 
@@ -1035,7 +1035,7 @@ function renderAttachPreview() {
   const list = document.getElementById('attach-preview-list');
   list.innerHTML = '';
   pendingFiles.forEach(function(fi) {
-    const url = '/files/' + encodeURIComponent(fi.filename) + '?token=' + encodeURIComponent(TOKEN);
+    const url = '/files/' + encodeURIComponent(fi.filename);
     const displayName = fi.original_filename || fi.filename;
     const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fi.filename);
     const card = document.createElement(isImg ? 'div' : 'a');
