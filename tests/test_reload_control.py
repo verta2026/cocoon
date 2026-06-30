@@ -8,6 +8,7 @@ from bridge.reload_control import (
     active_context_threshold,
     actual_model_from_session,
     auto_reload_status,
+    build_reload_decision,
     choose_reload_action,
     choose_reload_reason,
     context_window_is_1m,
@@ -219,6 +220,48 @@ class ReloadControlTest(unittest.TestCase):
 
     def test_choose_reload_action_fires_regular_reload(self):
         self.assertEqual(choose_reload_action("api-error", recent=False, force=False, dryrun=False), "fire")
+
+    def test_build_reload_decision_combines_reason_and_action(self):
+        decision = build_reload_decision(
+            force=False,
+            tail_text="API Error: overloaded",
+            context_tokens=25,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+            recent=False,
+            dryrun=True,
+        )
+
+        self.assertEqual(
+            decision,
+            {
+                "action": "dry-run",
+                "reason": "api-error",
+                "force": False,
+                "recent": False,
+                "dryrun": True,
+                "context_tokens": 25,
+                "active_threshold": 100,
+            },
+        )
+
+    def test_build_reload_decision_reports_skip_when_no_trigger_matches(self):
+        decision = build_reload_decision(
+            force=False,
+            tail_text="ok",
+            context_tokens=25,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+            recent=False,
+            dryrun=False,
+        )
+
+        self.assertEqual(decision["action"], "skip")
+        self.assertEqual(decision["reason"], "")
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -127,6 +127,39 @@ def choose_reload_action(reason: str, *, recent: bool, force: bool, dryrun: bool
     return "fire"
 
 
+def build_reload_decision(
+    *,
+    force: bool,
+    tail_text: str,
+    context_tokens: int,
+    active_threshold: int,
+    idle_seconds: float,
+    idle_min_context: int,
+    idle_threshold_seconds: int,
+    recent: bool,
+    dryrun: bool,
+) -> dict:
+    reason = choose_reload_reason(
+        force=force,
+        tail_text=tail_text,
+        context_tokens=context_tokens,
+        active_threshold=active_threshold,
+        idle_seconds=idle_seconds,
+        idle_min_context=idle_min_context,
+        idle_threshold_seconds=idle_threshold_seconds,
+    )
+    action = choose_reload_action(reason, recent=recent, force=force, dryrun=dryrun)
+    return {
+        "action": action,
+        "reason": reason,
+        "force": force,
+        "recent": recent,
+        "dryrun": dryrun,
+        "context_tokens": context_tokens,
+        "active_threshold": active_threshold,
+    }
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():
