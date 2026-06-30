@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
+    CONVERSATIONS_DIR,
     LAUNCHER_PROCESS_PATTERN,
     MAX_UPLOAD_BYTES,
     SESSION_NAME,
@@ -36,6 +37,10 @@ from bridge.session import (
     launcher_in_progress as _launcher_in_progress,
     start_claude as _start_claude,
     start_tmux_session as _start_tmux_session,
+)
+from bridge.history import (
+    list_conversation_sessions as _list_conversation_sessions,
+    read_conversation_messages as _read_conversation_messages,
 )
 from bridge.tmux import (
     claude_busy as _claude_busy,
@@ -229,6 +234,18 @@ async def get_output(request: Request, lines: int = 1500):
     if not tmux_exists():
         raise HTTPException(404, "No active session")
     return PlainTextResponse(tmux_capture(lines))
+
+
+@app.get("/history")
+async def history(request: Request):
+    verify_token(request)
+    return {"sessions": _list_conversation_sessions(CONVERSATIONS_DIR)}
+
+
+@app.get("/history/{file_id:path}")
+async def history_messages(file_id: str, request: Request):
+    verify_token(request)
+    return {"file": file_id, "messages": _read_conversation_messages(CONVERSATIONS_DIR, file_id)}
 
 
 @app.post("/new-session")
