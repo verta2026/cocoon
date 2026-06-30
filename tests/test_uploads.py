@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from bridge.uploads import save_upload_file, serve_upload_file
+from bridge.uploads import list_upload_files, save_upload_file, serve_upload_file
 
 
 class FakeUpload:
@@ -56,6 +56,19 @@ class UploadsTest(unittest.TestCase):
             response = serve_upload_file(upload_dir, "stored.txt")
 
             self.assertIn('filename="stored.txt"', response.headers["content-disposition"])
+
+    def test_list_upload_files_returns_safe_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            upload_dir = Path(tmp)
+            (upload_dir / "b.txt").write_text("bb", encoding="utf-8")
+            (upload_dir / "a.txt").write_text("a", encoding="utf-8")
+            (upload_dir / "subdir").mkdir()
+
+            files = list_upload_files(upload_dir)
+
+            self.assertEqual([item["name"] for item in files], ["a.txt", "b.txt"])
+            self.assertEqual([item["size"] for item in files], [1, 2])
+            self.assertTrue(all("mtime" in item for item in files))
 
 
 if __name__ == "__main__":

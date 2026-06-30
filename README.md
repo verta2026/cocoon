@@ -148,6 +148,7 @@ The chat UI renders voice markers like `[[cocoon_voice:<id>]]` and direct `/tts/
 - **Markdown rendering** — bold, italic, code blocks, tables, lists, links
 - **Tool call folding** — file reads, bash commands, etc. collapsed by default
 - **File upload** — attach images and files to messages
+- **File listing** — optional `/files` endpoint for clients to inspect uploaded files
 - **Optional TTS** - generate mp3 audio and render voice bubbles when configured
 - **Light / dark theme** — follows system preference, toggleable
 - **Custom avatars & background** — stored in localStorage

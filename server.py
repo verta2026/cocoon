@@ -65,6 +65,7 @@ from bridge.prompts import (
     wait_for_claude_ready as _wait_for_claude_ready,
 )
 from bridge.uploads import (
+    list_upload_files as _list_upload_files,
     save_upload_file as _save_upload_file,
     serve_upload_file as _serve_upload_file,
 )
@@ -310,6 +311,12 @@ async def new_session(request: Request):
 async def upload_file(request: Request, file: UploadFile = File(...)):
     verify_token(request)
     return _save_upload_file(UPLOAD_DIR, file, MAX_UPLOAD_BYTES)
+
+
+@app.get("/files")
+async def list_files(request: Request):
+    verify_token(request)
+    return {"files": _list_upload_files(UPLOAD_DIR)}
 
 
 @app.get("/files/{filename}")
