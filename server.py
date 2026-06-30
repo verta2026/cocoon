@@ -76,6 +76,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 TTS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Cocoon", docs_url=None)
+SEND_LOCK = asyncio.Lock()
 
 
 def token_matches(candidate: str | None) -> bool:
@@ -218,32 +219,33 @@ async def start_session(request: Request):
 @app.post("/send")
 async def send_message(msg: Message, request: Request):
     verify_token(request)
-    if not tmux_exists():
-        raise HTTPException(404, "No active session")
+    async with SEND_LOCK:
+        if not tmux_exists():
+            raise HTTPException(404, "No active session")
 
-    if not claude_running():
-        if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
-            raise HTTPException(409, "Launcher already in progress; not interrupting")
-        start_claude()
-        if msg.text and wait_for_claude_ready():
+        if not claude_running():
+            if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
+                raise HTTPException(409, "Launcher already in progress; not interrupting")
+            start_claude()
+            if msg.text and wait_for_claude_ready():
+                tmux_send(msg.text.strip())
+                return {"sent": True, "reloaded": True, "length": len(msg.text)}
+            return {"sent": False, "reloaded": True, "length": len(msg.text)}
+
+        if dismiss_resume_summary_prompt():
+            if msg.text and wait_for_claude_ready():
+                tmux_send(msg.text.strip())
+                return {"sent": True, "reloaded": True, "length": len(msg.text)}
+            return {"sent": False, "reloaded": True, "length": len(msg.text)}
+
+        if msg.text:
             tmux_send(msg.text.strip())
-            return {"sent": True, "reloaded": True, "length": len(msg.text)}
-        return {"sent": False, "reloaded": True, "length": len(msg.text)}
-
-    if dismiss_resume_summary_prompt():
-        if msg.text and wait_for_claude_ready():
-            tmux_send(msg.text.strip())
-            return {"sent": True, "reloaded": True, "length": len(msg.text)}
-        return {"sent": False, "reloaded": True, "length": len(msg.text)}
-
-    if msg.text:
-        tmux_send(msg.text.strip())
-    else:
-        subprocess.run(
-            ["tmux", "send-keys", "-t", SESSION_NAME, "Enter"],
-            check=True,
-        )
-    return {"sent": True, "length": len(msg.text)}
+        else:
+            subprocess.run(
+                ["tmux", "send-keys", "-t", SESSION_NAME, "Enter"],
+                check=True,
+            )
+        return {"sent": True, "length": len(msg.text)}
 
 
 @app.get("/output")
