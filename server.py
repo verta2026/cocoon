@@ -330,6 +330,12 @@ async def new_session(request: Request):
     return {"message": "New session started"}
 
 
+@app.post("/continue-session")
+async def continue_session(request: Request):
+    verify_token(request)
+    raise HTTPException(410, "continue-session is disabled; use new-session or a reload integration")
+
+
 @app.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(...)):
     verify_token(request)

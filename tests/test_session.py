@@ -1,6 +1,9 @@
 import unittest
 from unittest.mock import patch
 
+from fastapi import HTTPException
+
+import server
 from bridge.session import launcher_in_progress, normalized_start_command, start_claude
 
 
@@ -33,6 +36,20 @@ class SessionHelpersTest(unittest.TestCase):
         with patch("bridge.session.subprocess.run") as run:
             self.assertFalse(launcher_in_progress(""))
         run.assert_not_called()
+
+
+class ContinueSessionRouteTest(unittest.IsolatedAsyncioTestCase):
+    async def test_continue_session_is_explicitly_disabled(self):
+        original_verify = server.verify_token
+        try:
+            server.verify_token = lambda request: None
+            with self.assertRaises(HTTPException) as ctx:
+                await server.continue_session(object())
+
+            self.assertEqual(ctx.exception.status_code, 410)
+            self.assertIn("disabled", ctx.exception.detail)
+        finally:
+            server.verify_token = original_verify
 
 
 if __name__ == "__main__":
