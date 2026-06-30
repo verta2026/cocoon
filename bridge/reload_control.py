@@ -96,6 +96,27 @@ def reload_monitor_interval(context_tokens: int, threshold: int, default_interva
     return max(5, interval)
 
 
+def choose_reload_reason(
+    *,
+    force: bool,
+    tail_text: str,
+    context_tokens: int,
+    active_threshold: int,
+    idle_seconds: float,
+    idle_min_context: int,
+    idle_threshold_seconds: int,
+) -> str:
+    if force:
+        return "manual-force"
+    if "API Error:" in (tail_text or ""):
+        return "api-error"
+    if active_threshold > 0 and context_tokens >= active_threshold:
+        return f"context-tokens:{context_tokens}/{active_threshold}"
+    if context_tokens >= idle_min_context and idle_seconds >= idle_threshold_seconds:
+        return f"idle-cache-expired:{context_tokens}@{int(idle_seconds / 60)}min"
+    return ""
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():

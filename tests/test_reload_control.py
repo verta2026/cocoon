@@ -8,6 +8,7 @@ from bridge.reload_control import (
     active_context_threshold,
     actual_model_from_session,
     auto_reload_status,
+    choose_reload_reason,
     context_window_is_1m,
     log_auto_reload,
     mark_auto_reload,
@@ -137,6 +138,71 @@ class ReloadControlTest(unittest.TestCase):
         self.assertEqual(reload_monitor_interval(80, 100, 30), 10)
         self.assertEqual(reload_monitor_interval(500, 0, 30), 30)
         self.assertEqual(reload_monitor_interval(1, 100, 1), 5)
+
+    def test_choose_reload_reason_prioritizes_manual_force(self):
+        reason = choose_reload_reason(
+            force=True,
+            tail_text="API Error:",
+            context_tokens=999,
+            active_threshold=100,
+            idle_seconds=9999,
+            idle_min_context=10,
+            idle_threshold_seconds=60,
+        )
+
+        self.assertEqual(reason, "manual-force")
+
+    def test_choose_reload_reason_detects_api_error(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="tail\nAPI Error: overloaded",
+            context_tokens=10,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+        )
+
+        self.assertEqual(reason, "api-error")
+
+    def test_choose_reload_reason_detects_context_threshold(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="ok",
+            context_tokens=125,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+        )
+
+        self.assertEqual(reason, "context-tokens:125/100")
+
+    def test_choose_reload_reason_detects_idle_cache_expiry(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="ok",
+            context_tokens=80,
+            active_threshold=100,
+            idle_seconds=3600,
+            idle_min_context=50,
+            idle_threshold_seconds=1800,
+        )
+
+        self.assertEqual(reason, "idle-cache-expired:80@60min")
+
+    def test_choose_reload_reason_returns_empty_when_no_trigger_matches(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="ok",
+            context_tokens=49,
+            active_threshold=100,
+            idle_seconds=3600,
+            idle_min_context=50,
+            idle_threshold_seconds=1800,
+        )
+
+        self.assertEqual(reason, "")
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
