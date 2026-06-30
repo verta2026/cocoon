@@ -10,6 +10,7 @@ GET  /chat    — chat UI
 """
 
 import asyncio
+import hmac
 import subprocess
 import sys
 import time
@@ -70,11 +71,21 @@ TTS_DIR.mkdir(exist_ok=True)
 app = FastAPI(title="Cocoon", docs_url=None)
 
 
+def token_matches(candidate: str | None) -> bool:
+    return hmac.compare_digest(candidate or "", TOKEN)
+
+
+def bearer_token_matches(auth: str) -> bool:
+    if not auth.startswith("Bearer "):
+        return False
+    return token_matches(auth.split(" ", 1)[1])
+
+
 def verify_token(request: Request):
     auth = request.headers.get("Authorization", "")
     cookie_token = request.cookies.get("token", "")
     query_token = request.query_params.get("token", "")
-    if auth == f"Bearer {TOKEN}" or cookie_token == TOKEN or query_token == TOKEN:
+    if bearer_token_matches(auth) or token_matches(cookie_token) or token_matches(query_token):
         return
     raise HTTPException(403, "Bad token")
 
@@ -254,9 +265,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 @app.get("/files/{filename}")
 async def serve_file(filename: str, request: Request, token: str = None):
     auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer ") and auth.split(" ", 1)[1] == TOKEN:
+    if bearer_token_matches(auth):
         pass
-    elif token == TOKEN:
+    elif token_matches(token):
         pass
     else:
         raise HTTPException(403, "Bad token")
@@ -278,9 +289,9 @@ async def tts_say(req: TtsRequest, request: Request):
 @app.get("/tts/audio/{audio_name}")
 async def tts_audio(audio_name: str, request: Request, token: str = None):
     auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer ") and auth.split(" ", 1)[1] == TOKEN:
+    if bearer_token_matches(auth):
         pass
-    elif token == TOKEN:
+    elif token_matches(token):
         pass
     else:
         raise HTTPException(403, "Bad token")
