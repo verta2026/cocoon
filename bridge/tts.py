@@ -22,12 +22,12 @@ from config import (
     MINIMAX_TTS_MODEL,
     MINIMAX_TTS_URL,
     MINIMAX_VOICE_ID,
+    TTS_MAX_AUDIO_FILES,
+    TTS_MAX_TEXT_CHARS,
     TTS_PROVIDER,
 )
 
 
-MAX_TEXT_CHARS = 800
-MAX_AUDIO_FILES = 40
 ALLOWED_EMOTIONS = {
     "happy",
     "sad",
@@ -67,14 +67,14 @@ def _public_meta(meta: dict) -> dict:
     }
 
 
-def _cleanup_audio_files(tts_dir: Path) -> None:
+def _cleanup_audio_files(tts_dir: Path, max_files: int = TTS_MAX_AUDIO_FILES) -> None:
     files = []
     for path in tts_dir.glob("*.mp3"):
         try:
             files.append((path.stat().st_mtime, path))
         except OSError:
             continue
-    for _, path in sorted(files, reverse=True)[MAX_AUDIO_FILES:]:
+    for _, path in sorted(files, reverse=True)[max_files:]:
         try:
             path.unlink()
         except OSError:
@@ -171,8 +171,8 @@ def synthesize_tts(
 
     if not text:
         raise HTTPException(400, "missing text")
-    if len(text) > MAX_TEXT_CHARS:
-        raise HTTPException(400, f"text too long; max {MAX_TEXT_CHARS} chars")
+    if len(text) > TTS_MAX_TEXT_CHARS:
+        raise HTTPException(400, f"text too long; max {TTS_MAX_TEXT_CHARS} chars")
     if emotion and emotion not in ALLOWED_EMOTIONS:
         raise HTTPException(400, "invalid emotion")
     if TTS_PROVIDER != "minimax":

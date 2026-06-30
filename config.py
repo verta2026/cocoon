@@ -53,6 +53,8 @@ MAX_UPLOAD_MB = _env_float("COCOON_MAX_UPLOAD_MB", 0, minimum=0)
 MAX_UPLOAD_BYTES = int(MAX_UPLOAD_MB * 1024 * 1024) if MAX_UPLOAD_MB > 0 else 0
 TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", str(Path(tempfile.gettempdir()) / "cocoon-tts")))
 TTS_PROVIDER = os.environ.get("COCOON_TTS_PROVIDER", "none").strip().lower()
+TTS_MAX_TEXT_CHARS = _env_int("COCOON_TTS_MAX_TEXT_CHARS", 800, minimum=1)
+TTS_MAX_AUDIO_FILES = _env_int("COCOON_TTS_MAX_AUDIO_FILES", 40, minimum=1)
 AUTO_DISMISS_PROMPTS = _env_bool("COCOON_AUTO_DISMISS_PROMPTS", True)
 
 ASSISTANT_NAME = os.environ.get("COCOON_ASSISTANT_NAME", "Claude")
