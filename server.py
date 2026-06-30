@@ -13,7 +13,6 @@ import asyncio
 import subprocess
 import sys
 import time
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -22,7 +21,20 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from config import SESSION_NAME, WORK_DIR, TOKEN, UPLOAD_DIR, TTS_DIR
+from config import (
+    LAUNCHER_PROCESS_PATTERN,
+    SESSION_NAME,
+    START_COMMAND,
+    TOKEN,
+    TTS_DIR,
+    UPLOAD_DIR,
+    WORK_DIR,
+)
+from bridge.session import (
+    launcher_in_progress as _launcher_in_progress,
+    start_claude as _start_claude,
+    start_tmux_session as _start_tmux_session,
+)
 from bridge.tmux import (
     claude_busy as _claude_busy,
     claude_running as _claude_running,
@@ -99,27 +111,11 @@ def tmux_capture(lines=200):
 
 
 def tmux_new_session():
-    args = [
-        "tmux", "new-session", "-d", "-s", SESSION_NAME,
-        "-x", "500", "-y", "50",
-    ]
-    if os.name == "nt":
-        args.extend(["cmd.exe", "/K"])
-    else:
-        args.extend(["-c", WORK_DIR])
-    result = subprocess.run(
-        args,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout or "tmux new-session failed").strip()
-        raise HTTPException(500, detail)
-    if os.name == "nt":
-        safe_work_dir = WORK_DIR.replace('"', "")
-        tmux_send(f'cd /d "{safe_work_dir}"')
+    _start_tmux_session(SESSION_NAME, WORK_DIR, tmux_send)
+
+
+def start_claude():
+    _start_claude(START_COMMAND, tmux_clear_input, tmux_clear_scrollback, tmux_send)
 
 
 def dismiss_resume_summary_prompt():
@@ -169,9 +165,9 @@ async def start_session(request: Request):
     if tmux_exists():
         if claude_running():
             return {"message": "Session already running"}
-        tmux_clear_input()
-        tmux_clear_scrollback()
-        tmux_send("claude")
+        if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
+            raise HTTPException(409, "Launcher already in progress; not interrupting")
+        start_claude()
         await asyncio.sleep(3)
         return {"message": "Claude started in existing session"}
 
@@ -179,7 +175,7 @@ async def start_session(request: Request):
                    capture_output=True)
     tmux_new_session()
     await asyncio.sleep(1)
-    tmux_send("claude")
+    start_claude()
     await asyncio.sleep(3)
     return {"message": "Session started", "session": SESSION_NAME}
 
@@ -191,7 +187,9 @@ async def send_message(msg: Message, request: Request):
         raise HTTPException(404, "No active session")
 
     if not claude_running():
-        tmux_send("claude")
+        if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
+            raise HTTPException(409, "Launcher already in progress; not interrupting")
+        start_claude()
         if msg.text and wait_for_claude_ready():
             tmux_send(msg.text.strip())
             return {"sent": True, "reloaded": True, "length": len(msg.text)}
@@ -237,7 +235,9 @@ async def new_session(request: Request):
         else:
             raise HTTPException(409, "Claude did not exit; try again")
     tmux_clear_scrollback()
-    tmux_send("claude")
+    if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
+        raise HTTPException(409, "Launcher already in progress; not interrupting")
+    start_claude()
     ready = await asyncio.to_thread(_wait_for_claude_ready, SESSION_NAME)
     if not ready:
         return {"message": "Claude started but may still be loading"}
