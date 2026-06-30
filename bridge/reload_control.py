@@ -91,6 +91,11 @@ def active_context_threshold(
     return threshold
 
 
+def reload_monitor_interval(context_tokens: int, threshold: int, default_interval: int) -> int:
+    interval = 10 if threshold > 0 and context_tokens >= threshold * 0.8 else default_interval
+    return max(5, interval)
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():

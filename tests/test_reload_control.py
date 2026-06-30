@@ -14,6 +14,7 @@ from bridge.reload_control import (
     normalized_reload_command,
     recent_auto_reload,
     reload_lock,
+    reload_monitor_interval,
     send_reload_command,
     set_auto_reload_paused,
     session_idle_seconds,
@@ -130,6 +131,12 @@ class ReloadControlTest(unittest.TestCase):
 
             self.assertEqual(actual_model_from_session(lambda: missing_session), "")
             self.assertFalse(context_window_is_1m(lambda: missing_session, settings_file))
+
+    def test_reload_monitor_interval_speeds_up_near_threshold(self):
+        self.assertEqual(reload_monitor_interval(79, 100, 30), 30)
+        self.assertEqual(reload_monitor_interval(80, 100, 30), 10)
+        self.assertEqual(reload_monitor_interval(500, 0, 30), 30)
+        self.assertEqual(reload_monitor_interval(1, 100, 1), 5)
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
