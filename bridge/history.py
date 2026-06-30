@@ -9,6 +9,8 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from bridge.paths import safe_child_path
+
 
 def conversation_files(conversations_dir: Path) -> list[Path]:
     if not conversations_dir.exists():
@@ -50,14 +52,13 @@ def conversation_kind_rank(path: Path, conversations_dir: Path) -> int:
 
 
 def safe_conversation_path(conversations_dir: Path, file_id: str) -> Path:
-    rel = Path(file_id or "")
-    if rel.is_absolute() or ".." in rel.parts:
-        raise HTTPException(404, "Session not found")
-    path = (conversations_dir / rel).resolve()
-    root = conversations_dir.resolve()
-    if not path.is_relative_to(root) or not path.exists() or path.suffix != ".jsonl":
-        raise HTTPException(404, "Session not found")
-    return path
+    return safe_child_path(
+        conversations_dir,
+        file_id,
+        not_found="Session not found",
+        allow_subdirs=True,
+        suffix=".jsonl",
+    )
 
 
 def _read_lines(path: Path) -> list[str]:

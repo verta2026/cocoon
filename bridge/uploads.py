@@ -8,6 +8,8 @@ from pathlib import Path
 from fastapi import HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from bridge.paths import safe_child_path
+
 
 def _stored_filename(original_name: str) -> str:
     suffix = Path(original_name).suffix.lower()
@@ -39,10 +41,6 @@ def save_upload_file(upload_dir: Path, file: UploadFile, max_bytes: int = 0):
 
 
 def serve_upload_file(upload_dir: Path, filename: str):
-    path = (upload_dir / Path(filename).name).resolve()
-    if not path.is_relative_to(upload_dir.resolve()):
-        raise HTTPException(403, "Forbidden")
-    if not path.exists():
-        raise HTTPException(404, "File not found")
+    path = safe_child_path(upload_dir, filename, not_found="File not found")
     safe_name = Path(filename).name
     return FileResponse(path, filename=safe_name)
