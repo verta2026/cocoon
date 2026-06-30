@@ -204,6 +204,7 @@ async def status(request: Request):
         "running": running,
         "command": command,
         "busy": claude_busy() if running else False,
+        "auto_reload_paused": AUTO_RELOAD_PAUSE_FILE.exists(),
         "dismissed_resume": dismissed_resume,
         "dismissed_trust": dismissed_trust,
     }
