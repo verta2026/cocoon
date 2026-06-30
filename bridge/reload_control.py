@@ -8,10 +8,15 @@ import os
 import shutil
 import time
 from pathlib import Path
+from typing import Callable
 
 
 def auto_reload_status(pause_file: Path) -> dict:
     return {"paused": pause_file.exists()}
+
+
+def normalized_reload_command(command: str | None) -> str:
+    return (command or "").strip()
 
 
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
@@ -41,6 +46,21 @@ def set_auto_reload_paused(pause_file: Path, log_file: Path, paused: bool) -> di
             pass
         log_auto_reload(log_file, "manual pause disabled")
     return auto_reload_status(pause_file)
+
+
+def send_reload_command(
+    command: str | None,
+    tmux_clear_input_func: Callable[[], None],
+    tmux_clear_scrollback_func: Callable[[], None],
+    tmux_send_func: Callable[[str], None],
+) -> str:
+    command = normalized_reload_command(command)
+    if not command:
+        return ""
+    tmux_clear_input_func()
+    tmux_clear_scrollback_func()
+    tmux_send_func(command)
+    return command
 
 
 @contextmanager

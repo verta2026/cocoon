@@ -4,10 +4,55 @@ import os
 import time
 from pathlib import Path
 
-from bridge.reload_control import auto_reload_status, log_auto_reload, reload_lock, set_auto_reload_paused
+from bridge.reload_control import (
+    auto_reload_status,
+    log_auto_reload,
+    normalized_reload_command,
+    reload_lock,
+    send_reload_command,
+    set_auto_reload_paused,
+)
 
 
 class ReloadControlTest(unittest.TestCase):
+    def test_normalized_reload_command_strips_empty_values(self):
+        self.assertEqual(normalized_reload_command(None), "")
+        self.assertEqual(normalized_reload_command("  "), "")
+        self.assertEqual(normalized_reload_command("  ./reload.sh  "), "./reload.sh")
+
+    def test_send_reload_command_clears_then_sends_command(self):
+        calls = []
+
+        sent = send_reload_command(
+            " ./reload.sh --mode compact ",
+            lambda: calls.append("clear-input"),
+            lambda: calls.append("clear-scrollback"),
+            lambda text: calls.append(("send", text)),
+        )
+
+        self.assertEqual(sent, "./reload.sh --mode compact")
+        self.assertEqual(
+            calls,
+            [
+                "clear-input",
+                "clear-scrollback",
+                ("send", "./reload.sh --mode compact"),
+            ],
+        )
+
+    def test_send_reload_command_does_nothing_without_command(self):
+        calls = []
+
+        sent = send_reload_command(
+            "",
+            lambda: calls.append("clear-input"),
+            lambda: calls.append("clear-scrollback"),
+            lambda text: calls.append(("send", text)),
+        )
+
+        self.assertEqual(sent, "")
+        self.assertEqual(calls, [])
+
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

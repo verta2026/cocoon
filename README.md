@@ -106,6 +106,9 @@ All settings are environment variables:
 | `COCOON_EXTENSIONS_FILE` | `COCOON_WORK_DIR/.cocoon/extensions.json` | Optional read-only extension/link registry for `/extensions` |
 | `COCOON_AUTO_RELOAD_PAUSE_FILE` | `COCOON_STATE_DIR/.forge_auto_reload_paused` | Pause marker used by optional reload integrations |
 | `COCOON_AUTO_RELOAD_LOG_FILE` | `COCOON_STATE_DIR/.forge_auto_reload.log` | Log file used by optional reload integrations |
+| `COCOON_RELOAD_COMMAND` | empty | Optional command sent to tmux by `POST /reload-session` |
+| `COCOON_RELOAD_LOCK_DIR` | `COCOON_STATE_DIR/.reload.lock` | Lock directory for manual reload integrations |
+| `COCOON_RELOAD_LOCK_STALE_SECONDS` | `300` | Seconds before a reload lock can be reclaimed |
 | `COCOON_UPLOAD_DIR` | system temp / `cocoon-uploads` | Directory for uploaded files |
 | `COCOON_MAX_UPLOAD_MB` | `0` | Optional upload size cap in MB. `0` keeps uploads unlimited |
 | `COCOON_TTS_PROVIDER` | `none` | Optional TTS provider. Set to `minimax` to enable `/tts/say` |

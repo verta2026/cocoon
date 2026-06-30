@@ -31,6 +31,9 @@ from config import (
     EXTENSIONS_FILE,
     LAUNCHER_PROCESS_PATTERN,
     MAX_UPLOAD_BYTES,
+    RELOAD_COMMAND,
+    RELOAD_LOCK_DIR,
+    RELOAD_LOCK_STALE_SECONDS,
     SESSION_NAME,
     START_COMMAND,
     TOKEN,
@@ -51,6 +54,8 @@ from bridge.history import (
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
     auto_reload_status as _auto_reload_status,
+    reload_lock as _reload_lock,
+    send_reload_command as _send_reload_command,
     set_auto_reload_paused as _set_auto_reload_paused,
 )
 from bridge.tmux import (
@@ -146,6 +151,10 @@ def tmux_new_session():
 
 def start_claude():
     _start_claude(START_COMMAND, tmux_clear_input, tmux_clear_scrollback, tmux_send)
+
+
+def send_reload_command():
+    return _send_reload_command(RELOAD_COMMAND, tmux_clear_input, tmux_clear_scrollback, tmux_send)
 
 
 def dismiss_resume_summary_prompt():
@@ -334,6 +343,25 @@ async def new_session(request: Request):
 async def continue_session(request: Request):
     verify_token(request)
     raise HTTPException(410, "continue-session is disabled; use new-session or a reload integration")
+
+
+@app.post("/reload-session")
+async def reload_session(request: Request):
+    verify_token(request)
+    if not tmux_exists():
+        raise HTTPException(404, "No active session")
+    with _reload_lock(RELOAD_LOCK_DIR, RELOAD_LOCK_STALE_SECONDS) as locked:
+        if not locked:
+            raise HTTPException(409, "Reload already running")
+        command = send_reload_command()
+        if not command:
+            raise HTTPException(501, "Reload command is not configured")
+    return {"message": "Reload command sent", "command": command}
+
+
+@app.post("/forge-reload-session")
+async def forge_reload_session(request: Request):
+    return await reload_session(request)
 
 
 @app.post("/upload")
