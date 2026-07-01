@@ -67,6 +67,7 @@ TMUX_HISTORY_LIMIT = _env_int("COCOON_TMUX_HISTORY_LIMIT", 20000, minimum=100)
 UPLOAD_DIR = Path(
     os.environ.get("COCOON_UPLOAD_DIR", str(Path(tempfile.gettempdir()) / "cocoon-uploads"))
 )
+STICKER_DIR = Path(os.environ.get("COCOON_STICKER_DIR", str(Path(tempfile.gettempdir()) / "cocoon-stickers")))
 MAX_UPLOAD_MB = _env_float("COCOON_MAX_UPLOAD_MB", 0, minimum=0)
 MAX_UPLOAD_BYTES = int(MAX_UPLOAD_MB * 1024 * 1024) if MAX_UPLOAD_MB > 0 else 0
 TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", str(Path(tempfile.gettempdir()) / "cocoon-tts")))

@@ -47,6 +47,7 @@ from config import (
     START_COMMAND,
     TOKEN,
     TMUX_HISTORY_LIMIT,
+    STICKER_DIR,
     TTS_DIR,
     UPLOAD_DIR,
     WORK_DIR,
@@ -97,6 +98,14 @@ from bridge.uploads import (
     serve_upload_file as _serve_upload_file,
 )
 from bridge.upload_routes import register_upload_routes
+from bridge.stickers import (
+    delete_sticker_file as _delete_sticker_file,
+    edit_sticker_meta as _edit_sticker_meta,
+    list_sticker_items as _list_sticker_items,
+    serve_sticker_file as _serve_sticker_file,
+    upload_sticker_file as _upload_sticker_file,
+)
+from bridge.sticker_routes import register_sticker_routes
 from bridge.tts import (
     latest_tts as _latest_tts,
     serve_tts_audio as _serve_tts_audio,
@@ -112,6 +121,7 @@ from bridge.auth import (
 )
 
 UPLOAD_DIR.mkdir(exist_ok=True)
+STICKER_DIR.mkdir(exist_ok=True)
 TTS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Cocoon", docs_url=None)
@@ -145,6 +155,18 @@ register_upload_routes(
     upload_dir=UPLOAD_DIR,
     max_upload_bytes=MAX_UPLOAD_BYTES,
     bridge_token=TOKEN,
+)
+
+register_sticker_routes(
+    app,
+    verify_token=verify_token,
+    sticker_dir=STICKER_DIR,
+    sticker_meta=STICKER_DIR / "meta.json",
+    serve_sticker_file=_serve_sticker_file,
+    list_sticker_items=_list_sticker_items,
+    upload_sticker_file=_upload_sticker_file,
+    edit_sticker_meta=_edit_sticker_meta,
+    delete_sticker_file=_delete_sticker_file,
 )
 
 register_history_routes(
