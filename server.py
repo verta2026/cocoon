@@ -69,6 +69,7 @@ from bridge.reload_control import (
     set_auto_reload_paused as _set_auto_reload_paused,
     set_reload_marker as _set_reload_marker,
 )
+from bridge.reload_routes import AutoReloadRequest, register_reload_routes
 from bridge.tmux import (
     claude_busy as _claude_busy,
     claude_running as _claude_running,
@@ -246,10 +247,6 @@ class TtsRequest(BaseModel):
     source: str = "frontend"
 
 
-class AutoReloadRequest(BaseModel):
-    paused: bool
-
-
 @app.get("/status")
 async def status(request: Request):
     verify_token(request)
@@ -341,19 +338,16 @@ async def extensions(request: Request):
     return {"extensions": _list_extensions(EXTENSIONS_FILE)}
 
 
-@app.get("/forge-auto-reload")
 async def get_forge_auto_reload(request: Request):
     verify_token(request)
     return _auto_reload_status(AUTO_RELOAD_PAUSE_FILE)
 
 
-@app.post("/forge-auto-reload")
 async def set_forge_auto_reload(req: AutoReloadRequest, request: Request):
     verify_token(request)
     return _set_auto_reload_paused(AUTO_RELOAD_PAUSE_FILE, AUTO_RELOAD_LOG_FILE, req.paused)
 
 
-@app.get("/reload-status")
 async def reload_status(request: Request):
     verify_token(request)
     return {
@@ -376,19 +370,16 @@ async def reload_status(request: Request):
     }
 
 
-@app.post("/reload-force")
 async def set_reload_force(request: Request):
     verify_token(request)
     return _set_reload_marker(AUTO_RELOAD_FORCE_FILE, True, "manual-force")
 
 
-@app.delete("/reload-force")
 async def clear_reload_force(request: Request):
     verify_token(request)
     return _set_reload_marker(AUTO_RELOAD_FORCE_FILE, False, "manual-force")
 
 
-@app.post("/new-session")
 async def new_session(request: Request):
     verify_token(request)
     if not tmux_exists():
@@ -413,13 +404,11 @@ async def new_session(request: Request):
     return {"message": "New session started"}
 
 
-@app.post("/continue-session")
 async def continue_session(request: Request):
     verify_token(request)
     raise HTTPException(410, "continue-session is disabled; use new-session or a reload integration")
 
 
-@app.post("/reload-session")
 async def reload_session(request: Request):
     verify_token(request)
     if not tmux_exists():
@@ -433,9 +422,22 @@ async def reload_session(request: Request):
     return {"message": "Reload command sent", "command": command}
 
 
-@app.post("/forge-reload-session")
 async def forge_reload_session(request: Request):
     return await reload_session(request)
+
+
+register_reload_routes(
+    app,
+    get_forge_auto_reload=get_forge_auto_reload,
+    set_forge_auto_reload=set_forge_auto_reload,
+    reload_status=reload_status,
+    set_reload_force=set_reload_force,
+    clear_reload_force=clear_reload_force,
+    new_session=new_session,
+    continue_session=continue_session,
+    reload_session=reload_session,
+    forge_reload_session=forge_reload_session,
+)
 
 
 @app.get("/tts/latest")
