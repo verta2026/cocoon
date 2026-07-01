@@ -7,10 +7,12 @@ from bridge.forge import (
     estimate_tokens,
     event_text,
     filter_runtime_noise_turns,
+    forge_events,
     is_real_user,
     sanitize_content,
     sanitize_event,
     sanitize_events,
+    validate_chain,
 )
 
 
@@ -117,6 +119,37 @@ class ForgeTest(unittest.TestCase):
     def test_close_at_final_assistant_requires_assistant(self):
         with self.assertRaisesRegex(ValueError, "no assistant"):
             close_at_final_assistant([user("only user")])
+
+    def test_forge_events_rewrites_session_and_parent_chain(self):
+        events = [
+            {**user("first"), "uuid": "old-1", "sessionId": "old-session", "parentUuid": "old-parent"},
+            {**assistant("reply"), "uuid": "old-2", "sessionId": "old-session", "parentUuid": "old-1"},
+        ]
+        ids = iter(["new-1", "new-2"])
+
+        forged, uuid_map = forge_events(events, "new-session", uuid_factory=lambda: next(ids))
+
+        self.assertEqual(uuid_map, {"old-1": "new-1", "old-2": "new-2"})
+        self.assertEqual([event["uuid"] for event in forged], ["new-1", "new-2"])
+        self.assertEqual([event["sessionId"] for event in forged], ["new-session", "new-session"])
+        self.assertEqual([event["parentUuid"] for event in forged], [None, "new-1"])
+        validate_chain(forged)
+
+    def test_forge_events_can_preserve_existing_uuids(self):
+        events = [{**user("first"), "uuid": "old-1"}, {**assistant("reply"), "uuid": "old-2"}]
+
+        forged, uuid_map = forge_events(events, "new-session", rewrite_event_uuids=False)
+
+        self.assertEqual(uuid_map, {})
+        self.assertEqual([event["uuid"] for event in forged], ["old-1", "old-2"])
+        self.assertEqual([event["parentUuid"] for event in forged], [None, "old-1"])
+
+    def test_validate_chain_rejects_duplicate_or_missing_parents(self):
+        with self.assertRaisesRegex(ValueError, "duplicate uuid"):
+            validate_chain([{"uuid": "same", "parentUuid": None}, {"uuid": "same", "parentUuid": "same"}])
+
+        with self.assertRaisesRegex(ValueError, "missing parents"):
+            validate_chain([{"uuid": "child", "parentUuid": "missing"}])
 
 
 if __name__ == "__main__":
