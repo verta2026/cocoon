@@ -26,6 +26,7 @@ These modules are part of the reusable bridge core:
 - `presence.json_store` - presence-compatible JSON storage wrapper
 - `presence.auth_helpers` - generic cookie/login parsing helpers
 - `presence.file_server` - shared-file path, metadata, and attachment helpers
+- `presence.settings_file` - editable JSON settings file helpers
 
 ## Provider Boundaries
 
@@ -50,6 +51,9 @@ they are useful in a real deployment:
   prefixes, or deployment token names.
 - `presence.file_server` provides shared-file mechanics only. It does not ship
   uploaded files, private file data, route maps, or a public files page.
+- `presence.settings_file` provides file read/write and JSON validation
+  mechanics only. It does not ship a settings route, Claude settings path, or
+  deployment configuration.
 
 ## Private Route Boundary
 
