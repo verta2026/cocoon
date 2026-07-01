@@ -6,6 +6,68 @@ import server
 
 
 class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
+    async def test_start_auto_reload_monitor_is_disabled_by_default(self):
+        originals = {
+            "enabled": server.AUTO_RELOAD_ENABLED,
+            "task": server.AUTO_RELOAD_TASK,
+        }
+        try:
+            server.AUTO_RELOAD_ENABLED = False
+            server.AUTO_RELOAD_TASK = None
+
+            self.assertIsNone(server.start_auto_reload_monitor(create_task=lambda coro: "task", monitor_coro=object()))
+        finally:
+            server.AUTO_RELOAD_ENABLED = originals["enabled"]
+            server.AUTO_RELOAD_TASK = originals["task"]
+
+    async def test_start_auto_reload_monitor_requires_injected_coroutine_when_enabled(self):
+        originals = {
+            "enabled": server.AUTO_RELOAD_ENABLED,
+            "task": server.AUTO_RELOAD_TASK,
+        }
+        try:
+            server.AUTO_RELOAD_ENABLED = True
+            server.AUTO_RELOAD_TASK = None
+
+            with self.assertRaisesRegex(RuntimeError, "not configured"):
+                server.start_auto_reload_monitor(create_task=lambda coro: "task")
+        finally:
+            server.AUTO_RELOAD_ENABLED = originals["enabled"]
+            server.AUTO_RELOAD_TASK = originals["task"]
+
+    async def test_start_auto_reload_monitor_creates_and_reuses_task(self):
+        originals = {
+            "enabled": server.AUTO_RELOAD_ENABLED,
+            "task": server.AUTO_RELOAD_TASK,
+        }
+
+        class FakeTask:
+            def __init__(self):
+                self.done_calls = 0
+
+            def done(self):
+                self.done_calls += 1
+                return False
+
+        try:
+            task = FakeTask()
+            calls = []
+            server.AUTO_RELOAD_ENABLED = True
+            server.AUTO_RELOAD_TASK = None
+
+            created = server.start_auto_reload_monitor(
+                create_task=lambda coro: calls.append(coro) or task,
+                monitor_coro=object(),
+            )
+            reused = server.start_auto_reload_monitor(create_task=lambda coro: "new", monitor_coro=object())
+
+            self.assertIs(created, task)
+            self.assertIs(reused, task)
+            self.assertEqual(len(calls), 1)
+        finally:
+            server.AUTO_RELOAD_ENABLED = originals["enabled"]
+            server.AUTO_RELOAD_TASK = originals["task"]
+
     async def test_reload_status_reports_non_secret_reload_state(self):
         originals = {
             "verify_token": server.verify_token,

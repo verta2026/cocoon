@@ -103,6 +103,7 @@ TTS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="Cocoon", docs_url=None)
 SEND_LOCK = asyncio.Lock()
+AUTO_RELOAD_TASK = None
 
 
 def token_matches(candidate: str | None) -> bool:
@@ -194,6 +195,18 @@ def captured_output_or_404(lines=1500):
     if not tmux_exists():
         raise HTTPException(404, "No active session")
     return tmux_capture(lines)
+
+
+def start_auto_reload_monitor(*, create_task=asyncio.create_task, monitor_coro=None):
+    global AUTO_RELOAD_TASK
+    if not AUTO_RELOAD_ENABLED:
+        return None
+    if AUTO_RELOAD_TASK is not None and not AUTO_RELOAD_TASK.done():
+        return AUTO_RELOAD_TASK
+    if monitor_coro is None:
+        raise RuntimeError("Auto reload monitor coroutine is not configured")
+    AUTO_RELOAD_TASK = create_task(monitor_coro)
+    return AUTO_RELOAD_TASK
 
 
 class Message(BaseModel):
