@@ -10,7 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from bridge.summary import content_text, event_role, is_channel_event, is_runtime_noise, sha_text
+from bridge.summary import content_text, event_role, inject_summary_event, is_channel_event, is_runtime_noise, sha_text
 
 
 ASSISTANT_BLOCKS = {"thinking", "redacted_thinking", "text"}
@@ -31,6 +31,19 @@ class ClosedTurnSelection:
     warnings: list[str]
     terminal_type_before_trim: str | None
     terminal_type: str | None
+
+
+@dataclass(frozen=True)
+class ForgePlan:
+    source: str
+    new_session_id: str
+    sanitized: list[dict]
+    retained: list[dict]
+    dropped_events: list[dict]
+    forged: list[dict]
+    uuid_map: dict[str, str]
+    summary: dict
+    summary_injected: bool
 
 
 def content_blocks(content) -> list[str]:
@@ -285,6 +298,60 @@ def build_forge_summary(
         "warnings": warnings,
         "written": False,
     }
+
+
+def build_forge_plan(
+    *,
+    rows: list[dict],
+    source: str,
+    retain_tokens: int,
+    new_session_id: str,
+    summary_text: str = "",
+    summary_info: dict | None = None,
+    allow_open_turn: bool = False,
+    rewrite_event_uuids: bool = True,
+    uuid_factory: Callable[[], str] | None = None,
+    token_estimator: Callable[[dict], int] = estimate_tokens,
+    warnings: list[str] | None = None,
+) -> ForgePlan:
+    sanitized = sanitize_events(rows)
+    if not sanitized:
+        raise ValueError("no user/assistant text-bearing events found")
+    retain_selection = choose_kept(sanitized, retain_tokens, token_estimator=token_estimator)
+    closed_selection = close_at_final_assistant(retain_selection.kept, allow_open_turn=allow_open_turn)
+    dropped_events = sanitized[: retain_selection.keep_start_index]
+    events_to_forge, summary_injected = inject_summary_event(closed_selection.kept, summary_text)
+    forged, uuid_map = forge_events(
+        events_to_forge,
+        new_session_id,
+        rewrite_event_uuids=rewrite_event_uuids,
+        uuid_factory=uuid_factory,
+    )
+    validate_chain(forged)
+    summary = build_forge_summary(
+        source=source,
+        new_session_id=new_session_id,
+        source_events=len(rows),
+        sanitized_events=len(sanitized),
+        forged=forged,
+        retained=closed_selection.kept,
+        summary_injected=summary_injected,
+        summary_info=summary_info or {},
+        retain_selection=retain_selection,
+        closed_selection=closed_selection,
+        warnings=warnings,
+    )
+    return ForgePlan(
+        source=source,
+        new_session_id=new_session_id,
+        sanitized=sanitized,
+        retained=closed_selection.kept,
+        dropped_events=dropped_events,
+        forged=forged,
+        uuid_map=uuid_map,
+        summary=summary,
+        summary_injected=summary_injected,
+    )
 
 
 def forge_write_paths(project_dir: Path, manifest_dir: Path, new_session_id: str) -> dict:

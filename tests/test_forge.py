@@ -5,6 +5,7 @@ from pathlib import Path
 from bridge.forge import (
     content_blocks,
     build_forge_summary,
+    build_forge_plan,
     build_manifest_payload,
     build_summary_meta_payload,
     choose_kept,
@@ -221,6 +222,45 @@ class ForgeTest(unittest.TestCase):
         self.assertEqual(summary["terminal_type"], "assistant")
         self.assertEqual(summary["warnings"], ["manual warning"])
         self.assertFalse(summary["written"])
+
+    def test_build_forge_plan_composes_sanitize_retain_summary_and_forge_steps(self):
+        rows = [
+            user("old"),
+            assistant("old reply"),
+            user("new"),
+            assistant("new reply"),
+            {"type": "tool_result", "message": {"role": "tool", "content": "ignored"}},
+        ]
+        ids = iter(["new-1", "new-2", "new-3"])
+
+        plan = build_forge_plan(
+            rows=rows,
+            source="source.jsonl",
+            retain_tokens=2,
+            new_session_id="new-session",
+            summary_text="summary",
+            summary_info={"status": "updated", "summary_chars": 7},
+            uuid_factory=lambda: next(ids),
+            token_estimator=lambda event: 1,
+        )
+
+        self.assertEqual(plan.source, "source.jsonl")
+        self.assertEqual(plan.new_session_id, "new-session")
+        self.assertEqual([event_text(event) for event in plan.retained], ["new", "new reply"])
+        self.assertEqual([event_text(event) for event in plan.dropped_events], ["old", "old reply"])
+        self.assertTrue(plan.summary_injected)
+        self.assertEqual(len(plan.forged), 3)
+        self.assertEqual(plan.summary["source_events"], 5)
+        self.assertEqual(plan.summary["sanitized_events"], 4)
+        self.assertEqual(plan.summary["retained_events"], 2)
+        self.assertEqual(plan.summary["kept_events"], 3)
+        self.assertEqual(plan.summary["summary_status"], "updated")
+        self.assertFalse(plan.summary["written"])
+        validate_chain(plan.forged)
+
+    def test_build_forge_plan_requires_text_bearing_events(self):
+        with self.assertRaisesRegex(ValueError, "text-bearing"):
+            build_forge_plan(rows=[{"type": "system", "message": {}}], source="empty.jsonl", retain_tokens=10, new_session_id="sid")
 
     def test_forge_write_paths_are_derived_without_touching_disk(self):
         paths = forge_write_paths(Path("/project"), Path("/manifest"), "sid-1")
