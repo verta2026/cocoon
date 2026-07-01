@@ -3,6 +3,7 @@ import unittest
 from bridge.forge import (
     content_blocks,
     choose_kept,
+    close_at_final_assistant,
     estimate_tokens,
     event_text,
     filter_runtime_noise_turns,
@@ -102,6 +103,20 @@ class ForgeTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "no real user"):
             choose_kept(events, 1, token_estimator=lambda event: 1)
+
+    def test_close_at_final_assistant_trims_open_tail(self):
+        events = [user("first"), assistant("reply"), user("open tail")]
+        selection = close_at_final_assistant(events, allow_open_turn=True)
+
+        self.assertEqual([event_text(event) for event in selection.kept], ["first", "reply"])
+        self.assertEqual(selection.terminal_type_before_trim, "user")
+        self.assertEqual(selection.terminal_type, "assistant")
+        self.assertEqual(len(selection.warnings), 2)
+        self.assertIn("trimmed 1 trailing", selection.warnings[0])
+
+    def test_close_at_final_assistant_requires_assistant(self):
+        with self.assertRaisesRegex(ValueError, "no assistant"):
+            close_at_final_assistant([user("only user")])
 
 
 if __name__ == "__main__":

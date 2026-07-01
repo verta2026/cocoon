@@ -22,6 +22,14 @@ class RetainSelection:
     estimated_tokens_scanned: int
 
 
+@dataclass(frozen=True)
+class ClosedTurnSelection:
+    kept: list[dict]
+    warnings: list[str]
+    terminal_type_before_trim: str | None
+    terminal_type: str | None
+
+
 def content_blocks(content) -> list[str]:
     if isinstance(content, str):
         return ["string"] if content.strip() else []
@@ -143,4 +151,35 @@ def choose_kept(
         raw_cut_index=raw_cut_index,
         keep_start_index=keep_start_index,
         estimated_tokens_scanned=accumulated,
+    )
+
+
+def close_at_final_assistant(events: list[dict], *, allow_open_turn: bool = False) -> ClosedTurnSelection:
+    terminal_type_before_trim = events[-1].get("type") if events else None
+    last_assistant = None
+    for index in range(len(events) - 1, -1, -1):
+        if events[index].get("type") == "assistant":
+            last_assistant = index
+            break
+    if last_assistant is None:
+        raise ValueError("no assistant message found in kept history")
+
+    warnings = []
+    kept = events
+    if last_assistant != len(events) - 1:
+        trailing = len(events) - last_assistant - 1
+        warnings.append(
+            f"trimmed {trailing} trailing non-assistant event(s) after final assistant; "
+            f"previous terminal type was {terminal_type_before_trim}"
+        )
+        if allow_open_turn:
+            warnings.append("allow_open_turn was provided, but trailing events were still trimmed for resume safety")
+        kept = events[: last_assistant + 1]
+
+    terminal_type = kept[-1].get("type") if kept else None
+    return ClosedTurnSelection(
+        kept=kept,
+        warnings=warnings,
+        terminal_type_before_trim=terminal_type_before_trim,
+        terminal_type=terminal_type,
     )
