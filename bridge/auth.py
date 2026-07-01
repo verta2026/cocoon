@@ -44,3 +44,10 @@ def verify_request_token(
     if request_token_matches(request, expected, cookie_name=cookie_name, query_name=query_name):
         return
     raise HTTPException(403, "Bad token")
+
+
+def verify_media_token(request: Request, expected: str, query_token: str | None = None) -> None:
+    auth = request.headers.get("Authorization", "")
+    if bearer_token_matches(auth, expected) or token_matches(query_token, expected):
+        return
+    raise HTTPException(403, "Bad token")

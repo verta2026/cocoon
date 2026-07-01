@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -90,6 +90,7 @@ from bridge.uploads import (
     save_upload_file as _save_upload_file,
     serve_upload_file as _serve_upload_file,
 )
+from bridge.upload_routes import register_upload_routes
 from bridge.tts import (
     latest_tts as _latest_tts,
     serve_tts_audio as _serve_tts_audio,
@@ -99,6 +100,7 @@ from bridge.ui import CHAT_HTML, TERMINAL_HTML
 from bridge.auth import (
     bearer_token_matches as _bearer_token_matches,
     token_matches as _token_matches,
+    verify_media_token as _verify_media_token,
     verify_request_token as _verify_request_token,
 )
 
@@ -120,6 +122,23 @@ def bearer_token_matches(auth: str) -> bool:
 
 def verify_token(request: Request):
     _verify_request_token(request, TOKEN)
+
+
+def verify_media_token(request: Request, token: str = None):
+    _verify_media_token(request, TOKEN, token)
+
+
+register_upload_routes(
+    app,
+    verify_token=verify_token,
+    verify_media_token=verify_media_token,
+    save_upload_file=_save_upload_file,
+    serve_upload_file=_serve_upload_file,
+    list_upload_files=_list_upload_files,
+    upload_dir=UPLOAD_DIR,
+    max_upload_bytes=MAX_UPLOAD_BYTES,
+    bridge_token=TOKEN,
+)
 
 
 def tmux_exists():
@@ -418,30 +437,6 @@ async def reload_session(request: Request):
 @app.post("/forge-reload-session")
 async def forge_reload_session(request: Request):
     return await reload_session(request)
-
-
-@app.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...)):
-    verify_token(request)
-    return _save_upload_file(UPLOAD_DIR, file, MAX_UPLOAD_BYTES)
-
-
-@app.get("/files")
-async def list_files(request: Request):
-    verify_token(request)
-    return {"files": _list_upload_files(UPLOAD_DIR)}
-
-
-@app.get("/files/{filename}")
-async def serve_file(filename: str, request: Request, token: str = None):
-    auth = request.headers.get("Authorization", "")
-    if bearer_token_matches(auth):
-        pass
-    elif token_matches(token):
-        pass
-    else:
-        raise HTTPException(403, "Bad token")
-    return _serve_upload_file(UPLOAD_DIR, filename)
 
 
 @app.get("/tts/latest")
