@@ -99,6 +99,7 @@ from bridge.tts import (
     synthesize_tts as _synthesize_tts,
 )
 from bridge.ui import CHAT_HTML, TERMINAL_HTML
+from bridge.ui_routes import register_core_ui_routes
 from bridge.auth import (
     bearer_token_matches as _bearer_token_matches,
     token_matches as _token_matches,
@@ -464,7 +465,6 @@ async def tts_audio(audio_name: str, request: Request, token: str = None):
     return _serve_tts_audio(TTS_DIR, audio_name)
 
 
-@app.get("/terminal")
 async def terminal_page(request: Request):
     verify_token(request)
     return HTMLResponse(TERMINAL_HTML)
@@ -482,9 +482,11 @@ async def send_escape(request: Request):
     return {"sent": True, "key": "Escape"}
 
 
-@app.get("/chat", response_class=HTMLResponse)
 async def chat_ui():
     return HTMLResponse(
         content=CHAT_HTML,
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
+
+
+register_core_ui_routes(app, chat_ui=chat_ui, terminal_page=terminal_page)
