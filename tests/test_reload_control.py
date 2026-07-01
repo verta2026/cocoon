@@ -13,6 +13,7 @@ from bridge.reload_control import (
     choose_reload_reason,
     consume_reload_marker,
     context_window_is_1m,
+    evaluate_auto_reload_once,
     log_auto_reload,
     mark_auto_reload,
     normalized_reload_command,
@@ -265,6 +266,74 @@ class ReloadControlTest(unittest.TestCase):
 
         self.assertEqual(decision["action"], "skip")
         self.assertEqual(decision["reason"], "")
+
+    def test_evaluate_auto_reload_once_consumes_force_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            force_file.write_text("manual-force\n", encoding="utf-8")
+
+            decision = evaluate_auto_reload_once(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                cooldown_seconds=600,
+                tail_text="ok",
+                context_tokens=1,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "fire")
+            self.assertEqual(decision["reason"], "manual-force")
+            self.assertTrue(decision["force_consumed"])
+            self.assertFalse(force_file.exists())
+
+    def test_evaluate_auto_reload_once_respects_dryrun_and_recent_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            dryrun_file.write_text("dry-run\n", encoding="utf-8")
+
+            decision = evaluate_auto_reload_once(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=1,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "dry-run")
+            self.assertEqual(decision["reason"], "api-error")
+            self.assertFalse(decision["force_consumed"])
+
+            mark_auto_reload(state_file, "api-error", context_tokens=1)
+            decision = evaluate_auto_reload_once(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=1,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "skip")
+            self.assertEqual(decision["reason"], "api-error")
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:

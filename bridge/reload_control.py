@@ -160,6 +160,39 @@ def build_reload_decision(
     }
 
 
+def evaluate_auto_reload_once(
+    *,
+    force_file: Path,
+    dryrun_file: Path,
+    state_file: Path,
+    cooldown_seconds: int,
+    tail_text: str,
+    context_tokens: int,
+    active_threshold: int,
+    idle_seconds: float,
+    idle_min_context: int,
+    idle_threshold_seconds: int,
+    consume_force: bool = True,
+) -> dict:
+    force = reload_marker_pending(force_file)
+    decision = build_reload_decision(
+        force=force,
+        tail_text=tail_text,
+        context_tokens=context_tokens,
+        active_threshold=active_threshold,
+        idle_seconds=idle_seconds,
+        idle_min_context=idle_min_context,
+        idle_threshold_seconds=idle_threshold_seconds,
+        recent=recent_auto_reload(state_file, cooldown_seconds),
+        dryrun=dryrun_file.exists(),
+    )
+    if consume_force and force and decision["reason"] == "manual-force":
+        decision["force_consumed"] = consume_reload_marker(force_file)
+    else:
+        decision["force_consumed"] = False
+    return decision
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():
