@@ -140,6 +140,20 @@ def event_text(event: dict) -> str:
     return content_text(message.get("content")).strip()
 
 
+def load_jsonl(path: Path) -> list[dict]:
+    rows = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"bad json at {path}:{line_number}: {exc}") from exc
+    return rows
+
+
 def count_thinking_blocks(events: list[dict]) -> int:
     count = 0
     for event in events:
