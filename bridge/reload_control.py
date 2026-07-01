@@ -189,6 +189,21 @@ def set_auto_reload_paused(pause_file: Path, log_file: Path, paused: bool) -> di
     return auto_reload_status(pause_file)
 
 
+def set_reload_marker(marker_file: Path, enabled: bool, label: str) -> dict:
+    marker_file.parent.mkdir(parents=True, exist_ok=True)
+    if enabled:
+        marker_file.write_text(
+            f"{label} {time.strftime('%Y-%m-%dT%H:%M:%S%z')}\n",
+            encoding="utf-8",
+        )
+    else:
+        try:
+            marker_file.unlink()
+        except FileNotFoundError:
+            pass
+    return {"pending": marker_file.exists()}
+
+
 def send_reload_command(
     command: str | None,
     tmux_clear_input_func: Callable[[], None],

@@ -109,6 +109,7 @@ All settings are environment variables:
 | `COCOON_AUTO_RELOAD_ENABLED` | `0` | Enables optional automatic reload integrations. The bundled core does not start a monitor by default |
 | `COCOON_AUTO_RELOAD_STATE_FILE` | `COCOON_STATE_DIR/.auto_reload.json` | Cooldown state file for optional automatic reload integrations |
 | `COCOON_AUTO_RELOAD_DRYRUN_FILE` | `COCOON_STATE_DIR/.auto_reload_dryrun` | Dry-run marker for optional automatic reload integrations |
+| `COCOON_AUTO_RELOAD_FORCE_FILE` | `COCOON_STATE_DIR/.auto_reload_force` | Manual force marker for optional automatic reload integrations |
 | `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD` | `125000` | Context token threshold for optional automatic reload decisions |
 | `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD_1M` | `600000` | Context token threshold when a 1M-window model is detected |
 | `COCOON_AUTO_RELOAD_IDLE_MIN_CONTEXT` | `200000` | Minimum context tokens before idle-cache reload decisions are considered |

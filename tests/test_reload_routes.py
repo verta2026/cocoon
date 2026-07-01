@@ -11,6 +11,7 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
             "verify_token": server.verify_token,
             "pause_file": server.AUTO_RELOAD_PAUSE_FILE,
             "dryrun_file": server.AUTO_RELOAD_DRYRUN_FILE,
+            "force_file": server.AUTO_RELOAD_FORCE_FILE,
             "reload_command": server.RELOAD_COMMAND,
             "lock_dir": server.RELOAD_LOCK_DIR,
             "stale_seconds": server.RELOAD_LOCK_STALE_SECONDS,
@@ -28,15 +29,18 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
                 root = Path(tmp)
                 pause_file = root / ".paused"
                 dryrun_file = root / ".dryrun"
+                force_file = root / ".force"
                 lock_dir = root / ".reload.lock"
                 state_file = root / "state.json"
                 pause_file.write_text("manual-pause\n", encoding="utf-8")
                 dryrun_file.write_text("dry-run\n", encoding="utf-8")
+                force_file.write_text("manual-force\n", encoding="utf-8")
                 lock_dir.mkdir()
 
                 server.verify_token = lambda request: None
                 server.AUTO_RELOAD_PAUSE_FILE = pause_file
                 server.AUTO_RELOAD_DRYRUN_FILE = dryrun_file
+                server.AUTO_RELOAD_FORCE_FILE = force_file
                 server.RELOAD_COMMAND = "./private/reload.sh --secret value"
                 server.RELOAD_LOCK_DIR = lock_dir
                 server.RELOAD_LOCK_STALE_SECONDS = 123
@@ -58,6 +62,7 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
                         "auto_reload_enabled": True,
                         "auto_reload_paused": True,
                         "auto_reload_dryrun": True,
+                        "auto_reload_force_pending": True,
                         "reload_lock_exists": True,
                         "reload_lock_stale_seconds": 123,
                         "auto_reload_state_file": str(state_file),
@@ -75,6 +80,7 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
             server.verify_token = originals["verify_token"]
             server.AUTO_RELOAD_PAUSE_FILE = originals["pause_file"]
             server.AUTO_RELOAD_DRYRUN_FILE = originals["dryrun_file"]
+            server.AUTO_RELOAD_FORCE_FILE = originals["force_file"]
             server.RELOAD_COMMAND = originals["reload_command"]
             server.RELOAD_LOCK_DIR = originals["lock_dir"]
             server.RELOAD_LOCK_STALE_SECONDS = originals["stale_seconds"]
@@ -86,6 +92,26 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
             server.AUTO_RELOAD_IDLE_SECONDS = originals["idle_seconds"]
             server.AUTO_RELOAD_COOLDOWN_SECONDS = originals["cooldown"]
             server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS = originals["check_interval"]
+
+    async def test_reload_force_routes_set_and_clear_marker(self):
+        originals = {
+            "verify_token": server.verify_token,
+            "force_file": server.AUTO_RELOAD_FORCE_FILE,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                force_file = Path(tmp) / ".force"
+                server.verify_token = lambda request: None
+                server.AUTO_RELOAD_FORCE_FILE = force_file
+
+                self.assertEqual(await server.set_reload_force(object()), {"pending": True})
+                self.assertTrue(force_file.exists())
+
+                self.assertEqual(await server.clear_reload_force(object()), {"pending": False})
+                self.assertFalse(force_file.exists())
+        finally:
+            server.verify_token = originals["verify_token"]
+            server.AUTO_RELOAD_FORCE_FILE = originals["force_file"]
 
     async def test_forge_auto_reload_routes_read_and_write_pause_state(self):
         originals = {

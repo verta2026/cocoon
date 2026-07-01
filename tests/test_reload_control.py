@@ -20,6 +20,7 @@ from bridge.reload_control import (
     reload_monitor_interval,
     send_reload_command,
     set_auto_reload_paused,
+    set_reload_marker,
     session_idle_seconds,
 )
 
@@ -277,6 +278,16 @@ class ReloadControlTest(unittest.TestCase):
             self.assertFalse(pause_file.exists())
             self.assertIn("manual pause enabled", log_file.read_text(encoding="utf-8"))
             self.assertIn("manual pause disabled", log_file.read_text(encoding="utf-8"))
+
+    def test_set_reload_marker_creates_and_clears_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = Path(tmp) / ".force"
+
+            self.assertEqual(set_reload_marker(marker, True, "manual-force"), {"pending": True})
+            self.assertIn("manual-force", marker.read_text(encoding="utf-8"))
+
+            self.assertEqual(set_reload_marker(marker, False, "manual-force"), {"pending": False})
+            self.assertFalse(marker.exists())
 
     def test_log_auto_reload_throttle_skips_recent_log(self):
         with tempfile.TemporaryDirectory() as tmp:
