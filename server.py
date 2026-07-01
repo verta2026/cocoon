@@ -61,6 +61,7 @@ from bridge.history import (
     read_conversation_messages as _read_conversation_messages,
 )
 from bridge.history_routes import register_history_routes
+from bridge.output_routes import register_output_routes
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
     auto_reload_status as _auto_reload_status,
@@ -321,16 +322,17 @@ async def send_message(msg: Message, request: Request):
         return {"sent": True, "length": len(msg.text)}
 
 
-@app.get("/output")
 async def get_output(request: Request, lines: int = 1500):
     verify_token(request)
     return PlainTextResponse(captured_output_or_404(lines))
 
 
-@app.get("/raw-output")
 async def get_raw_output(request: Request, lines: int = 1500):
     verify_token(request)
     return PlainTextResponse(captured_output_or_404(lines))
+
+
+register_output_routes(app, get_output=get_output, get_raw_output=get_raw_output)
 
 
 @app.get("/extensions")
