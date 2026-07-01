@@ -11,6 +11,7 @@ from bridge.reload_control import (
     build_reload_decision,
     choose_reload_action,
     choose_reload_reason,
+    consume_reload_marker,
     context_window_is_1m,
     log_auto_reload,
     mark_auto_reload,
@@ -18,6 +19,7 @@ from bridge.reload_control import (
     recent_auto_reload,
     reload_lock,
     reload_monitor_interval,
+    reload_marker_pending,
     send_reload_command,
     set_auto_reload_paused,
     set_reload_marker,
@@ -288,6 +290,19 @@ class ReloadControlTest(unittest.TestCase):
 
             self.assertEqual(set_reload_marker(marker, False, "manual-force"), {"pending": False})
             self.assertFalse(marker.exists())
+
+    def test_reload_marker_pending_and_consume_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = Path(tmp) / ".force"
+
+            self.assertFalse(reload_marker_pending(marker))
+            self.assertFalse(consume_reload_marker(marker))
+
+            marker.write_text("manual-force\n", encoding="utf-8")
+
+            self.assertTrue(reload_marker_pending(marker))
+            self.assertTrue(consume_reload_marker(marker))
+            self.assertFalse(reload_marker_pending(marker))
 
     def test_log_auto_reload_throttle_skips_recent_log(self):
         with tempfile.TemporaryDirectory() as tmp:

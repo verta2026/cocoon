@@ -204,6 +204,20 @@ def set_reload_marker(marker_file: Path, enabled: bool, label: str) -> dict:
     return {"pending": marker_file.exists()}
 
 
+def reload_marker_pending(marker_file: Path) -> bool:
+    return marker_file.exists()
+
+
+def consume_reload_marker(marker_file: Path) -> bool:
+    if not marker_file.exists():
+        return False
+    try:
+        marker_file.unlink()
+    except OSError:
+        return False
+    return True
+
+
 def send_reload_command(
     command: str | None,
     tmux_clear_input_func: Callable[[], None],
