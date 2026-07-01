@@ -2,8 +2,10 @@ import unittest
 
 from bridge.forge import (
     content_blocks,
+    build_forge_summary,
     choose_kept,
     close_at_final_assistant,
+    count_thinking_blocks,
     estimate_tokens,
     event_text,
     filter_runtime_noise_turns,
@@ -150,6 +152,66 @@ class ForgeTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "missing parents"):
             validate_chain([{"uuid": "child", "parentUuid": "missing"}])
+
+    def test_count_thinking_blocks_counts_resume_safe_thinking(self):
+        events = [
+            {
+                "type": "assistant",
+                "message": {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "thinking", "thinking": "..."},
+                        {"type": "redacted_thinking", "data": "..."},
+                        {"type": "text", "text": "reply"},
+                    ],
+                },
+            }
+        ]
+
+        self.assertEqual(count_thinking_blocks(events), 2)
+
+    def test_build_forge_summary_reports_dry_run_metadata(self):
+        events = [user("first"), assistant("reply")]
+        retain = choose_kept(events, 10, token_estimator=lambda event: 1)
+        closed = close_at_final_assistant(retain.kept)
+        forged, _ = forge_events(closed.kept, "new-session", uuid_factory=iter(["new-1", "new-2"]).__next__)
+        summary = build_forge_summary(
+            source="source.jsonl",
+            new_session_id="new-session",
+            source_events=3,
+            sanitized_events=2,
+            forged=forged,
+            retained=closed.kept,
+            summary_injected=False,
+            summary_info={
+                "status": "dry-run-skipped",
+                "file": "summary.md",
+                "meta": "summary.json",
+                "summary_chars": 7,
+                "dropped_events": 1,
+                "dropped_chars": 12,
+                "provider": "none",
+                "prompt_file": "",
+            },
+            retain_selection=retain,
+            closed_selection=closed,
+            warnings=["manual warning"],
+        )
+
+        self.assertEqual(summary["source"], "source.jsonl")
+        self.assertEqual(summary["new_sid"], "new-session")
+        self.assertEqual(summary["source_events"], 3)
+        self.assertEqual(summary["sanitized_events"], 2)
+        self.assertEqual(summary["kept_events"], 2)
+        self.assertEqual(summary["retained_events"], 2)
+        self.assertEqual(summary["summary_status"], "dry-run-skipped")
+        self.assertEqual(summary["summary_file"], "summary.md")
+        self.assertEqual(summary["summary_meta"], "summary.json")
+        self.assertEqual(summary["summary_dropped_events"], 1)
+        self.assertEqual(summary["summary_dropped_chars"], 12)
+        self.assertEqual(summary["terminal_type"], "assistant")
+        self.assertEqual(summary["warnings"], ["manual warning"])
+        self.assertFalse(summary["written"])
 
 
 if __name__ == "__main__":

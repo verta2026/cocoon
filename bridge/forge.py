@@ -125,6 +125,20 @@ def event_text(event: dict) -> str:
     return content_text(message.get("content")).strip()
 
 
+def count_thinking_blocks(events: list[dict]) -> int:
+    count = 0
+    for event in events:
+        content = (event.get("message") or {}).get("content")
+        if not isinstance(content, list):
+            continue
+        count += sum(
+            1
+            for block in content
+            if isinstance(block, dict) and block.get("type") in {"thinking", "redacted_thinking"}
+        )
+    return count
+
+
 def choose_kept(
     events: list[dict],
     retain_tokens: int,
@@ -227,3 +241,45 @@ def validate_chain(events: list[dict]) -> None:
         seen.add(event_uuid)
     if missing:
         raise ValueError(f"forged chain has missing parents: {missing[:3]}")
+
+
+def build_forge_summary(
+    *,
+    source: str,
+    new_session_id: str,
+    source_events: int,
+    sanitized_events: int,
+    forged: list[dict],
+    retained: list[dict],
+    summary_injected: bool,
+    summary_info: dict,
+    retain_selection: RetainSelection,
+    closed_selection: ClosedTurnSelection,
+    warnings: list[str] | None = None,
+) -> dict:
+    warnings = list(warnings or []) + list(closed_selection.warnings)
+    return {
+        "source": source,
+        "new_sid": new_session_id,
+        "source_events": source_events,
+        "sanitized_events": sanitized_events,
+        "kept_events": len(forged),
+        "retained_events": len(retained),
+        "summary_injected": summary_injected,
+        "summary_status": summary_info.get("status", ""),
+        "summary_file": summary_info.get("file", ""),
+        "summary_meta": summary_info.get("meta", ""),
+        "summary_chars": summary_info.get("summary_chars", 0),
+        "summary_dropped_events": summary_info.get("dropped_events", 0),
+        "summary_dropped_chars": summary_info.get("dropped_chars", 0),
+        "summary_provider": summary_info.get("provider", ""),
+        "summary_prompt_file": summary_info.get("prompt_file", ""),
+        "raw_cut_index": retain_selection.raw_cut_index,
+        "keep_start_index": retain_selection.keep_start_index,
+        "estimated_tokens_scanned": retain_selection.estimated_tokens_scanned,
+        "estimated_tokens_kept": sum(estimate_tokens(event) for event in forged),
+        "terminal_type": closed_selection.terminal_type,
+        "thinking_blocks_kept": count_thinking_blocks(forged),
+        "warnings": warnings,
+        "written": False,
+    }
