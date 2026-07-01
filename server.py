@@ -60,6 +60,7 @@ from bridge.history import (
     list_conversation_sessions as _list_conversation_sessions,
     read_conversation_messages as _read_conversation_messages,
 )
+from bridge.history_routes import register_history_routes
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
     auto_reload_status as _auto_reload_status,
@@ -138,6 +139,16 @@ register_upload_routes(
     upload_dir=UPLOAD_DIR,
     max_upload_bytes=MAX_UPLOAD_BYTES,
     bridge_token=TOKEN,
+)
+
+register_history_routes(
+    app,
+    verify_token=verify_token,
+    list_conversation_sessions=_list_conversation_sessions,
+    read_conversation_messages=_read_conversation_messages,
+    conversations_dir=CONVERSATIONS_DIR,
+    wrap_sessions=True,
+    wrap_messages=True,
 )
 
 
@@ -322,18 +333,6 @@ async def get_output(request: Request, lines: int = 1500):
 async def get_raw_output(request: Request, lines: int = 1500):
     verify_token(request)
     return PlainTextResponse(captured_output_or_404(lines))
-
-
-@app.get("/history")
-async def history(request: Request):
-    verify_token(request)
-    return {"sessions": _list_conversation_sessions(CONVERSATIONS_DIR)}
-
-
-@app.get("/history/{file_id:path}")
-async def history_messages(file_id: str, request: Request):
-    verify_token(request)
-    return {"file": file_id, "messages": _read_conversation_messages(CONVERSATIONS_DIR, file_id)}
 
 
 @app.get("/extensions")
