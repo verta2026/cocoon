@@ -10,6 +10,7 @@ from bridge.forge import (
     choose_kept,
     close_at_final_assistant,
     count_thinking_blocks,
+    execute_forge_write,
     estimate_tokens,
     event_text,
     filter_runtime_noise_turns,
@@ -302,6 +303,55 @@ class ForgeTest(unittest.TestCase):
             self.assertIn('"new_sid": "sid"', text)
             self.assertIn('"written": true', text)
             self.assertFalse(dest.with_name(dest.name + ".tmp").exists())
+
+    def test_execute_forge_write_writes_jsonl_and_manifest_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = {
+                "dest": root / "project" / "sid.jsonl",
+                "manifest": root / "manifest" / "sid.manifest.json",
+            }
+            summary = {"new_sid": "sid", "written": False}
+            manifest_payload = {"new_sid": "sid", "created_at": "now"}
+
+            updated = execute_forge_write(
+                paths=paths,
+                forged_events=[user("hello")],
+                summary=summary,
+                manifest_payload=manifest_payload,
+            )
+
+            self.assertTrue(paths["dest"].exists())
+            self.assertTrue(paths["manifest"].exists())
+            self.assertTrue(updated["written"])
+            self.assertEqual(updated["dest"], str(paths["dest"]))
+            self.assertEqual(updated["manifest"], str(paths["manifest"]))
+            self.assertFalse(summary["written"])
+            self.assertIn('"created_at": "now"', paths["manifest"].read_text(encoding="utf-8"))
+
+    def test_execute_forge_write_optionally_writes_summary_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = {
+                "dest": root / "project" / "sid.jsonl",
+                "manifest": root / "manifest" / "sid.manifest.json",
+                "summary_file": root / "state" / "summary.md",
+                "summary_meta": root / "state" / "summary-meta.json",
+                "summary_snapshot": root / "manifest" / "sid.summary.md",
+            }
+            updated = execute_forge_write(
+                paths=paths,
+                forged_events=[user("hello")],
+                summary={"new_sid": "sid", "written": False},
+                manifest_payload={"new_sid": "sid", "created_at": "now"},
+                summary_text="summary",
+                summary_meta_payload={"summary_chars": 7},
+            )
+
+            self.assertEqual(paths["summary_file"].read_text(encoding="utf-8"), "summary\n")
+            self.assertEqual(paths["summary_snapshot"].read_text(encoding="utf-8"), "summary\n")
+            self.assertIn('"summary_chars": 7', paths["summary_meta"].read_text(encoding="utf-8"))
+            self.assertEqual(updated["summary_snapshot"], str(paths["summary_snapshot"]))
 
 
 if __name__ == "__main__":

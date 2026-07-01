@@ -349,3 +349,28 @@ def write_text_atomic(path: Path, text: str) -> Path:
 
 def write_json_atomic(path: Path, payload: dict, *, indent: int = 2) -> Path:
     return write_text_atomic(path, json.dumps(payload, ensure_ascii=False, indent=indent) + "\n")
+
+
+def execute_forge_write(
+    *,
+    paths: dict,
+    forged_events: list[dict],
+    summary: dict,
+    manifest_payload: dict,
+    summary_text: str = "",
+    summary_meta_payload: dict | None = None,
+) -> dict:
+    updated_summary = dict(summary)
+    write_jsonl_atomic(paths["dest"], forged_events)
+
+    if summary_text.strip() and summary_meta_payload is not None:
+        write_text_atomic(paths["summary_file"], summary_text.strip() + "\n")
+        write_json_atomic(paths["summary_meta"], summary_meta_payload)
+        write_text_atomic(paths["summary_snapshot"], summary_text.strip() + "\n")
+        updated_summary["summary_snapshot"] = str(paths["summary_snapshot"])
+
+    updated_summary["dest"] = str(paths["dest"])
+    updated_summary["manifest"] = str(paths["manifest"])
+    updated_summary["written"] = True
+    write_json_atomic(paths["manifest"], manifest_payload)
+    return updated_summary
