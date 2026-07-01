@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -324,3 +325,15 @@ def build_summary_meta_payload(
 
 def build_manifest_payload(summary: dict, *, created_at: str) -> dict:
     return {**summary, "created_at": created_at}
+
+
+def write_jsonl_atomic(path: Path, events: list[dict]) -> Path:
+    if path.exists():
+        raise FileExistsError(f"destination already exists: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(path.name + ".tmp")
+    with tmp_path.open("w", encoding="utf-8") as handle:
+        for event in events:
+            handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+    os.replace(tmp_path, path)
+    return path

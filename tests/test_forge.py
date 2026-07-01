@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from pathlib import Path
 
 from bridge.forge import (
@@ -19,6 +20,7 @@ from bridge.forge import (
     sanitize_event,
     sanitize_events,
     validate_chain,
+    write_jsonl_atomic,
 )
 
 
@@ -259,6 +261,22 @@ class ForgeTest(unittest.TestCase):
 
         self.assertEqual(payload, {"new_sid": "sid-1", "written": True, "created_at": "2026-07-01T00:00:00Z"})
         self.assertNotIn("created_at", summary)
+
+    def test_write_jsonl_atomic_writes_compact_jsonl_and_refuses_overwrite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "nested" / "session.jsonl"
+            events = [user("hello"), assistant("reply")]
+
+            result = write_jsonl_atomic(dest, events)
+
+            self.assertEqual(result, dest)
+            self.assertTrue(dest.exists())
+            self.assertFalse(dest.with_name(dest.name + ".tmp").exists())
+            self.assertEqual(dest.read_text(encoding="utf-8").count("\n"), 2)
+            self.assertIn('"content":[{"type":"text","text":"hello"}]', dest.read_text(encoding="utf-8"))
+
+            with self.assertRaises(FileExistsError):
+                write_jsonl_atomic(dest, events)
 
 
 if __name__ == "__main__":
