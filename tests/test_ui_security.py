@@ -12,6 +12,13 @@ class UiSecurityTest(unittest.TestCase):
         self.assertIn("document.cookie", CHAT_HTML)
         self.assertIn("SameSite=Strict", CHAT_HTML)
 
+    def test_chat_ui_exposes_generic_reload_controls(self):
+        self.assertIn("reload session", CHAT_HTML)
+        self.assertIn("/reload-session", CHAT_HTML)
+        self.assertIn("/forge-auto-reload", CHAT_HTML)
+        self.assertNotIn("galgame", CHAT_HTML.lower())
+        self.assertNotIn("mailbox", CHAT_HTML.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -105,6 +105,8 @@ body::before {
 }
 .sidebar-item:active { background: rgba(200,180,150,0.15); }
 .sidebar-item .si-icon { width: 20px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+.sidebar-item.is-warn { color: #9b5d36; }
+[data-theme="dark"] .sidebar-item.is-warn { color: #d7a366; }
 .sidebar-sep { height: 1px; background: var(--border); margin: 6px 16px; }
 .sidebar-section-title { padding: 8px 18px 4px; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .look-note { display: block; padding: 0 18px 8px; min-height: 18px; font-size: 0.68rem; color: var(--muted); }
@@ -263,6 +265,8 @@ body::before {
   <div class="sidebar-header"><h2><span>&mdash;</span> cocoon</h2></div>
   <nav class="sidebar-nav">
     <button class="sidebar-item" onclick="newSession();toggleSidebar()"><span class="si-icon">+</span>new session</button>
+    <button class="sidebar-item" onclick="reloadSession();toggleSidebar()"><span class="si-icon">&#8635;</span>reload session</button>
+    <button class="sidebar-item" id="auto-reload-btn" onclick="toggleAutoReload()"><span class="si-icon">||</span>auto reload: &mdash;</button>
     <button class="sidebar-item" onclick="window.location.href='/terminal'"><span class="si-icon">&gt;_</span>terminal</button>
     <div class="sidebar-sep"></div>
     <button class="sidebar-item" id="theme-btn" onclick="toggleTheme()"><span class="si-icon">&#9789;</span>toggle theme</button>
@@ -417,6 +421,7 @@ applyChatLook();
 let _blocks = [], _isBusy = false, _lastRawHash = 0, _unchangedPolls = 0;
 let _optimisticText = null, _typingEl = null, _deferredBlocks = null;
 let _statusIv = null;
+let _autoReloadPaused = false;
 
 function simpleHash(s) {
   var h = 0;
@@ -979,6 +984,14 @@ function setBusy(busy) {
   else if (next && _blocks.length) paintChat(_blocks);
 }
 
+function updateAutoReloadButton(paused) {
+  _autoReloadPaused = !!paused;
+  var btn = document.getElementById('auto-reload-btn');
+  if (!btn) return;
+  btn.classList.toggle('is-warn', _autoReloadPaused);
+  btn.innerHTML = '<span class="si-icon">' + (_autoReloadPaused ? '&#9654;' : '||') + '</span>auto reload: ' + (_autoReloadPaused ? 'paused' : 'on');
+}
+
 async function checkStatus() {
   try {
     const r = await fetch('/status', { headers });
@@ -986,11 +999,45 @@ async function checkStatus() {
     const state = d.running ? 'alive' : (d.alive ? (d.command || 'shell') : 'stopped');
     statusEl.textContent = state;
     statusEl.className = 'status ' + (d.running ? 'alive' : 'dead');
+    if (typeof d.auto_reload_paused !== 'undefined') updateAutoReloadButton(!!d.auto_reload_paused);
     setBusy(d.running && d.busy);
   } catch(e) {
     statusEl.textContent = 'offline';
     statusEl.className = 'status dead';
     setBusy(false);
+  }
+}
+
+async function reloadSession() {
+  chat.innerHTML = '<div class="msg-system">reloading session...</div>';
+  try {
+    const r = await fetch('/reload-session', { method: 'POST', headers, signal: AbortSignal.timeout(90000) });
+    if (!r.ok) {
+      let detail = r.statusText || 'reload failed';
+      try { const err = await r.json(); detail = err.detail || detail; } catch(e) {}
+      chat.innerHTML = '<div class="msg-system">' + escHtml(detail) + '</div>';
+      return;
+    }
+    _blocks = []; _deferredBlocks = null; _lastRawHash = 0; _unchangedPolls = 0;
+    _optimisticText = null; _typingEl = null;
+    setTimeout(getOutput, 1000);
+  } catch(e) {
+    chat.innerHTML = '<div class="msg-system">reload failed</div>';
+  }
+}
+
+async function toggleAutoReload() {
+  try {
+    const r = await fetch('/forge-auto-reload', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ paused: !_autoReloadPaused })
+    });
+    if (!r.ok) throw new Error('toggle failed');
+    const d = await r.json();
+    updateAutoReloadButton(!!d.paused);
+  } catch(e) {
+    alert('auto reload switch failed');
   }
 }
 
