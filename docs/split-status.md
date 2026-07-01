@@ -22,6 +22,7 @@ These modules are part of the reusable bridge core:
 - `bridge.tts_routes` - optional TTS route wiring
 - `bridge.push_routes` - optional push provider route wiring
 - `presence.request_policy` - optional presence-style POST auth policy helper
+- `presence.static_pages` - optional static page lookup/serving helper
 
 ## Provider Boundaries
 
@@ -36,6 +37,8 @@ they are useful in a real deployment:
   configured.
 - `presence.request_policy` does not ship private path lists. Deployments pass
   their own token-only and browser-write path sets.
+- `presence.static_pages` does not ship private HTML pages. Deployments pass
+  their own route-to-file map and root directory.
 
 ## Private Route Boundary
 
