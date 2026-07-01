@@ -24,6 +24,7 @@ These modules are part of the reusable bridge core:
 - `presence.request_policy` - optional presence-style POST auth policy helper
 - `presence.static_pages` - optional static page lookup/serving helper
 - `presence.json_store` - presence-compatible JSON storage wrapper
+- `presence.auth_helpers` - generic cookie/login parsing helpers
 
 ## Provider Boundaries
 
@@ -43,6 +44,9 @@ they are useful in a real deployment:
 - `presence.json_store` provides storage mechanics only. It does not ship
   presence data, mailbox/task state, push subscriptions, or other instance
   files.
+- `presence.auth_helpers` provides cookie parsing, login body parsing, and
+  synthetic password-prefix checks only. It does not ship cookie values, login
+  prefixes, or deployment token names.
 
 ## Private Route Boundary
 
