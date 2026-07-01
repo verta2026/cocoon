@@ -20,7 +20,9 @@ from bridge.forge import (
     sanitize_event,
     sanitize_events,
     validate_chain,
+    write_json_atomic,
     write_jsonl_atomic,
+    write_text_atomic,
 )
 
 
@@ -277,6 +279,29 @@ class ForgeTest(unittest.TestCase):
 
             with self.assertRaises(FileExistsError):
                 write_jsonl_atomic(dest, events)
+
+    def test_write_text_atomic_writes_and_replaces_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "summary" / "forge.md"
+
+            write_text_atomic(dest, "first\n")
+            write_text_atomic(dest, "second\n")
+
+            self.assertEqual(dest.read_text(encoding="utf-8"), "second\n")
+            self.assertFalse(dest.with_name(dest.name + ".tmp").exists())
+
+    def test_write_json_atomic_writes_pretty_json_with_newline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "manifest" / "sid.manifest.json"
+            payload = {"new_sid": "sid", "written": True}
+
+            write_json_atomic(dest, payload)
+
+            text = dest.read_text(encoding="utf-8")
+            self.assertTrue(text.endswith("\n"))
+            self.assertIn('"new_sid": "sid"', text)
+            self.assertIn('"written": true', text)
+            self.assertFalse(dest.with_name(dest.name + ".tmp").exists())
 
 
 if __name__ == "__main__":

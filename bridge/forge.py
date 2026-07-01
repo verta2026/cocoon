@@ -337,3 +337,15 @@ def write_jsonl_atomic(path: Path, events: list[dict]) -> Path:
             handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
     os.replace(tmp_path, path)
     return path
+
+
+def write_text_atomic(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(path.name + ".tmp")
+    tmp_path.write_text(text, encoding="utf-8")
+    os.replace(tmp_path, path)
+    return path
+
+
+def write_json_atomic(path: Path, payload: dict, *, indent: int = 2) -> Path:
+    return write_text_atomic(path, json.dumps(payload, ensure_ascii=False, indent=indent) + "\n")
