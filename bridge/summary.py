@@ -9,6 +9,21 @@ from dataclasses import dataclass
 
 FORGE_SUMMARY_MARKER = "FORGE_CONTEXT_SUMMARY:"
 DISABLED_PROVIDERS = {"", "none", "off", "disabled"}
+ASSISTANT_RUNTIME_NOISE_PREFIXES = (
+    "API Error:",
+    "Please run /login",
+    "OAuth error:",
+)
+USER_RUNTIME_NOISE_MARKERS = (
+    "FORGE_RESUME_READY_",
+    FORGE_SUMMARY_MARKER,
+    "<local-command-caveat>",
+    "<command-name>",
+    "<command-message>",
+    "<command-args>",
+    "<local-command-stdout>",
+    "<local-command-stderr>",
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +61,78 @@ def clamp_middle(text: str, max_chars: int) -> str:
         + f"\n\n[... omitted {omitted} chars from the middle ...]\n\n"
         + text[-tail:].lstrip()
     )
+
+
+def event_role(event: dict) -> str:
+    message = event.get("message")
+    role = message.get("role") if isinstance(message, dict) else ""
+    return role if isinstance(role, str) else ""
+
+
+def content_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    parts = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text":
+            text = block.get("text")
+            if isinstance(text, str):
+                parts.append(text)
+    return "\n".join(parts)
+
+
+def is_channel_event(event: dict) -> bool:
+    message = event.get("message")
+    if not isinstance(message, dict):
+        return False
+    content = message.get("content", "")
+    return isinstance(content, str) and "<channel source=" in content
+
+
+def event_speaker(event: dict) -> str:
+    if is_channel_event(event):
+        return "channel"
+    role = event_role(event)
+    return role if role in {"assistant", "user"} else "unknown"
+
+
+def event_timestamp(event: dict) -> str:
+    return event.get("timestamp") or event.get("created_at") or ""
+
+
+def is_runtime_noise(role: str, content, *, extra_user_markers: tuple[str, ...] = ()) -> bool:
+    text = content_text(content).strip()
+    if role == "assistant":
+        return any(text.startswith(prefix) for prefix in ASSISTANT_RUNTIME_NOISE_PREFIXES)
+    if role == "user":
+        markers = USER_RUNTIME_NOISE_MARKERS + tuple(extra_user_markers)
+        return any(marker in text for marker in markers)
+    return False
+
+
+def format_events_for_summary(
+    events: list[dict],
+    max_chars: int,
+    *,
+    extra_user_noise_markers: tuple[str, ...] = (),
+) -> str:
+    lines = []
+    for event in events:
+        message = event.get("message") or {}
+        role = event_role(event)
+        content = message.get("content")
+        if is_runtime_noise(role, content, extra_user_markers=extra_user_noise_markers):
+            continue
+        text = content_text(content).strip()
+        if not text:
+            continue
+        timestamp = event_timestamp(event)
+        speaker = event_speaker(event)
+        heading = f"[{timestamp}] {speaker}" if timestamp else speaker
+        lines.append(f"{heading}:\n{text}")
+    return clamp_middle("\n\n".join(lines).strip(), max_chars)
 
 
 def extract_summary_marker(text: str, marker: str = FORGE_SUMMARY_MARKER) -> str:

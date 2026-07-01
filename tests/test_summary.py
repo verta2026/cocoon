@@ -6,7 +6,10 @@ from bridge.summary import (
     build_summary_messages,
     call_summary_provider,
     clamp_middle,
+    content_text,
+    event_speaker,
     extract_summary_marker,
+    format_events_for_summary,
     prepare_summary,
     sha_text,
 )
@@ -33,6 +36,47 @@ class SummaryTest(unittest.TestCase):
         self.assertTrue(clamped.startswith("0123"))
         self.assertTrue(clamped.endswith("cdef"))
         self.assertIn("omitted", clamped)
+
+    def test_content_text_reads_string_and_text_blocks(self):
+        self.assertEqual(content_text("hello"), "hello")
+        self.assertEqual(
+            content_text([{"type": "text", "text": "hello"}, {"type": "tool_use", "name": "read"}]),
+            "hello",
+        )
+
+    def test_format_events_for_summary_uses_generic_speakers_and_filters_noise(self):
+        events = [
+            {
+                "type": "user",
+                "timestamp": "2026-06-30T00:00:00Z",
+                "message": {"role": "user", "content": [{"type": "text", "text": "first"}]},
+            },
+            {
+                "type": "assistant",
+                "message": {"role": "assistant", "content": [{"type": "text", "text": "reply"}]},
+            },
+            {
+                "type": "user",
+                "message": {"role": "user", "content": [{"type": "text", "text": "FORGE_CONTEXT_SUMMARY:\nhidden"}]},
+            },
+            {
+                "type": "assistant",
+                "message": {"role": "assistant", "content": [{"type": "text", "text": "API Error: hidden"}]},
+            },
+        ]
+
+        formatted = format_events_for_summary(events, 500)
+
+        self.assertIn("[2026-06-30T00:00:00Z] user:\nfirst", formatted)
+        self.assertIn("assistant:\nreply", formatted)
+        self.assertNotIn("hidden", formatted)
+        self.assertNotIn("Bound", formatted)
+        self.assertNotIn("Leta", formatted)
+
+    def test_channel_event_speaker_is_generic(self):
+        event = {"message": {"role": "user", "content": "<channel source=\"chat\">hello</channel>"}}
+
+        self.assertEqual(event_speaker(event), "channel")
 
     def test_provider_boundary_is_disabled_by_default(self):
         self.assertEqual(call_summary_provider("none", "old", "raw"), ("", "provider-disabled"))
