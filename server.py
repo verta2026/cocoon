@@ -15,7 +15,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
@@ -111,6 +110,7 @@ from bridge.tts import (
     serve_tts_audio as _serve_tts_audio,
     synthesize_tts as _synthesize_tts,
 )
+from bridge.tts_routes import register_tts_routes
 from bridge.ui import CHAT_HTML, TERMINAL_HTML
 from bridge.ui_routes import register_core_ui_routes
 from bridge.auth import (
@@ -266,12 +266,6 @@ def start_auto_reload_monitor(*, create_task=asyncio.create_task, monitor_coro=N
 
 class Message(BaseModel):
     text: str
-
-
-class TtsRequest(BaseModel):
-    text: str
-    emotion: Optional[str] = None
-    source: str = "frontend"
 
 
 async def status(request: Request):
@@ -471,28 +465,15 @@ register_reload_routes(
 )
 
 
-@app.get("/tts/latest")
-async def tts_latest(request: Request):
-    verify_token(request)
-    return _latest_tts(TTS_DIR)
-
-
-@app.post("/tts/say")
-async def tts_say(req: TtsRequest, request: Request):
-    verify_token(request)
-    return _synthesize_tts(TTS_DIR, req.text, emotion=req.emotion, source=req.source)
-
-
-@app.get("/tts/audio/{audio_name}")
-async def tts_audio(audio_name: str, request: Request, token: str = None):
-    auth = request.headers.get("Authorization", "")
-    if bearer_token_matches(auth):
-        pass
-    elif token_matches(token):
-        pass
-    else:
-        raise HTTPException(403, "Bad token")
-    return _serve_tts_audio(TTS_DIR, audio_name)
+register_tts_routes(
+    app,
+    verify_token=verify_token,
+    verify_media_token=verify_media_token,
+    latest_tts=_latest_tts,
+    synthesize_tts=_synthesize_tts,
+    serve_tts_audio=_serve_tts_audio,
+    tts_dir=TTS_DIR,
+)
 
 
 async def terminal_page(request: Request):
