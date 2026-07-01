@@ -21,6 +21,7 @@ These modules are part of the reusable bridge core:
 - `bridge.sticker_routes` - generic named asset route wiring
 - `bridge.tts_routes` - optional TTS route wiring
 - `bridge.push_routes` - optional push provider route wiring
+- `presence.request_policy` - optional presence-style POST auth policy helper
 
 ## Provider Boundaries
 
@@ -33,6 +34,8 @@ they are useful in a real deployment:
   does not ship VAPID keys or subscription storage.
 - `bridge.tts_routes` uses `bridge.tts`, which is disabled unless a provider is
   configured.
+- `presence.request_policy` does not ship private path lists. Deployments pass
+  their own token-only and browser-write path sets.
 
 ## Private Route Boundary
 
