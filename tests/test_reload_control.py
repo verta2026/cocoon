@@ -2,11 +2,13 @@ import tempfile
 import unittest
 import os
 import time
+import asyncio
 from pathlib import Path
 
 from bridge.reload_control import (
     active_context_threshold,
     actual_model_from_session,
+    auto_reload_monitor_loop,
     auto_reload_status,
     build_reload_decision,
     choose_reload_action,
@@ -416,6 +418,51 @@ class ReloadControlTest(unittest.TestCase):
             self.assertEqual(decision["action"], "skip")
             self.assertFalse(log_file.exists())
             self.assertFalse(state_file.exists())
+
+    def test_auto_reload_monitor_loop_runs_until_stop_and_uses_dynamic_interval(self):
+        calls = []
+        sleeps = []
+
+        async def fake_sleep(seconds):
+            sleeps.append(seconds)
+
+        def tick():
+            calls.append("tick")
+            return {"action": "skip", "count": len(calls)}
+
+        def should_stop():
+            return len(calls) >= 2
+
+        decisions = asyncio.run(
+            auto_reload_monitor_loop(
+                tick_func=tick,
+                context_tokens_func=lambda: 80 if len(calls) == 1 else 10,
+                active_threshold_func=lambda: 100,
+                default_interval_seconds=30,
+                sleep_func=fake_sleep,
+                stop_func=should_stop,
+            )
+        )
+
+        self.assertEqual(decisions, [{"action": "skip", "count": 1}, {"action": "skip", "count": 2}])
+        self.assertEqual(sleeps, [10, 30])
+
+    def test_auto_reload_monitor_loop_can_stop_before_first_tick(self):
+        async def fake_sleep(seconds):
+            raise AssertionError("sleep should not run")
+
+        decisions = asyncio.run(
+            auto_reload_monitor_loop(
+                tick_func=lambda: {"action": "skip"},
+                context_tokens_func=lambda: 0,
+                active_threshold_func=lambda: 100,
+                default_interval_seconds=30,
+                sleep_func=fake_sleep,
+                stop_func=lambda: True,
+            )
+        )
+
+        self.assertEqual(decisions, [])
 
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:

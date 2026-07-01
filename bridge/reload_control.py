@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import contextmanager
 import json
 import os
@@ -225,6 +226,27 @@ def run_auto_reload_tick(
         log_auto_reload(log_file, f"firing: {decision['reason']}")
         mark_auto_reload(state_file, decision["reason"], context_tokens)
     return decision
+
+
+async def auto_reload_monitor_loop(
+    *,
+    tick_func: Callable[[], dict],
+    context_tokens_func: Callable[[], int],
+    active_threshold_func: Callable[[], int],
+    default_interval_seconds: int,
+    sleep_func: Callable[[int], object] = asyncio.sleep,
+    stop_func: Callable[[], bool] | None = None,
+) -> list[dict]:
+    decisions = []
+    while True:
+        if stop_func and stop_func():
+            return decisions
+        decision = tick_func()
+        decisions.append(decision)
+        context_tokens = context_tokens_func()
+        active_threshold = active_threshold_func()
+        interval = reload_monitor_interval(context_tokens, active_threshold, default_interval_seconds)
+        await sleep_func(interval)
 
 
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
