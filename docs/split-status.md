@@ -25,6 +25,7 @@ These modules are part of the reusable bridge core:
 - `presence.static_pages` - optional static page lookup/serving helper
 - `presence.json_store` - presence-compatible JSON storage wrapper
 - `presence.auth_helpers` - generic cookie/login parsing helpers
+- `presence.file_server` - shared-file path, metadata, and attachment helpers
 
 ## Provider Boundaries
 
@@ -47,6 +48,8 @@ they are useful in a real deployment:
 - `presence.auth_helpers` provides cookie parsing, login body parsing, and
   synthetic password-prefix checks only. It does not ship cookie values, login
   prefixes, or deployment token names.
+- `presence.file_server` provides shared-file mechanics only. It does not ship
+  uploaded files, private file data, route maps, or a public files page.
 
 ## Private Route Boundary
 
