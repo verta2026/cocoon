@@ -193,6 +193,40 @@ def evaluate_auto_reload_once(
     return decision
 
 
+def run_auto_reload_tick(
+    *,
+    force_file: Path,
+    dryrun_file: Path,
+    state_file: Path,
+    log_file: Path,
+    cooldown_seconds: int,
+    tail_text: str,
+    context_tokens: int,
+    active_threshold: int,
+    idle_seconds: float,
+    idle_min_context: int,
+    idle_threshold_seconds: int,
+) -> dict:
+    decision = evaluate_auto_reload_once(
+        force_file=force_file,
+        dryrun_file=dryrun_file,
+        state_file=state_file,
+        cooldown_seconds=cooldown_seconds,
+        tail_text=tail_text,
+        context_tokens=context_tokens,
+        active_threshold=active_threshold,
+        idle_seconds=idle_seconds,
+        idle_min_context=idle_min_context,
+        idle_threshold_seconds=idle_threshold_seconds,
+    )
+    if decision["action"] == "dry-run":
+        log_auto_reload(log_file, f"DRY-RUN would fire: {decision['reason']}", throttle=300)
+    elif decision["action"] == "fire":
+        log_auto_reload(log_file, f"firing: {decision['reason']}")
+        mark_auto_reload(state_file, decision["reason"], context_tokens)
+    return decision
+
+
 def log_auto_reload(log_file: Path, text: str, throttle: int = 0) -> None:
     try:
         if throttle and log_file.exists():

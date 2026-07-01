@@ -21,6 +21,7 @@ from bridge.reload_control import (
     reload_lock,
     reload_monitor_interval,
     reload_marker_pending,
+    run_auto_reload_tick,
     send_reload_command,
     set_auto_reload_paused,
     set_reload_marker,
@@ -335,6 +336,87 @@ class ReloadControlTest(unittest.TestCase):
             self.assertEqual(decision["action"], "skip")
             self.assertEqual(decision["reason"], "api-error")
 
+    def test_run_auto_reload_tick_logs_dryrun_without_marking_cooldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            log_file = root / "reload.log"
+            dryrun_file.write_text("dry-run\n", encoding="utf-8")
+
+            decision = run_auto_reload_tick(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                log_file=log_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=10,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "dry-run")
+            self.assertIn("DRY-RUN would fire: api-error", log_file.read_text(encoding="utf-8"))
+            self.assertFalse(state_file.exists())
+
+    def test_run_auto_reload_tick_marks_cooldown_on_fire(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            log_file = root / "reload.log"
+
+            decision = run_auto_reload_tick(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                log_file=log_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=10,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "fire")
+            self.assertIn("firing: api-error", log_file.read_text(encoding="utf-8"))
+            state = json_loads(state_file.read_text(encoding="utf-8"))
+            self.assertEqual(state["reason"], "api-error")
+            self.assertEqual(state["tokens"], 10)
+
+    def test_run_auto_reload_tick_skip_does_not_log_or_mark_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            log_file = root / "reload.log"
+
+            decision = run_auto_reload_tick(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                log_file=log_file,
+                cooldown_seconds=600,
+                tail_text="ok",
+                context_tokens=10,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "skip")
+            self.assertFalse(log_file.exists())
+            self.assertFalse(state_file.exists())
+
     def test_pause_state_can_be_enabled_and_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -414,6 +496,12 @@ def json_dumps(data):
     import json
 
     return json.dumps(data, ensure_ascii=False)
+
+
+def json_loads(text):
+    import json
+
+    return json.loads(text)
 
 
 if __name__ == "__main__":
