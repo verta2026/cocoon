@@ -11,7 +11,6 @@ GET  /chat    — chat UI
 """
 
 import asyncio
-import hmac
 import subprocess
 import sys
 import time
@@ -97,6 +96,11 @@ from bridge.tts import (
     synthesize_tts as _synthesize_tts,
 )
 from bridge.ui import CHAT_HTML, TERMINAL_HTML
+from bridge.auth import (
+    bearer_token_matches as _bearer_token_matches,
+    token_matches as _token_matches,
+    verify_request_token as _verify_request_token,
+)
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 TTS_DIR.mkdir(exist_ok=True)
@@ -107,22 +111,15 @@ AUTO_RELOAD_TASK = None
 
 
 def token_matches(candidate: str | None) -> bool:
-    return hmac.compare_digest(candidate or "", TOKEN)
+    return _token_matches(candidate, TOKEN)
 
 
 def bearer_token_matches(auth: str) -> bool:
-    if not auth.startswith("Bearer "):
-        return False
-    return token_matches(auth.split(" ", 1)[1])
+    return _bearer_token_matches(auth, TOKEN)
 
 
 def verify_token(request: Request):
-    auth = request.headers.get("Authorization", "")
-    cookie_token = request.cookies.get("token", "")
-    query_token = request.query_params.get("token", "")
-    if bearer_token_matches(auth) or token_matches(cookie_token) or token_matches(query_token):
-        return
-    raise HTTPException(403, "Bad token")
+    _verify_request_token(request, TOKEN)
 
 
 def tmux_exists():
