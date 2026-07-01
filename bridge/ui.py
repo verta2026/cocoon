@@ -757,10 +757,10 @@ function parseBlocks(raw) {
     return false;
   }
   function isDisplayNoise(line) {
-    return /<local-command-caveat>|<command-name>|<command-message>|<command-args>|<local-command-stdout>|<local-command-stderr>|This session is being continued from a previous conversation|Continue the conversation from where it left off|Compacted PreCompact|PostCompact /.test(line || '');
+    return /<local-command-caveat>|<command-name>|<command-message>|<command-args>|<local-command-stdout>|<local-command-stderr>|This session is being continued from a previous conversation|Continue the conversation from where it left off|Compacted PreCompact|PostCompact |FORGE_RESUME_READY_|FORGE_CONTEXT_SUMMARY:/.test(line || '');
   }
   function isPreLaunchNoise(line) {
-    return /\[pre-launch\]|memory pipeline started|injection hint written|"source_events"|"sanitized_events"|"kept_events"|"estimated_tokens_(?:scanned|kept)"|"raw_cut_index"|"keep_start_index"|"thinking_blocks_kept"|\/backups\/forge_reload\//.test(line || '');
+    return /\[pre-launch\]|memory pipeline started|injection hint written|"source_events"|"sanitized_events"|"kept_events"|"retained_events"|"summary_(?:injected|status|file|meta|chars|dropped_events|dropped_chars|snapshot|provider|prompt_file)"|"estimated_tokens_(?:scanned|kept)"|"raw_cut_index"|"keep_start_index"|"thinking_blocks_kept"|\/backups\/forge_reload\//.test(line || '');
   }
   function isStandaloneUploadNoise(line) {
     var t = (line || '').trim();

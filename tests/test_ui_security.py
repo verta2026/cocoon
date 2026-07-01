@@ -19,6 +19,13 @@ class UiSecurityTest(unittest.TestCase):
         self.assertNotIn("galgame", CHAT_HTML.lower())
         self.assertNotIn("mailbox", CHAT_HTML.lower())
 
+    def test_chat_ui_filters_generic_forge_summary_diagnostics(self):
+        self.assertIn("FORGE_RESUME_READY_", CHAT_HTML)
+        self.assertIn("FORGE_CONTEXT_SUMMARY:", CHAT_HTML)
+        self.assertIn('"retained_events"', CHAT_HTML)
+        self.assertIn('"summary_(?:injected|status|file|meta|chars|dropped_events|dropped_chars|snapshot|provider|prompt_file)"', CHAT_HTML)
+        self.assertNotIn("BOND_VERIFY_", CHAT_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()
