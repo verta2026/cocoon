@@ -4,12 +4,22 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from bridge.summary import content_text, event_role, is_channel_event, is_runtime_noise
 
 
 ASSISTANT_BLOCKS = {"thinking", "redacted_thinking", "text"}
 USER_BLOCKS = {"text"}
+
+
+@dataclass(frozen=True)
+class RetainSelection:
+    kept: list[dict]
+    raw_cut_index: int
+    keep_start_index: int
+    estimated_tokens_scanned: int
 
 
 def content_blocks(content) -> list[str]:
@@ -104,3 +114,33 @@ def estimate_tokens(event: dict) -> int:
 def event_text(event: dict) -> str:
     message = event.get("message") or {}
     return content_text(message.get("content")).strip()
+
+
+def choose_kept(
+    events: list[dict],
+    retain_tokens: int,
+    *,
+    token_estimator: Callable[[dict], int] = estimate_tokens,
+) -> RetainSelection:
+    accumulated = 0
+    raw_cut_index = 0
+    for index in range(len(events) - 1, -1, -1):
+        accumulated += token_estimator(events[index])
+        if accumulated > retain_tokens:
+            raw_cut_index = index + 1
+            break
+
+    keep_start_index = None
+    for index in range(raw_cut_index, len(events)):
+        if is_real_user(events[index]):
+            keep_start_index = index
+            break
+    if keep_start_index is None:
+        raise ValueError("no real user message found after cut point")
+
+    return RetainSelection(
+        kept=events[keep_start_index:],
+        raw_cut_index=raw_cut_index,
+        keep_start_index=keep_start_index,
+        estimated_tokens_scanned=accumulated,
+    )

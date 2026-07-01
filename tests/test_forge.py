@@ -2,6 +2,7 @@ import unittest
 
 from bridge.forge import (
     content_blocks,
+    choose_kept,
     estimate_tokens,
     event_text,
     filter_runtime_noise_turns,
@@ -10,6 +11,14 @@ from bridge.forge import (
     sanitize_event,
     sanitize_events,
 )
+
+
+def user(text):
+    return {"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": text}]}}
+
+
+def assistant(text):
+    return {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": text}]}}
 
 
 class ForgeTest(unittest.TestCase):
@@ -71,13 +80,28 @@ class ForgeTest(unittest.TestCase):
         self.assertEqual([event_text(event) for event in filter_runtime_noise_turns(rows)], ["visible"])
 
     def test_real_user_and_token_estimate(self):
-        user = {"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "hello"}]}}
-        assistant = {"type": "assistant", "message": {"role": "assistant", "content": "hello"}}
+        user_event = user("hello")
+        assistant_event = {"type": "assistant", "message": {"role": "assistant", "content": "hello"}}
 
-        self.assertEqual(content_blocks(user["message"]["content"]), ["text"])
-        self.assertTrue(is_real_user(user))
-        self.assertFalse(is_real_user(assistant))
-        self.assertGreaterEqual(estimate_tokens(user), 1)
+        self.assertEqual(content_blocks(user_event["message"]["content"]), ["text"])
+        self.assertTrue(is_real_user(user_event))
+        self.assertFalse(is_real_user(assistant_event))
+        self.assertGreaterEqual(estimate_tokens(user_event), 1)
+
+    def test_choose_kept_starts_at_first_real_user_after_cut(self):
+        events = [user("old"), assistant("old reply"), user("new"), assistant("new reply")]
+        selection = choose_kept(events, 2, token_estimator=lambda event: 1)
+
+        self.assertEqual([event_text(event) for event in selection.kept], ["new", "new reply"])
+        self.assertEqual(selection.raw_cut_index, 2)
+        self.assertEqual(selection.keep_start_index, 2)
+        self.assertEqual(selection.estimated_tokens_scanned, 3)
+
+    def test_choose_kept_raises_when_tail_has_no_real_user(self):
+        events = [user("old"), assistant("tail")]
+
+        with self.assertRaisesRegex(ValueError, "no real user"):
+            choose_kept(events, 1, token_estimator=lambda event: 1)
 
 
 if __name__ == "__main__":
