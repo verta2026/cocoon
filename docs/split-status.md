@@ -23,6 +23,7 @@ These modules are part of the reusable bridge core:
 - `bridge.push_routes` - optional push provider route wiring
 - `presence.request_policy` - optional presence-style POST auth policy helper
 - `presence.static_pages` - optional static page lookup/serving helper
+- `presence.json_store` - presence-compatible JSON storage wrapper
 
 ## Provider Boundaries
 
@@ -39,6 +40,9 @@ they are useful in a real deployment:
   their own token-only and browser-write path sets.
 - `presence.static_pages` does not ship private HTML pages. Deployments pass
   their own route-to-file map and root directory.
+- `presence.json_store` provides storage mechanics only. It does not ship
+  presence data, mailbox/task state, push subscriptions, or other instance
+  files.
 
 ## Private Route Boundary
 
