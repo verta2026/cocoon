@@ -60,6 +60,7 @@ from bridge.history import (
     list_conversation_sessions as _list_conversation_sessions,
     read_conversation_messages as _read_conversation_messages,
 )
+from bridge.control_routes import register_control_routes
 from bridge.history_routes import register_history_routes
 from bridge.interaction_routes import register_interaction_routes
 from bridge.output_routes import register_output_routes
@@ -477,7 +478,6 @@ async def terminal_page(request: Request):
     return HTMLResponse(TERMINAL_HTML)
 
 
-@app.post("/escape")
 async def send_escape(request: Request):
     verify_token(request)
     if not tmux_exists():
@@ -487,6 +487,9 @@ async def send_escape(request: Request):
         check=True,
     )
     return {"sent": True, "key": "Escape"}
+
+
+register_control_routes(app, send_escape=send_escape)
 
 
 async def chat_ui():
