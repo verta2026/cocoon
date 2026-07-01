@@ -62,6 +62,7 @@ from bridge.history import (
 )
 from bridge.history_routes import register_history_routes
 from bridge.output_routes import register_output_routes
+from bridge.status_routes import register_status_route
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
     auto_reload_status as _auto_reload_status,
@@ -249,7 +250,6 @@ class TtsRequest(BaseModel):
     source: str = "frontend"
 
 
-@app.get("/status")
 async def status(request: Request):
     verify_token(request)
     alive = tmux_exists()
@@ -267,6 +267,9 @@ async def status(request: Request):
         "dismissed_resume": dismissed_resume,
         "dismissed_trust": dismissed_trust,
     }
+
+
+register_status_route(app, status=status)
 
 
 @app.post("/start")
