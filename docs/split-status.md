@@ -34,6 +34,14 @@ they are useful in a real deployment:
 - `bridge.tts_routes` uses `bridge.tts`, which is disabled unless a provider is
   configured.
 
+## Private Route Boundary
+
+Some private deployments may keep instance-only routes for relationship modes,
+local toggles, or personal state. Those routes should stay in a private adapter
+beside the deployment configuration, not in cocoon core. If a private route
+becomes generally useful, first turn it into a neutral provider interface with
+synthetic tests.
+
 ## Explicitly Not Included
 
 These are private-instance concerns and are not cocoon core:
