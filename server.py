@@ -61,6 +61,7 @@ from bridge.history import (
     read_conversation_messages as _read_conversation_messages,
 )
 from bridge.history_routes import register_history_routes
+from bridge.interaction_routes import register_interaction_routes
 from bridge.output_routes import register_output_routes
 from bridge.status_routes import register_status_route
 from bridge.extensions import list_extensions as _list_extensions
@@ -272,7 +273,6 @@ async def status(request: Request):
 register_status_route(app, status=status)
 
 
-@app.post("/start")
 async def start_session(request: Request):
     verify_token(request)
     if tmux_exists():
@@ -293,7 +293,6 @@ async def start_session(request: Request):
     return {"message": "Session started", "session": SESSION_NAME}
 
 
-@app.post("/send")
 async def send_message(msg: Message, request: Request):
     verify_token(request)
     async with SEND_LOCK:
@@ -323,6 +322,9 @@ async def send_message(msg: Message, request: Request):
                 check=True,
             )
         return {"sent": True, "length": len(msg.text)}
+
+
+register_interaction_routes(app, start_session=start_session, send_message=send_message)
 
 
 async def get_output(request: Request, lines: int = 1500):
