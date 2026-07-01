@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -246,3 +247,44 @@ def prepare_summary(
 
     info["status"] = f"{status}-previous-fallback" if previous else status
     return SummaryResult(previous, info)
+
+
+def synthetic_summary_event(
+    summary_text: str,
+    template: dict | None = None,
+    *,
+    timestamp: str = "",
+    marker: str = FORGE_SUMMARY_MARKER,
+) -> dict:
+    event = copy.deepcopy(template) if isinstance(template, dict) else {}
+    text = (
+        f"{marker}\n"
+        "This is an internal cumulative handoff summary produced before forge truncation. "
+        "Treat it as prior conversation context, not as a new user request.\n\n"
+        f"{(summary_text or '').strip()}"
+    )
+    event.update(
+        {
+            "type": "user",
+            "isMeta": False,
+            "message": {"role": "user", "content": [{"type": "text", "text": text}]},
+        }
+    )
+    if timestamp:
+        event["timestamp"] = timestamp
+    else:
+        event.pop("timestamp", None)
+    event.pop("requestId", None)
+    return event
+
+
+def inject_summary_event(
+    kept: list[dict],
+    summary_text: str,
+    *,
+    timestamp: str = "",
+) -> tuple[list[dict], bool]:
+    if not (summary_text or "").strip() or not kept:
+        return kept, False
+    template = next((event for event in kept if event.get("type") == "user"), kept[0])
+    return [synthetic_summary_event(summary_text, template, timestamp=timestamp)] + kept, True

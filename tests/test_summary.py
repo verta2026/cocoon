@@ -10,8 +10,10 @@ from bridge.summary import (
     event_speaker,
     extract_summary_marker,
     format_events_for_summary,
+    inject_summary_event,
     prepare_summary,
     sha_text,
+    synthetic_summary_event,
 )
 
 
@@ -108,6 +110,39 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(result.summary, "new summary")
         self.assertEqual(result.info["status"], "updated")
         self.assertTrue(result.info["write_summary"])
+
+    def test_synthetic_summary_event_uses_template_without_private_runtime_fields(self):
+        template = {
+            "type": "user",
+            "uuid": "old-id",
+            "requestId": "private-request",
+            "timestamp": "old-time",
+            "message": {"role": "user", "content": "old"},
+        }
+
+        event = synthetic_summary_event("summary", template, timestamp="new-time")
+
+        text = event["message"]["content"][0]["text"]
+        self.assertEqual(event["type"], "user")
+        self.assertFalse(event["isMeta"])
+        self.assertEqual(event["timestamp"], "new-time")
+        self.assertEqual(event["uuid"], "old-id")
+        self.assertNotIn("requestId", event)
+        self.assertIn(FORGE_SUMMARY_MARKER, text)
+        self.assertIn("summary", text)
+
+    def test_inject_summary_event_prepends_only_when_summary_exists(self):
+        kept = [{"type": "assistant", "message": {"role": "assistant", "content": "reply"}}]
+
+        unchanged, injected = inject_summary_event(kept, "")
+        changed, did_inject = inject_summary_event(kept, "summary", timestamp="now")
+
+        self.assertIs(unchanged, kept)
+        self.assertFalse(injected)
+        self.assertTrue(did_inject)
+        self.assertEqual(len(changed), 2)
+        self.assertEqual(changed[0]["timestamp"], "now")
+        self.assertIs(changed[1], kept[0])
 
 
 if __name__ == "__main__":
