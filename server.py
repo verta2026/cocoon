@@ -25,8 +25,17 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
     AUTO_DISMISS_PROMPTS,
+    AUTO_RELOAD_CHECK_INTERVAL_SECONDS,
+    AUTO_RELOAD_CONTEXT_THRESHOLD,
+    AUTO_RELOAD_CONTEXT_THRESHOLD_1M,
+    AUTO_RELOAD_COOLDOWN_SECONDS,
+    AUTO_RELOAD_DRYRUN_FILE,
+    AUTO_RELOAD_ENABLED,
+    AUTO_RELOAD_IDLE_MIN_CONTEXT,
+    AUTO_RELOAD_IDLE_SECONDS,
     AUTO_RELOAD_LOG_FILE,
     AUTO_RELOAD_PAUSE_FILE,
+    AUTO_RELOAD_STATE_FILE,
     CONVERSATIONS_DIR,
     EXTENSIONS_FILE,
     LAUNCHER_PROCESS_PATTERN,
@@ -319,9 +328,20 @@ async def reload_status(request: Request):
     verify_token(request)
     return {
         "reload_configured": bool(RELOAD_COMMAND),
+        "auto_reload_enabled": AUTO_RELOAD_ENABLED,
         "auto_reload_paused": AUTO_RELOAD_PAUSE_FILE.exists(),
+        "auto_reload_dryrun": AUTO_RELOAD_DRYRUN_FILE.exists(),
         "reload_lock_exists": RELOAD_LOCK_DIR.exists(),
         "reload_lock_stale_seconds": RELOAD_LOCK_STALE_SECONDS,
+        "auto_reload_state_file": str(AUTO_RELOAD_STATE_FILE),
+        "auto_reload_thresholds": {
+            "context_tokens": AUTO_RELOAD_CONTEXT_THRESHOLD,
+            "context_tokens_1m": AUTO_RELOAD_CONTEXT_THRESHOLD_1M,
+            "idle_min_context": AUTO_RELOAD_IDLE_MIN_CONTEXT,
+            "idle_seconds": AUTO_RELOAD_IDLE_SECONDS,
+            "cooldown": AUTO_RELOAD_COOLDOWN_SECONDS,
+            "check_interval": AUTO_RELOAD_CHECK_INTERVAL_SECONDS,
+        },
     }
 
 

@@ -22,12 +22,24 @@ class ConfigParsingTest(unittest.TestCase):
                 "COCOON_PORT": "9000",
                 "COCOON_TMUX_HISTORY_LIMIT": "30000",
                 "COCOON_MAX_UPLOAD_MB": "1.5",
+                "COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD": "100",
+                "COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD_1M": "500",
+                "COCOON_AUTO_RELOAD_IDLE_MIN_CONTEXT": "50",
+                "COCOON_AUTO_RELOAD_IDLE_SECONDS": "60",
+                "COCOON_AUTO_RELOAD_COOLDOWN_SECONDS": "0",
+                "COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS": "5",
             }
         )
 
         self.assertEqual(cfg.PORT, 9000)
         self.assertEqual(cfg.TMUX_HISTORY_LIMIT, 30000)
         self.assertEqual(cfg.MAX_UPLOAD_BYTES, int(1.5 * 1024 * 1024))
+        self.assertEqual(cfg.AUTO_RELOAD_CONTEXT_THRESHOLD, 100)
+        self.assertEqual(cfg.AUTO_RELOAD_CONTEXT_THRESHOLD_1M, 500)
+        self.assertEqual(cfg.AUTO_RELOAD_IDLE_MIN_CONTEXT, 50)
+        self.assertEqual(cfg.AUTO_RELOAD_IDLE_SECONDS, 60)
+        self.assertEqual(cfg.AUTO_RELOAD_COOLDOWN_SECONDS, 0)
+        self.assertEqual(cfg.AUTO_RELOAD_CHECK_INTERVAL_SECONDS, 5)
 
     def test_invalid_integer_env_has_clear_error(self):
         with self.assertRaisesRegex(ValueError, "COCOON_PORT must be an integer"):
@@ -43,6 +55,9 @@ class ConfigParsingTest(unittest.TestCase):
 
         cfg = self.reload_with_env({"COCOON_AUTO_DISMISS_PROMPTS": "yes"})
         self.assertTrue(cfg.AUTO_DISMISS_PROMPTS)
+
+        cfg = self.reload_with_env({"COCOON_AUTO_RELOAD_ENABLED": "1"})
+        self.assertTrue(cfg.AUTO_RELOAD_ENABLED)
 
 
 if __name__ == "__main__":

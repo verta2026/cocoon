@@ -106,6 +106,15 @@ All settings are environment variables:
 | `COCOON_EXTENSIONS_FILE` | `COCOON_WORK_DIR/.cocoon/extensions.json` | Optional read-only extension/link registry for `/extensions` |
 | `COCOON_AUTO_RELOAD_PAUSE_FILE` | `COCOON_STATE_DIR/.forge_auto_reload_paused` | Pause marker used by optional reload integrations |
 | `COCOON_AUTO_RELOAD_LOG_FILE` | `COCOON_STATE_DIR/.forge_auto_reload.log` | Log file used by optional reload integrations |
+| `COCOON_AUTO_RELOAD_ENABLED` | `0` | Enables optional automatic reload integrations. The bundled core does not start a monitor by default |
+| `COCOON_AUTO_RELOAD_STATE_FILE` | `COCOON_STATE_DIR/.auto_reload.json` | Cooldown state file for optional automatic reload integrations |
+| `COCOON_AUTO_RELOAD_DRYRUN_FILE` | `COCOON_STATE_DIR/.auto_reload_dryrun` | Dry-run marker for optional automatic reload integrations |
+| `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD` | `125000` | Context token threshold for optional automatic reload decisions |
+| `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD_1M` | `600000` | Context token threshold when a 1M-window model is detected |
+| `COCOON_AUTO_RELOAD_IDLE_MIN_CONTEXT` | `200000` | Minimum context tokens before idle-cache reload decisions are considered |
+| `COCOON_AUTO_RELOAD_IDLE_SECONDS` | `3600` | Idle seconds before idle-cache reload decisions are considered |
+| `COCOON_AUTO_RELOAD_COOLDOWN_SECONDS` | `600` | Cooldown seconds between optional automatic reload attempts |
+| `COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS` | `30` | Default polling interval for optional automatic reload integrations |
 | `COCOON_RELOAD_COMMAND` | empty | Optional command sent to tmux by `POST /reload-session` |
 | `COCOON_RELOAD_LOCK_DIR` | `COCOON_STATE_DIR/.reload.lock` | Lock directory for manual reload integrations |
 | `COCOON_RELOAD_LOCK_STALE_SECONDS` | `300` | Seconds before a reload lock can be reclaimed |

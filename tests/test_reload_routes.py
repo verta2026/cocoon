@@ -10,23 +10,44 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
         originals = {
             "verify_token": server.verify_token,
             "pause_file": server.AUTO_RELOAD_PAUSE_FILE,
+            "dryrun_file": server.AUTO_RELOAD_DRYRUN_FILE,
             "reload_command": server.RELOAD_COMMAND,
             "lock_dir": server.RELOAD_LOCK_DIR,
             "stale_seconds": server.RELOAD_LOCK_STALE_SECONDS,
+            "enabled": server.AUTO_RELOAD_ENABLED,
+            "state_file": server.AUTO_RELOAD_STATE_FILE,
+            "threshold": server.AUTO_RELOAD_CONTEXT_THRESHOLD,
+            "threshold_1m": server.AUTO_RELOAD_CONTEXT_THRESHOLD_1M,
+            "idle_min_context": server.AUTO_RELOAD_IDLE_MIN_CONTEXT,
+            "idle_seconds": server.AUTO_RELOAD_IDLE_SECONDS,
+            "cooldown": server.AUTO_RELOAD_COOLDOWN_SECONDS,
+            "check_interval": server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS,
         }
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 pause_file = root / ".paused"
+                dryrun_file = root / ".dryrun"
                 lock_dir = root / ".reload.lock"
+                state_file = root / "state.json"
                 pause_file.write_text("manual-pause\n", encoding="utf-8")
+                dryrun_file.write_text("dry-run\n", encoding="utf-8")
                 lock_dir.mkdir()
 
                 server.verify_token = lambda request: None
                 server.AUTO_RELOAD_PAUSE_FILE = pause_file
+                server.AUTO_RELOAD_DRYRUN_FILE = dryrun_file
                 server.RELOAD_COMMAND = "./private/reload.sh --secret value"
                 server.RELOAD_LOCK_DIR = lock_dir
                 server.RELOAD_LOCK_STALE_SECONDS = 123
+                server.AUTO_RELOAD_ENABLED = True
+                server.AUTO_RELOAD_STATE_FILE = state_file
+                server.AUTO_RELOAD_CONTEXT_THRESHOLD = 100
+                server.AUTO_RELOAD_CONTEXT_THRESHOLD_1M = 500
+                server.AUTO_RELOAD_IDLE_MIN_CONTEXT = 50
+                server.AUTO_RELOAD_IDLE_SECONDS = 60
+                server.AUTO_RELOAD_COOLDOWN_SECONDS = 30
+                server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS = 5
 
                 result = await server.reload_status(object())
 
@@ -34,17 +55,37 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
                     result,
                     {
                         "reload_configured": True,
+                        "auto_reload_enabled": True,
                         "auto_reload_paused": True,
+                        "auto_reload_dryrun": True,
                         "reload_lock_exists": True,
                         "reload_lock_stale_seconds": 123,
+                        "auto_reload_state_file": str(state_file),
+                        "auto_reload_thresholds": {
+                            "context_tokens": 100,
+                            "context_tokens_1m": 500,
+                            "idle_min_context": 50,
+                            "idle_seconds": 60,
+                            "cooldown": 30,
+                            "check_interval": 5,
+                        },
                     },
                 )
         finally:
             server.verify_token = originals["verify_token"]
             server.AUTO_RELOAD_PAUSE_FILE = originals["pause_file"]
+            server.AUTO_RELOAD_DRYRUN_FILE = originals["dryrun_file"]
             server.RELOAD_COMMAND = originals["reload_command"]
             server.RELOAD_LOCK_DIR = originals["lock_dir"]
             server.RELOAD_LOCK_STALE_SECONDS = originals["stale_seconds"]
+            server.AUTO_RELOAD_ENABLED = originals["enabled"]
+            server.AUTO_RELOAD_STATE_FILE = originals["state_file"]
+            server.AUTO_RELOAD_CONTEXT_THRESHOLD = originals["threshold"]
+            server.AUTO_RELOAD_CONTEXT_THRESHOLD_1M = originals["threshold_1m"]
+            server.AUTO_RELOAD_IDLE_MIN_CONTEXT = originals["idle_min_context"]
+            server.AUTO_RELOAD_IDLE_SECONDS = originals["idle_seconds"]
+            server.AUTO_RELOAD_COOLDOWN_SECONDS = originals["cooldown"]
+            server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS = originals["check_interval"]
 
     async def test_forge_auto_reload_routes_read_and_write_pause_state(self):
         originals = {
