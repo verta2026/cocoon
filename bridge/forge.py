@@ -7,8 +7,9 @@ import json
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
-from bridge.summary import content_text, event_role, is_channel_event, is_runtime_noise
+from bridge.summary import content_text, event_role, is_channel_event, is_runtime_noise, sha_text
 
 
 ASSISTANT_BLOCKS = {"thinking", "redacted_thinking", "text"}
@@ -283,3 +284,43 @@ def build_forge_summary(
         "warnings": warnings,
         "written": False,
     }
+
+
+def forge_write_paths(project_dir: Path, manifest_dir: Path, new_session_id: str) -> dict:
+    dest = project_dir / f"{new_session_id}.jsonl"
+    manifest = manifest_dir / f"{new_session_id}.manifest.json"
+    return {
+        "dest": dest,
+        "tmp_dest": dest.with_name(dest.name + ".tmp"),
+        "manifest": manifest,
+        "tmp_manifest": manifest.with_name(manifest.name + ".tmp"),
+        "summary_snapshot": manifest_dir / f"{new_session_id}.summary.md",
+    }
+
+
+def build_summary_meta_payload(
+    *,
+    source: str,
+    new_session_id: str,
+    summary_text: str,
+    summary_info: dict,
+    updated_at: str,
+) -> dict:
+    return {
+        "updated_at": updated_at,
+        "source": source,
+        "new_sid": new_session_id,
+        "dropped_events": summary_info.get("dropped_events", 0),
+        "dropped_chars": summary_info.get("dropped_chars", 0),
+        "dropped_hash": summary_info.get("dropped_hash", ""),
+        "previous_hash": summary_info.get("previous_hash", ""),
+        "summary_hash": sha_text(summary_text),
+        "summary_chars": len(summary_text or ""),
+        "status": summary_info.get("status", ""),
+        "provider": summary_info.get("provider", ""),
+        "prompt_file": summary_info.get("prompt_file", ""),
+    }
+
+
+def build_manifest_payload(summary: dict, *, created_at: str) -> dict:
+    return {**summary, "created_at": created_at}

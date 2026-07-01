@@ -1,14 +1,18 @@
 import unittest
+from pathlib import Path
 
 from bridge.forge import (
     content_blocks,
     build_forge_summary,
+    build_manifest_payload,
+    build_summary_meta_payload,
     choose_kept,
     close_at_final_assistant,
     count_thinking_blocks,
     estimate_tokens,
     event_text,
     filter_runtime_noise_turns,
+    forge_write_paths,
     forge_events,
     is_real_user,
     sanitize_content,
@@ -212,6 +216,49 @@ class ForgeTest(unittest.TestCase):
         self.assertEqual(summary["terminal_type"], "assistant")
         self.assertEqual(summary["warnings"], ["manual warning"])
         self.assertFalse(summary["written"])
+
+    def test_forge_write_paths_are_derived_without_touching_disk(self):
+        paths = forge_write_paths(Path("/project"), Path("/manifest"), "sid-1")
+
+        self.assertEqual(paths["dest"], Path("/project/sid-1.jsonl"))
+        self.assertEqual(paths["tmp_dest"], Path("/project/sid-1.jsonl.tmp"))
+        self.assertEqual(paths["manifest"], Path("/manifest/sid-1.manifest.json"))
+        self.assertEqual(paths["tmp_manifest"], Path("/manifest/sid-1.manifest.json.tmp"))
+        self.assertEqual(paths["summary_snapshot"], Path("/manifest/sid-1.summary.md"))
+
+    def test_build_summary_meta_payload_matches_public_summary_fields(self):
+        payload = build_summary_meta_payload(
+            source="source.jsonl",
+            new_session_id="sid-1",
+            summary_text="summary",
+            summary_info={
+                "dropped_events": 2,
+                "dropped_chars": 40,
+                "dropped_hash": "abc",
+                "previous_hash": "prev",
+                "status": "updated",
+                "provider": "custom",
+                "prompt_file": "prompt.md",
+            },
+            updated_at="2026-07-01T00:00:00Z",
+        )
+
+        self.assertEqual(payload["updated_at"], "2026-07-01T00:00:00Z")
+        self.assertEqual(payload["source"], "source.jsonl")
+        self.assertEqual(payload["new_sid"], "sid-1")
+        self.assertEqual(payload["dropped_events"], 2)
+        self.assertEqual(payload["summary_chars"], 7)
+        self.assertEqual(payload["status"], "updated")
+        self.assertEqual(payload["provider"], "custom")
+        self.assertEqual(payload["prompt_file"], "prompt.md")
+        self.assertEqual(len(payload["summary_hash"]), 64)
+
+    def test_build_manifest_payload_adds_created_at_without_mutating_summary(self):
+        summary = {"new_sid": "sid-1", "written": True}
+        payload = build_manifest_payload(summary, created_at="2026-07-01T00:00:00Z")
+
+        self.assertEqual(payload, {"new_sid": "sid-1", "written": True, "created_at": "2026-07-01T00:00:00Z"})
+        self.assertNotIn("created_at", summary)
 
 
 if __name__ == "__main__":
