@@ -31,6 +31,7 @@ These modules are part of the reusable bridge core:
 - `presence.push_subscriptions` - push subscription state payload helpers
 - `presence.tts_audio` - TTS audio metadata and file retention helpers
 - `presence.oauth_helpers` - OAuth base64, PKCE, auth header, and URL helpers
+- `presence.telemetry` - telemetry age, usage formatting, and retention helpers
 
 ## Provider Boundaries
 
@@ -70,6 +71,10 @@ they are useful in a real deployment:
 - `presence.oauth_helpers` provides OAuth string/PKCE/header/URL mechanics only.
   It does not ship OAuth routes, client IDs, client secrets, tokens, callback
   state, provider endpoints, or live config files.
+- `presence.telemetry` provides timestamp age/stale helpers, screentime payload
+  formatting, usage record updates, and dated-file retention helpers only. It
+  does not ship device data, live usage files, phone app labels, or route
+  storage paths.
 
 ## Private Route Boundary
 
