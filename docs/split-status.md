@@ -36,7 +36,7 @@ These modules are part of the reusable bridge core:
 - `bridge.forge_summary_state` - forge summary metadata/status/cache helpers
 - `bridge.forge_turns` - forge final-assistant turn boundary helper
 - `bridge.forge_window` - forge raw/dialogue/dropped window construction helper
-- `bridge.forge_write_files` - forge JSONL, JSON, meta, and manifest writers
+- `bridge.forge_write_files` - forge JSONL, JSON, meta, manifest, and write-execution helpers
 - `bridge.summary_provider` - OpenAI-compatible summary provider request helper
 - `presence.request_policy` - optional presence-style POST auth policy helper
 - `presence.static_pages` - optional static page lookup/serving helper
@@ -113,10 +113,11 @@ they are useful in a real deployment:
   runtime-noise-aware cleaning, dialogue-zone sanitization, and orphaned
   tool-block repair composition only. It does not ship real sessions, replay
   files, summaries, prompts, private paths, manifests, or provider config.
-- `bridge.forge_write_files` provides atomic JSONL/JSON write helpers and
-  public summary-meta and manifest payload builders only. It does not ship real
-  output directories, session files, summaries, manifests, private paths, or
-  provider config.
+- `bridge.forge_write_files` provides atomic JSONL/JSON/text write helpers,
+  public summary-meta and manifest payload builders, and generic write
+  execution for forged sessions, optional replay state, optional summary
+  state, and manifests only. It does not ship real output directories, session
+  files, summaries, manifests, private paths, provider config, or prompt text.
 - `bridge.summary_provider` provides provider config loading, request building,
   response parsing, and marker extraction only. It does not ship API keys,
   provider endpoints, private prompts, summary files, or live config.
