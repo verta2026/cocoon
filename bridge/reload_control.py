@@ -234,14 +234,25 @@ async def auto_reload_monitor_loop(
     context_tokens_func: Callable[[], int],
     active_threshold_func: Callable[[], int],
     default_interval_seconds: int,
+    startup_delay_seconds: int = 0,
     sleep_func: Callable[[int], object] = asyncio.sleep,
+    print_func: Callable[..., None] = print,
     stop_func: Callable[[], bool] | None = None,
 ) -> list[dict]:
     decisions = []
+    if startup_delay_seconds > 0:
+        await sleep_func(startup_delay_seconds)
     while True:
         if stop_func and stop_func():
             return decisions
-        decision = tick_func()
+        try:
+            decision = tick_func()
+            reason = decision.get("reason") if isinstance(decision, dict) else str(decision or "")
+            if reason:
+                print_func(f"[auto-reload] {reason}", flush=True)
+        except Exception as exc:
+            decision = {"action": "error", "error": type(exc).__name__, "message": str(exc)}
+            print_func(f"[auto-reload] error: {type(exc).__name__}: {exc}", flush=True)
         decisions.append(decision)
         context_tokens = context_tokens_func()
         active_threshold = active_threshold_func()

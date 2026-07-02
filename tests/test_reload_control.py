@@ -422,6 +422,7 @@ class ReloadControlTest(unittest.TestCase):
     def test_auto_reload_monitor_loop_runs_until_stop_and_uses_dynamic_interval(self):
         calls = []
         sleeps = []
+        prints = []
 
         async def fake_sleep(seconds):
             sleeps.append(seconds)
@@ -439,13 +440,51 @@ class ReloadControlTest(unittest.TestCase):
                 context_tokens_func=lambda: 80 if len(calls) == 1 else 10,
                 active_threshold_func=lambda: 100,
                 default_interval_seconds=30,
+                startup_delay_seconds=5,
                 sleep_func=fake_sleep,
+                print_func=lambda *args, **kwargs: prints.append(args[0]),
                 stop_func=should_stop,
             )
         )
 
         self.assertEqual(decisions, [{"action": "skip", "count": 1}, {"action": "skip", "count": 2}])
-        self.assertEqual(sleeps, [10, 30])
+        self.assertEqual(sleeps, [5, 10, 30])
+        self.assertEqual(prints, [])
+
+    def test_auto_reload_monitor_loop_prints_reason_and_survives_error(self):
+        calls = []
+        sleeps = []
+        prints = []
+
+        async def fake_sleep(seconds):
+            sleeps.append(seconds)
+
+        def tick():
+            calls.append("tick")
+            if len(calls) == 1:
+                return {"action": "fire", "reason": "api-error"}
+            if len(calls) == 2:
+                raise RuntimeError("boom")
+            return {"action": "skip", "reason": ""}
+
+        decisions = asyncio.run(
+            auto_reload_monitor_loop(
+                tick_func=tick,
+                context_tokens_func=lambda: 10,
+                active_threshold_func=lambda: 100,
+                default_interval_seconds=30,
+                sleep_func=fake_sleep,
+                print_func=lambda *args, **kwargs: prints.append(args[0]),
+                stop_func=lambda: len(calls) >= 3,
+            )
+        )
+
+        self.assertEqual(decisions[0], {"action": "fire", "reason": "api-error"})
+        self.assertEqual(decisions[1]["action"], "error")
+        self.assertEqual(decisions[1]["error"], "RuntimeError")
+        self.assertEqual(decisions[2], {"action": "skip", "reason": ""})
+        self.assertEqual(prints, ["[auto-reload] api-error", "[auto-reload] error: RuntimeError: boom"])
+        self.assertEqual(sleeps, [30, 30, 30])
 
     def test_auto_reload_monitor_loop_can_stop_before_first_tick(self):
         async def fake_sleep(seconds):
