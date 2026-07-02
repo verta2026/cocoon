@@ -39,11 +39,29 @@ def is_real_user(event: dict) -> bool:
     return any(block_type in {"string", "text"} for block_type in blocks)
 
 
+_CJK_RANGES = (
+    (0x3000, 0x30FF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0xFF00, 0xFFEF),
+)
+
+
 def estimate_tokens(event: dict) -> int:
-    return max(1, len(json.dumps(event, ensure_ascii=False, separators=(",", ":"))) // 3)
+    message = event.get("message")
+    if isinstance(message, dict):
+        text = json.dumps(message.get("content"), ensure_ascii=False, separators=(",", ":"))
+    else:
+        text = json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+    cjk = sum(1 for char in text if any(low <= ord(char) <= high for low, high in _CJK_RANGES))
+    return cjk + max(1, (len(text) - cjk) // 4) + 8
 
 
-def choose_kept(events: list[dict], retain_tokens: int) -> tuple[list[dict], int, int, int]:
+def choose_kept(
+    events: list[dict],
+    retain_tokens: int,
+    grow_backward_limit: int | None = None,
+) -> tuple[list[dict], int, int, int]:
     accumulated = 0
     cut = 0
     for index in range(len(events) - 1, -1, -1):
@@ -51,23 +69,99 @@ def choose_kept(events: list[dict], retain_tokens: int) -> tuple[list[dict], int
         if accumulated > retain_tokens:
             cut = index + 1
             break
-    keep_start = None
+
+    keep_start = len(events)
     for index in range(cut, len(events)):
         if is_real_user(events[index]):
             keep_start = index
             break
-    if keep_start is None:
-        # Autonomous stretches (tool work with no real user message inside the
-        # retain window) must not disqualify the whole session: grow the window
-        # backward to the last real user message instead of losing the newest
-        # window entirely.
-        for index in range(cut - 1, -1, -1):
+    if keep_start == len(events) and grow_backward_limit:
+        total = 0
+        for index in range(len(events) - 1, -1, -1):
+            total += estimate_tokens(events[index])
+            if total > grow_backward_limit:
+                break
             if is_real_user(events[index]):
                 keep_start = index
-                break
-    if keep_start is None:
-        raise ValueError("no real user message found in session")
+        if keep_start < len(events):
+            accumulated = sum(estimate_tokens(event) for event in events[keep_start:])
     return events[keep_start:], cut, keep_start, accumulated
+
+
+def _drop_blocks(event: dict, block_ids: set[str], block_type: str) -> dict | None:
+    content = (event.get("message") or {}).get("content")
+    if not isinstance(content, list):
+        return event
+    kept = [
+        block
+        for block in content
+        if not (
+            isinstance(block, dict)
+            and block.get("type") == block_type
+            and block.get("id" if block_type == "tool_use" else "tool_use_id") in block_ids
+        )
+    ]
+    if not kept:
+        return None
+    event["message"]["content"] = kept
+    return event
+
+
+def repair_tool_pairs(events: list[dict]) -> tuple[list[dict], int]:
+    uses = {}
+    results = set()
+    for index, event in enumerate(events):
+        content = (event.get("message") or {}).get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if event.get("type") == "assistant" and block.get("type") == "tool_use":
+                uses[block.get("id")] = index
+            elif event.get("type") == "user" and block.get("type") == "tool_result":
+                if block.get("tool_use_id") in uses:
+                    results.add(block.get("tool_use_id"))
+
+    orphan_uses = {tool_id for tool_id in uses if tool_id not in results}
+    orphan_results = set()
+    seen_uses = set()
+    for event in events:
+        content = (event.get("message") or {}).get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if event.get("type") == "assistant" and block.get("type") == "tool_use":
+                seen_uses.add(block.get("id"))
+            elif event.get("type") == "user" and block.get("type") == "tool_result":
+                if block.get("tool_use_id") not in seen_uses:
+                    orphan_results.add(block.get("tool_use_id"))
+
+    if not orphan_uses and not orphan_results:
+        return events, 0
+
+    repaired = []
+    repairs = 0
+    for event in events:
+        content = (event.get("message") or {}).get("content")
+        before = len(content) if isinstance(content, list) else -1
+        new_event = event
+        if orphan_uses and event.get("type") == "assistant":
+            new_event = _drop_blocks(copy.deepcopy(event), orphan_uses, "tool_use")
+        if new_event is not None and orphan_results and new_event.get("type") == "user":
+            if new_event is event:
+                new_event = copy.deepcopy(event)
+            new_event = _drop_blocks(new_event, orphan_results, "tool_result")
+        if new_event is None:
+            repairs += 1
+            continue
+        after = len(new_event["message"]["content"]) if isinstance(new_event.get("message", {}).get("content"), list) else -1
+        if after != before:
+            repairs += 1
+        repaired.append(new_event)
+    return repaired, repairs
 
 
 def forge_events(

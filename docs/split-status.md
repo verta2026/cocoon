@@ -65,9 +65,11 @@ they are useful in a real deployment:
 - `bridge.forge_io` provides file/hash mechanics only. It does not ship forge
   prompts, summaries, private session paths, manifests, or provider config.
 - `bridge.forge_plan_core` provides event role/block checks, real-user
-  detection, rough token estimation, retention-window selection, UUID/session
-  rewrites, and parent-chain validation only. It does not ship real sessions,
-  summaries, prompts, private project paths, manifests, or provider config.
+  detection, rough CJK-aware token estimation, retention-window selection,
+  optional backward growth to a real-user boundary, orphaned tool-block repair,
+  UUID/session rewrites, and parent-chain validation only. It does not ship real
+  sessions, summaries, prompts, private project paths, manifests, or provider
+  config.
 - `bridge.forge_sanitize` provides allowlist-based content block filtering,
   runtime noise filtering, meta/channel handling, and removal of request/usage
   diagnostics only. It does not ship deployment-specific noise markers,
