@@ -27,6 +27,7 @@ These modules are part of the reusable bridge core:
 - `bridge.forge_io` - forge reload hashing and atomic text/JSON I/O helpers
 - `bridge.forge_plan_core` - forge event retention and parent-chain helpers
 - `bridge.forge_replay` - forge trimmed-tail user-message replay payload helper
+- `bridge.forge_report` - forge summary/report metadata helpers
 - `bridge.forge_sanitize` - forge event content and runtime-noise filtering
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
 - `bridge.forge_summary_format` - forge summary input text formatting helpers
@@ -76,6 +77,9 @@ they are useful in a real deployment:
 - `bridge.forge_replay` provides trimmed-tail real-user-message extraction and
   replay payload construction only. It does not ship replay files, real
   sessions, private paths, manifests, prompts, summaries, or provider config.
+- `bridge.forge_report` provides forge report-field assembly and
+  thinking-block counting only. It does not ship real sessions, summary files,
+  prompts, private paths, manifests, provider config, or write behavior.
 - `bridge.forge_sanitize` provides allowlist-based content block filtering,
   raw-zone event cleaning that preserves tool blocks, tool-aware runtime noise
   filtering, meta/channel handling, configurable injected-summary flag
