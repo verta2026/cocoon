@@ -31,6 +31,7 @@ These modules are part of the reusable bridge core:
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
 - `bridge.forge_summary_format` - forge summary input text formatting helpers
 - `bridge.forge_summary_injection` - forge summary event injection helpers
+- `bridge.forge_summary_state` - forge summary metadata/status/cache helpers
 - `bridge.forge_turns` - forge final-assistant turn boundary helper
 - `bridge.forge_window` - forge raw/dialogue/dropped window construction helper
 - `bridge.forge_write_files` - forge JSONL, JSON, meta, and manifest writers
@@ -92,6 +93,10 @@ they are useful in a real deployment:
   configurable wrapper text, configurable machine flag field, and insertion
   mechanics only. It does not ship summaries, prompts, real sessions, private
   paths, manifests, or provider config.
+- `bridge.forge_summary_state` provides summary metadata/status construction,
+  skip and dry-run status handling, cache-match checks, and provider-result
+  state updates only. It does not ship summary files, prompts, provider calls,
+  live config, real sessions, private paths, or manifests.
 - `bridge.forge_turns` provides text-bearing final-assistant turn-boundary
   selection, trimmed-tail reporting, and warnings only. It does not ship real
   sessions, summaries, prompts, private paths, manifests, or provider config.
