@@ -26,6 +26,7 @@ These modules are part of the reusable bridge core:
 - `bridge.push_routes` - optional push provider route wiring
 - `bridge.forge_io` - forge reload hashing and atomic text/JSON I/O helpers
 - `bridge.forge_plan_core` - forge event retention and parent-chain helpers
+- `bridge.forge_sanitize` - forge event content and runtime-noise filtering
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
 - `bridge.forge_write_files` - forge JSONL, JSON, meta, and manifest writers
 - `bridge.summary_provider` - OpenAI-compatible summary provider request helper
@@ -64,6 +65,11 @@ they are useful in a real deployment:
   detection, rough token estimation, retention-window selection, UUID/session
   rewrites, and parent-chain validation only. It does not ship real sessions,
   summaries, prompts, private project paths, manifests, or provider config.
+- `bridge.forge_sanitize` provides allowlist-based content block filtering,
+  runtime noise filtering, meta/channel handling, and removal of request/usage
+  diagnostics only. It does not ship deployment-specific noise markers,
+  personal command strings, real sessions, summaries, prompts, or private
+  paths.
 - `bridge.forge_session_files` provides JSONL reading, project file discovery,
   latest-session selection, and timestamp sort helpers only. It does not ship
   real Claude sessions, archive content, private project paths, or manifests.
