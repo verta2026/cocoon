@@ -1,6 +1,7 @@
 """Cocoon configuration — all settings in one place."""
 
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -75,6 +76,29 @@ TTS_PROVIDER = os.environ.get("COCOON_TTS_PROVIDER", "none").strip().lower()
 TTS_MAX_TEXT_CHARS = _env_int("COCOON_TTS_MAX_TEXT_CHARS", 800, minimum=1)
 TTS_MAX_AUDIO_FILES = _env_int("COCOON_TTS_MAX_AUDIO_FILES", 40, minimum=1)
 AUTO_DISMISS_PROMPTS = _env_bool("COCOON_AUTO_DISMISS_PROMPTS", True)
+
+
+def _default_claude_projects_dir(work_dir: str) -> str:
+    # Claude Code stores each project's session jsonl under
+    # ~/.claude/projects/<work dir with non-alphanumerics mapped to "-">.
+    munged = re.sub(r"[^A-Za-z0-9]", "-", str(Path(work_dir).resolve()))
+    return str(Path.home() / ".claude" / "projects" / munged)
+
+
+# Live chat mirror (/messages): reads the Claude Code session jsonl directly.
+LIVE_MESSAGES_ENABLED = _env_bool("COCOON_LIVE_MESSAGES_ENABLED", True)
+CLAUDE_PROJECTS_DIR = Path(
+    os.environ.get("COCOON_CLAUDE_PROJECTS_DIR", _default_claude_projects_dir(WORK_DIR))
+)
+LIVE_ARCHIVE_FILE = Path(
+    os.environ.get("COCOON_LIVE_ARCHIVE_FILE", str(CONVERSATIONS_DIR / "_current_session.jsonl"))
+)
+LIVE_ARCHIVE_SYNC_SECONDS = _env_int("COCOON_LIVE_ARCHIVE_SYNC_SECONDS", 1, minimum=1)
+# Optional jsonl a messaging plugin appends outgoing sends to; empty disables it.
+SEND_SIDECAR_FILE = os.environ.get("COCOON_SEND_SIDECAR_FILE", "").strip()
+# Inbound <channel> messages from this sender id render as the user;
+# other senders render as third-party "channel" bubbles.
+PRIMARY_SENDER_ID = os.environ.get("COCOON_PRIMARY_SENDER_ID", "").strip()
 
 ASSISTANT_NAME = os.environ.get("COCOON_ASSISTANT_NAME", "Claude")
 ASSISTANT_AVATAR = os.environ.get("COCOON_ASSISTANT_AVATAR", "")

@@ -23,6 +23,12 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import (
     AUTO_DISMISS_PROMPTS,
+    CLAUDE_PROJECTS_DIR,
+    LIVE_ARCHIVE_FILE,
+    LIVE_ARCHIVE_SYNC_SECONDS,
+    LIVE_MESSAGES_ENABLED,
+    PRIMARY_SENDER_ID,
+    SEND_SIDECAR_FILE,
     AUTO_RELOAD_CHECK_INTERVAL_SECONDS,
     AUTO_RELOAD_CONTEXT_THRESHOLD,
     AUTO_RELOAD_CONTEXT_THRESHOLD_1M,
@@ -59,6 +65,11 @@ from bridge.session import (
 from bridge.history import (
     list_conversation_sessions as _list_conversation_sessions,
     read_conversation_messages as _read_conversation_messages,
+)
+from bridge.live_archive import (
+    live_messages as _live_messages,
+    read_live_archive_rows as _read_live_archive_rows,
+    sync_live_archive as _sync_live_archive,
 )
 from bridge.control_routes import register_control_routes
 from bridge.history_routes import register_history_routes
@@ -354,7 +365,55 @@ async def get_raw_output(request: Request, lines: int = 1500):
     return PlainTextResponse(captured_output_or_404(lines))
 
 
-register_output_routes(app, get_output=get_output, get_raw_output=get_raw_output)
+_LIVE_ARCHIVE_STATE = {"path": "", "mtime": 0.0, "checked": 0.0}
+
+
+def current_session_jsonl():
+    try:
+        candidates = CLAUDE_PROJECTS_DIR.glob("*.jsonl")
+        return max(candidates, key=lambda p: p.stat().st_mtime, default=None)
+    except OSError:
+        return None
+
+
+def sync_live_archive(force=False):
+    return _sync_live_archive(
+        LIVE_ARCHIVE_FILE,
+        _LIVE_ARCHIVE_STATE,
+        LIVE_ARCHIVE_SYNC_SECONDS,
+        current_session_jsonl,
+        sidecar_file=Path(SEND_SIDECAR_FILE) if SEND_SIDECAR_FILE else None,
+        force=force,
+    )
+
+
+async def get_messages(request: Request, limit: int = 300):
+    verify_token(request)
+    if not tmux_exists() and not claude_running():
+        raise HTTPException(404, "No active session")
+    limit = max(20, min(limit, 1000))
+    running = claude_running()
+    if running:
+        sync_live_archive()
+    messages = _live_messages(
+        _read_live_archive_rows(LIVE_ARCHIVE_FILE),
+        limit,
+        primary_sender_id=PRIMARY_SENDER_ID,
+    )
+    return {
+        "messages": messages,
+        "running": running,
+        "busy": claude_busy() if running else False,
+        "source": "live-archive",
+    }
+
+
+register_output_routes(
+    app,
+    get_output=get_output,
+    get_raw_output=get_raw_output,
+    get_messages=get_messages if LIVE_MESSAGES_ENABLED else None,
+)
 
 
 @app.get("/extensions")
