@@ -1,7 +1,10 @@
 import unittest
 
 from bridge.forge_sanitize import (
+    clean_event,
+    clean_events,
     content_text,
+    filter_noise_turns_tool_aware,
     filter_runtime_noise_turns,
     is_runtime_noise,
     sanitize_content,
@@ -65,6 +68,7 @@ class ForgeSanitizeTest(unittest.TestCase):
         self.assertNotIn("diagnostics", clean["message"])
         self.assertEqual(clean["message"]["content"], [{"type": "text", "text": "reply"}])
         self.assertIsNone(sanitize_event(user("hidden", isMeta=True), ASSISTANT_BLOCKS, USER_BLOCKS))
+        self.assertIsNone(sanitize_event(user("summary", bondForgeSummary=True), ASSISTANT_BLOCKS, USER_BLOCKS))
 
     def test_sanitize_event_keeps_channel_meta_messages(self):
         channel = {
@@ -95,6 +99,46 @@ class ForgeSanitizeTest(unittest.TestCase):
         rows = [user("FORGE_RESUME_READY_hidden"), assistant("hidden"), user("visible")]
 
         cleaned = filter_runtime_noise_turns(rows, user_markers=("FORGE_RESUME_READY_",))
+
+        self.assertEqual([content_text(event["message"]["content"]) for event in cleaned], ["visible"])
+
+    def test_filter_noise_turns_tool_aware_keeps_tool_results_inside_skipped_turn(self):
+        rows = [
+            user("FORGE_RESUME_READY_hidden"),
+            {
+                "type": "user",
+                "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "x", "content": "hidden"}]},
+            },
+            assistant("hidden reply"),
+            user("visible"),
+        ]
+
+        cleaned = filter_noise_turns_tool_aware(rows, user_markers=("FORGE_RESUME_READY_",))
+
+        self.assertEqual([content_text(event["message"]["content"]) for event in cleaned], ["visible"])
+
+    def test_clean_event_preserves_tool_blocks_and_strips_runtime_fields(self):
+        event = assistant("reply", requestId="rid")
+        event["message"]["content"].append({"type": "tool_use", "id": "tool", "name": "run"})
+        event["message"]["usage"] = {"tokens": 1}
+        event["message"]["diagnostics"] = {"trace": "x"}
+
+        clean = clean_event(event)
+
+        self.assertIn({"type": "tool_use", "id": "tool", "name": "run"}, clean["message"]["content"])
+        self.assertNotIn("usage", clean["message"])
+        self.assertNotIn("diagnostics", clean["message"])
+        self.assertIn("requestId", clean)
+
+    def test_clean_events_filters_previous_forge_summary_and_noise(self):
+        rows = [
+            user("old summary", bondForgeSummary=True),
+            user("FORGE_CONTEXT_SUMMARY:\nhidden"),
+            assistant("hidden reply"),
+            user("visible"),
+        ]
+
+        cleaned = clean_events(rows, user_markers=("FORGE_CONTEXT_SUMMARY:",))
 
         self.assertEqual([content_text(event["message"]["content"]) for event in cleaned], ["visible"])
 

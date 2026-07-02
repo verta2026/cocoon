@@ -76,6 +76,72 @@ def filter_runtime_noise_turns(
     return filtered
 
 
+def _is_user_turn_head(event: dict) -> bool:
+    from bridge.forge_plan_core import content_blocks
+
+    blocks = content_blocks((event.get("message") or {}).get("content"))
+    return any(block_type in {"string", "text"} for block_type in blocks)
+
+
+def filter_noise_turns_tool_aware(
+    events: list[dict],
+    assistant_prefixes: tuple[str, ...] = (),
+    user_markers: tuple[str, ...] = (),
+) -> list[dict]:
+    """Filter runtime-noise turns without treating tool_result as a new turn."""
+    filtered = []
+    skipping = False
+    for event in events:
+        if event.get("type") == "user" and _is_user_turn_head(event):
+            skipping = is_runtime_noise_event(event, assistant_prefixes, user_markers)
+            if skipping:
+                continue
+        elif skipping:
+            continue
+        if event.get("type") == "assistant" and is_runtime_noise_event(event, assistant_prefixes, ()):
+            continue
+        filtered.append(event)
+    return filtered
+
+
+def clean_event(event: dict) -> dict | None:
+    """Clean conversation events while preserving tool blocks for a raw zone."""
+    if event.get("type") not in {"user", "assistant"}:
+        return None
+    if event.get("isMeta") is True and not is_channel_message(event):
+        return None
+    if event.get("bondForgeSummary"):
+        return None
+    role = role_of(event)
+    if role not in {"user", "assistant"} or event.get("type") != role:
+        return None
+    message = event.get("message")
+    if not isinstance(message, dict):
+        return None
+    content = message.get("content")
+    if isinstance(content, str):
+        if not content.strip():
+            return None
+    elif isinstance(content, list):
+        if not any(isinstance(block, dict) for block in content):
+            return None
+    else:
+        return None
+    clean = copy.deepcopy(event)
+    clean["message"].pop("usage", None)
+    clean["message"].pop("diagnostics", None)
+    return clean
+
+
+def clean_events(
+    rows: list[dict],
+    assistant_prefixes: tuple[str, ...] = (),
+    user_markers: tuple[str, ...] = (),
+) -> list[dict]:
+    cleaned = [event for event in (clean_event(row) for row in rows) if event is not None]
+    return filter_noise_turns_tool_aware(cleaned, assistant_prefixes, user_markers)
+
+
 def sanitize_event(
     event: dict,
     assistant_blocks: set[str],
@@ -85,6 +151,8 @@ def sanitize_event(
     if event.get("type") not in {"user", "assistant"}:
         return None
     if event.get("isMeta") is True and not is_channel_message(event):
+        return None
+    if event.get("bondForgeSummary"):
         return None
     role = role_of(event)
     if role not in {"user", "assistant"}:

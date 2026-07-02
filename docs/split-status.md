@@ -71,8 +71,9 @@ they are useful in a real deployment:
   sessions, summaries, prompts, private project paths, manifests, or provider
   config.
 - `bridge.forge_sanitize` provides allowlist-based content block filtering,
-  runtime noise filtering, meta/channel handling, and removal of request/usage
-  diagnostics only. It does not ship deployment-specific noise markers,
+  raw-zone event cleaning that preserves tool blocks, tool-aware runtime noise
+  filtering, meta/channel handling, injected-summary filtering, and removal of
+  usage/diagnostics only. It does not ship deployment-specific noise markers,
   personal command strings, real sessions, summaries, prompts, or private
   paths.
 - `bridge.forge_session_files` provides JSONL reading, project file discovery,
