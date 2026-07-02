@@ -85,9 +85,9 @@ they are useful in a real deployment:
 - `bridge.forge_summary_injection` provides synthetic summary-event construction
   and insertion mechanics only. It does not ship summaries, prompts, real
   sessions, private paths, manifests, or provider config.
-- `bridge.forge_turns` provides final-assistant turn-boundary selection and
-  warnings only. It does not ship real sessions, summaries, prompts, private
-  paths, manifests, or provider config.
+- `bridge.forge_turns` provides text-bearing final-assistant turn-boundary
+  selection, trimmed-tail reporting, and warnings only. It does not ship real
+  sessions, summaries, prompts, private paths, manifests, or provider config.
 - `bridge.forge_write_files` provides atomic JSONL/JSON write helpers and
   public summary-meta and manifest payload builders only. It does not ship real
   output directories, session files, summaries, manifests, private paths, or
