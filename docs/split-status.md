@@ -29,6 +29,7 @@ These modules are part of the reusable bridge core:
 - `bridge.forge_sanitize` - forge event content and runtime-noise filtering
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
 - `bridge.forge_summary_format` - forge summary input text formatting helpers
+- `bridge.forge_turns` - forge final-assistant turn boundary helper
 - `bridge.forge_write_files` - forge JSONL, JSON, meta, and manifest writers
 - `bridge.summary_provider` - OpenAI-compatible summary provider request helper
 - `presence.request_policy` - optional presence-style POST auth policy helper
@@ -78,6 +79,9 @@ they are useful in a real deployment:
   runtime-noise-aware summary input formatting, and middle clamping only. It
   does not ship personal speaker names, deployment-specific noise markers,
   summary prompts, real sessions, summaries, or private paths.
+- `bridge.forge_turns` provides final-assistant turn-boundary selection and
+  warnings only. It does not ship real sessions, summaries, prompts, private
+  paths, manifests, or provider config.
 - `bridge.forge_write_files` provides atomic JSONL/JSON write helpers and
   public summary-meta and manifest payload builders only. It does not ship real
   output directories, session files, summaries, manifests, private paths, or
