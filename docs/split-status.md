@@ -30,6 +30,7 @@ These modules are part of the reusable bridge core:
 - `presence.editor_files` - editor path policy and download header helpers
 - `presence.push_subscriptions` - push subscription state payload helpers
 - `presence.tts_audio` - TTS audio metadata and file retention helpers
+- `presence.oauth_helpers` - OAuth base64, PKCE, auth header, and URL helpers
 
 ## Provider Boundaries
 
@@ -66,6 +67,9 @@ they are useful in a real deployment:
 - `presence.tts_audio` provides request validation, audio-id/path, public
   metadata, latest-record, and file-retention helpers only. It does not ship TTS
   provider calls, API keys, voice IDs, generated audio, or live storage.
+- `presence.oauth_helpers` provides OAuth string/PKCE/header/URL mechanics only.
+  It does not ship OAuth routes, client IDs, client secrets, tokens, callback
+  state, provider endpoints, or live config files.
 
 ## Private Route Boundary
 
