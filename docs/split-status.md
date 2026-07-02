@@ -30,6 +30,7 @@ These modules are part of the reusable bridge core:
 - `bridge.forge_report` - forge summary/report metadata helpers
 - `bridge.forge_sanitize` - forge event content and runtime-noise filtering
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
+- `bridge.forge_source` - forge source-session selection helpers
 - `bridge.forge_summary_format` - forge summary input text formatting helpers
 - `bridge.forge_summary_injection` - forge summary event injection helpers
 - `bridge.forge_summary_state` - forge summary metadata/status/cache helpers
@@ -89,6 +90,10 @@ they are useful in a real deployment:
 - `bridge.forge_session_files` provides JSONL reading, project file discovery,
   latest-session selection, and timestamp sort helpers only. It does not ship
   real Claude sessions, archive content, private project paths, or manifests.
+- `bridge.forge_source` provides explicit-source loading, latest viable source
+  selection, window construction handoff, and skipped-candidate reports only.
+  It does not ship real sessions, project paths, summaries, prompts, manifests,
+  provider config, or write behavior.
 - `bridge.forge_summary_format` provides event speaker/timestamp formatting,
   runtime-noise-aware summary input formatting, and middle clamping only. It
   does not ship personal speaker names, deployment-specific noise markers,
