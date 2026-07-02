@@ -26,6 +26,7 @@ These modules are part of the reusable bridge core:
 - `bridge.push_routes` - optional push provider route wiring
 - `bridge.forge_io` - forge reload hashing and atomic text/JSON I/O helpers
 - `bridge.forge_plan_core` - forge event retention and parent-chain helpers
+- `bridge.forge_replay` - forge trimmed-tail user-message replay payload helper
 - `bridge.forge_sanitize` - forge event content and runtime-noise filtering
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
 - `bridge.forge_summary_format` - forge summary input text formatting helpers
@@ -70,6 +71,9 @@ they are useful in a real deployment:
   UUID/session rewrites, and parent-chain validation only. It does not ship real
   sessions, summaries, prompts, private project paths, manifests, or provider
   config.
+- `bridge.forge_replay` provides trimmed-tail real-user-message extraction and
+  replay payload construction only. It does not ship replay files, real
+  sessions, private paths, manifests, prompts, summaries, or provider config.
 - `bridge.forge_sanitize` provides allowlist-based content block filtering,
   raw-zone event cleaning that preserves tool blocks, tool-aware runtime noise
   filtering, meta/channel handling, configurable injected-summary flag
