@@ -27,6 +27,7 @@ These modules are part of the reusable bridge core:
 - `bridge.forge_io` - forge reload hashing and atomic text/JSON I/O helpers
 - `bridge.forge_plan_core` - forge event retention and parent-chain helpers
 - `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
+- `bridge.forge_write_files` - forge JSONL, JSON, meta, and manifest writers
 - `bridge.summary_provider` - OpenAI-compatible summary provider request helper
 - `presence.request_policy` - optional presence-style POST auth policy helper
 - `presence.static_pages` - optional static page lookup/serving helper
@@ -66,6 +67,10 @@ they are useful in a real deployment:
 - `bridge.forge_session_files` provides JSONL reading, project file discovery,
   latest-session selection, and timestamp sort helpers only. It does not ship
   real Claude sessions, archive content, private project paths, or manifests.
+- `bridge.forge_write_files` provides atomic JSONL/JSON write helpers and
+  public summary-meta and manifest payload builders only. It does not ship real
+  output directories, session files, summaries, manifests, private paths, or
+  provider config.
 - `bridge.summary_provider` provides provider config loading, request building,
   response parsing, and marker extraction only. It does not ship API keys,
   provider endpoints, private prompts, summary files, or live config.
