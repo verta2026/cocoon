@@ -25,6 +25,7 @@ These modules are part of the reusable bridge core:
 - `bridge.tts_routes` - optional TTS route wiring
 - `bridge.push_routes` - optional push provider route wiring
 - `bridge.forge_io` - forge reload hashing and atomic text/JSON I/O helpers
+- `bridge.forge_session_files` - forge session jsonl discovery and sort helpers
 - `bridge.summary_provider` - OpenAI-compatible summary provider request helper
 - `presence.request_policy` - optional presence-style POST auth policy helper
 - `presence.static_pages` - optional static page lookup/serving helper
@@ -57,6 +58,9 @@ they are useful in a real deployment:
   configured.
 - `bridge.forge_io` provides file/hash mechanics only. It does not ship forge
   prompts, summaries, private session paths, manifests, or provider config.
+- `bridge.forge_session_files` provides JSONL reading, project file discovery,
+  latest-session selection, and timestamp sort helpers only. It does not ship
+  real Claude sessions, archive content, private project paths, or manifests.
 - `bridge.summary_provider` provides provider config loading, request building,
   response parsing, and marker extraction only. It does not ship API keys,
   provider endpoints, private prompts, summary files, or live config.
