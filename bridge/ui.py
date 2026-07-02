@@ -422,6 +422,9 @@ let _blocks = [], _isBusy = false, _lastRawHash = 0, _unchangedPolls = 0;
 let _optimisticText = null, _typingEl = null, _deferredBlocks = null;
 let _statusIv = null;
 let _autoReloadPaused = false;
+let _messagesMode = false;
+let _renderedKeys = new Set();
+let _sentUserTexts = [];
 
 function simpleHash(s) {
   var h = 0;
@@ -905,9 +908,109 @@ function appendBlockEl(block, beforeEl) {
   return el;
 }
 
+function isPinnedToBottom() {
+  return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 40;
+}
+
+function msgKey(m) {
+  return (m.role || '') + '\u0000' + (m.timestamp || '') + '\u0000' + ((m.content || '').substring(0, 200));
+}
+
+function onlyVoiceId(m) {
+  if (!m || (m.role || 'assistant') !== 'assistant') return '';
+  var match = (m.content || '').trim().match(/^\[\[(?:cocoon_)?voice:([a-f0-9]{16,64})\]\]$/);
+  return match ? match[1] : '';
+}
+
+function messageHasVoiceId(m, id) {
+  if (!m || !id) return false;
+  var c = m.content || '';
+  return c.indexOf('voice:' + id + ']]') !== -1 || c.indexOf('/tts/audio/' + id + '.mp3') !== -1;
+}
+
+function shouldRenderMsg(m, i, messages) {
+  var role = m.role || 'assistant';
+  if (role !== 'user' && role !== 'assistant' && role !== 'channel') return false;
+  if (!(m.content || '').trim()) return false;
+  // A voice-only message is usually echoed by the next assistant turn; skip
+  // the bare marker when the played version follows shortly after.
+  var vid = onlyVoiceId(m);
+  if (vid) {
+    for (var j = i + 1; j < Math.min(messages.length, i + 4); j++) {
+      if (messageHasVoiceId(messages[j], vid)) return false;
+    }
+  }
+  return true;
+}
+
+function renderMessageBubble(m) {
+  var role = m.role || 'assistant';
+  if (role === 'channel') {
+    var label = escHtml(m.sender || 'channel');
+    var body = escHtml(m.content || '').replace(/\n/g, '<br>');
+    return body ? '<div class="msg-channel"><strong>' + label + '</strong><br>' + body + '</div>' : '';
+  }
+  var raw = (m.content || '').trim();
+  var html = role === 'user' ? renderFileRefs(escHtml(raw)) : renderMessageContent(raw, 'assistant');
+  var parts = renderMessageParts(html, role, raw);
+  return parts ? parts.html : '';
+}
+
+function enterMessagesMode() {
+  chat.innerHTML = '';
+  _renderedKeys.clear();
+  _blocks = [];
+  _deferredBlocks = null;
+  if (_typingEl && _typingEl.parentNode) _typingEl.remove();
+  _messagesMode = true;
+}
+
+function showTypingIndicator() {
+  var pinned = isPinnedToBottom();
+  if (!_typingEl) { _typingEl = document.createElement('div'); _typingEl.id = 'typing-indicator'; }
+  _typingEl.innerHTML = typingBubbleHtml();
+  if (!_typingEl.parentNode) chat.appendChild(_typingEl);
+  if (pinned) scrollChatToBottom();
+}
+
+function syncMessages(messages) {
+  var pinned = isPinnedToBottom();
+  var appended = false;
+  for (var i = 0; i < messages.length; i++) {
+    var m = messages[i];
+    if (!shouldRenderMsg(m, i, messages)) continue;
+    var key = msgKey(m);
+    if (_renderedKeys.has(key)) continue;
+    if (m.role === 'user') {
+      var idx = _sentUserTexts.findIndex(function(t) { return m.content && m.content.indexOf(t) !== -1; });
+      if (idx !== -1) {
+        // The optimistic bubble already shows this send; keep it as the
+        // permanent rendering instead of appending a duplicate.
+        _sentUserTexts.splice(idx, 1);
+        var optEl = document.getElementById('optimistic-msg');
+        if (optEl) { optEl.removeAttribute('id'); _optimisticText = null; }
+        _renderedKeys.add(key);
+        continue;
+      }
+    }
+    var html = renderMessageBubble(m);
+    if (!html) { _renderedKeys.add(key); continue; }
+    var anchor = document.getElementById('optimistic-msg');
+    if (!anchor && _typingEl && _typingEl.parentNode) anchor = _typingEl;
+    if (anchor) anchor.insertAdjacentHTML('beforebegin', html);
+    else chat.insertAdjacentHTML('beforeend', html);
+    _renderedKeys.add(key);
+    appended = true;
+  }
+  if (appended) {
+    bindVoicePlayers();
+    if (pinned) { bindBottomOnMediaLoad(); scrollChatToBottom(); }
+  }
+}
+
 function paintChat(newBlocks) {
   if (isVoicePlaying()) { _deferredBlocks = newBlocks; return; }
-  var wasAtBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 30;
+  var wasAtBottom = isPinnedToBottom();
 
   if (_typingEl && _typingEl.parentNode) _typingEl.remove();
 
@@ -980,8 +1083,13 @@ function setBusy(busy) {
   if (_isBusy === next) return;
   _isBusy = next;
   startStatusPoll(next ? 3000 : 8000);
-  if (!next && _typingEl && _typingEl.parentNode) _typingEl.remove();
-  else if (next && _blocks.length) paintChat(_blocks);
+  if (!next) {
+    if (_typingEl && _typingEl.parentNode) _typingEl.remove();
+  } else if (_messagesMode) {
+    showTypingIndicator();
+  } else if (_blocks.length) {
+    paintChat(_blocks);
+  }
 }
 
 function updateAutoReloadButton(paused) {
@@ -1020,6 +1128,7 @@ async function reloadSession() {
     }
     _blocks = []; _deferredBlocks = null; _lastRawHash = 0; _unchangedPolls = 0;
     _optimisticText = null; _typingEl = null;
+    _renderedKeys.clear(); _sentUserTexts = []; _messagesMode = false;
     setTimeout(getOutput, 1000);
   } catch(e) {
     chat.innerHTML = '<div class="msg-system">reload failed</div>';
@@ -1042,16 +1151,38 @@ async function toggleAutoReload() {
 }
 
 let _autoStartTried = false;
+let _messagesUnavailable = false;
 async function getOutput() {
+  if (!_messagesUnavailable) {
+    try {
+      var mr = await fetch('/messages?limit=500', { headers });
+      if (mr.status === 404) {
+        // Route not registered means the deployment has no live-archive
+        // provider; a 404 with "No active session" is just a stopped session.
+        try {
+          var err = await mr.json();
+          if ((err.detail || '') === 'Not Found') _messagesUnavailable = true;
+        } catch(e) {}
+      } else if (mr.ok) {
+        var md = await mr.json();
+        if (md.messages && md.messages.length) {
+          if (!_messagesMode) enterMessagesMode();
+          setBusy(!!(md.running && md.busy));
+          syncMessages(md.messages);
+          return;
+        }
+      }
+    } catch(e) {}
+  }
   try {
     var r = await fetch('/output?lines=' + OUTPUT_LINES, { headers });
     if (!r.ok) {
       if (!_autoStartTried && (r.status === 404 || r.status === 409)) {
         _autoStartTried = true;
-        chat.innerHTML = '<div class="msg-system">starting session...</div>';
+        if (!_messagesMode) chat.innerHTML = '<div class="msg-system">starting session...</div>';
         try { await fetch('/start', { method: 'POST', headers }); } catch(e) {}
         setTimeout(getOutput, 5000);
-      } else if (!_blocks.length) {
+      } else if (!_blocks.length && !_messagesMode) {
         chat.innerHTML = '<div class="msg-system">session stopped</div>';
       }
       return;
@@ -1069,9 +1200,16 @@ async function getOutput() {
     _unchangedPolls = 0;
 
     var blocks = parseBlocks(text);
+    if (_messagesMode) {
+      // Leaving messages mode: drop keyed nodes before painting blocks.
+      _messagesMode = false;
+      _renderedKeys.clear();
+      chat.innerHTML = '';
+      if (_typingEl && _typingEl.parentNode) _typingEl.remove();
+    }
     paintChat(blocks);
   } catch(e) {
-    if (!_blocks.length) chat.innerHTML = '<div class="msg-system">bridge offline</div>';
+    if (!_blocks.length && !_messagesMode) chat.innerHTML = '<div class="msg-system">bridge offline</div>';
   }
 }
 
@@ -1150,6 +1288,7 @@ async function sendMsg() {
   input.value = ''; input.style.height = 'auto';
 
   _optimisticText = text;
+  _sentUserTexts.push(text);
   var displayText = renderFileRefs(escHtml(text)).replace(/\n/g, '<br>');
   var optHtml = '<div class="msg-wrap msg-wrap-user" id="optimistic-msg"><div class="avatar avatar-user">' + avatarContent('user') + '</div><div><div class="msg msg-user">' + displayText + '</div></div></div>';
   if (_typingEl && _typingEl.parentNode) _typingEl.insertAdjacentHTML('beforebegin', optHtml);
@@ -1165,6 +1304,7 @@ async function sendMsg() {
 async function newSession() {
   _blocks = []; _deferredBlocks = null; _lastRawHash = 0; _unchangedPolls = 0;
   _optimisticText = null; _typingEl = null;
+  _renderedKeys.clear(); _sentUserTexts = []; _messagesMode = false;
   chat.innerHTML = '<div class="msg-system">starting new session...</div>';
   try { await fetch('/new-session', { method: 'POST', headers, signal: AbortSignal.timeout(90000) }); } catch(e) {}
   setTimeout(getOutput, 500);
