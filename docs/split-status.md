@@ -14,6 +14,8 @@ These modules are part of the reusable bridge core:
 - `bridge.reload_routes` - session/reload control route wiring
 - `bridge.ui_routes` - chat, terminal, and optional history UI route wiring
 - `bridge.output_routes` - terminal output, raw output, and optional messages
+- `bridge.live_archive` - session-jsonl chat mirror provider for /messages,
+  with external-send sidecar merge and double-record dedup
 - `bridge.status_routes` - bridge status route wiring
 - `bridge.interaction_routes` - start and send route wiring
 - `bridge.control_routes` - control-key route wiring
@@ -39,6 +41,12 @@ These modules are part of the reusable bridge core:
 
 These modules define generic shape only. They need an instance provider before
 they are useful in a real deployment:
+
+- `bridge.live_archive` ships transcript-extraction, sidecar-merge, dedup, and
+  channel-tag mechanics only. It does not ship real conversation data, sender
+  identities, personal noise filters, or marker formats beyond the neutral
+  `[[voice:id]]` default; deployments inject their own through parameters and
+  the `COCOON_SEND_SIDECAR_FILE` / `COCOON_PRIMARY_SENDER_ID` settings.
 
 - `bridge.plugin_routes` needs plugin-specific state, API, and optional UI
   handlers.
