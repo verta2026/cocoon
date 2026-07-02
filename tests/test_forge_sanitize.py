@@ -6,6 +6,7 @@ from bridge.forge_sanitize import (
     content_text,
     filter_noise_turns_tool_aware,
     filter_runtime_noise_turns,
+    has_summary_flag,
     is_runtime_noise,
     sanitize_content,
     sanitize_event,
@@ -68,7 +69,7 @@ class ForgeSanitizeTest(unittest.TestCase):
         self.assertNotIn("diagnostics", clean["message"])
         self.assertEqual(clean["message"]["content"], [{"type": "text", "text": "reply"}])
         self.assertIsNone(sanitize_event(user("hidden", isMeta=True), ASSISTANT_BLOCKS, USER_BLOCKS))
-        self.assertIsNone(sanitize_event(user("summary", bondForgeSummary=True), ASSISTANT_BLOCKS, USER_BLOCKS))
+        self.assertIsNone(sanitize_event(user("summary", forgeSummary=True), ASSISTANT_BLOCKS, USER_BLOCKS))
 
     def test_sanitize_event_keeps_channel_meta_messages(self):
         channel = {
@@ -132,7 +133,7 @@ class ForgeSanitizeTest(unittest.TestCase):
 
     def test_clean_events_filters_previous_forge_summary_and_noise(self):
         rows = [
-            user("old summary", bondForgeSummary=True),
+            user("old summary", forgeSummary=True),
             user("FORGE_CONTEXT_SUMMARY:\nhidden"),
             assistant("hidden reply"),
             user("visible"),
@@ -141,6 +142,13 @@ class ForgeSanitizeTest(unittest.TestCase):
         cleaned = clean_events(rows, user_markers=("FORGE_CONTEXT_SUMMARY:",))
 
         self.assertEqual([content_text(event["message"]["content"]) for event in cleaned], ["visible"])
+
+    def test_summary_flag_fields_are_configurable_for_instances(self):
+        event = user("summary", instanceSummary=True)
+
+        self.assertTrue(has_summary_flag(event, ("instanceSummary",)))
+        self.assertIsNone(clean_event(event, ("instanceSummary",)))
+        self.assertIsNone(sanitize_event(event, ASSISTANT_BLOCKS, USER_BLOCKS, summary_flag_fields=("instanceSummary",)))
 
 
 if __name__ == "__main__":

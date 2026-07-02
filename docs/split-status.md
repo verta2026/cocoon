@@ -72,10 +72,10 @@ they are useful in a real deployment:
   config.
 - `bridge.forge_sanitize` provides allowlist-based content block filtering,
   raw-zone event cleaning that preserves tool blocks, tool-aware runtime noise
-  filtering, meta/channel handling, injected-summary filtering, and removal of
-  usage/diagnostics only. It does not ship deployment-specific noise markers,
-  personal command strings, real sessions, summaries, prompts, or private
-  paths.
+  filtering, meta/channel handling, configurable injected-summary flag
+  filtering, and removal of usage/diagnostics only. It does not ship
+  deployment-specific noise markers, personal command strings, real sessions,
+  summaries, prompts, or private paths.
 - `bridge.forge_session_files` provides JSONL reading, project file discovery,
   latest-session selection, and timestamp sort helpers only. It does not ship
   real Claude sessions, archive content, private project paths, or manifests.
@@ -83,9 +83,10 @@ they are useful in a real deployment:
   runtime-noise-aware summary input formatting, and middle clamping only. It
   does not ship personal speaker names, deployment-specific noise markers,
   summary prompts, real sessions, summaries, or private paths.
-- `bridge.forge_summary_injection` provides synthetic summary-event construction
-  and insertion mechanics only. It does not ship summaries, prompts, real
-  sessions, private paths, manifests, or provider config.
+- `bridge.forge_summary_injection` provides synthetic summary-event construction,
+  configurable wrapper text, configurable machine flag field, and insertion
+  mechanics only. It does not ship summaries, prompts, real sessions, private
+  paths, manifests, or provider config.
 - `bridge.forge_turns` provides text-bearing final-assistant turn-boundary
   selection, trimmed-tail reporting, and warnings only. It does not ship real
   sessions, summaries, prompts, private paths, manifests, or provider config.

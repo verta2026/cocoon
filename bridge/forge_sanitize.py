@@ -6,6 +6,8 @@ import copy
 
 from bridge.forge_plan_core import is_channel_message, role_of
 
+DEFAULT_SUMMARY_FLAG_FIELDS = ("forgeSummary",)
+
 
 def sanitize_content(role: str, content, assistant_blocks: set[str], user_blocks: set[str]):
     if isinstance(content, str):
@@ -104,13 +106,20 @@ def filter_noise_turns_tool_aware(
     return filtered
 
 
-def clean_event(event: dict) -> dict | None:
+def has_summary_flag(event: dict, summary_flag_fields: tuple[str, ...] = DEFAULT_SUMMARY_FLAG_FIELDS) -> bool:
+    return any(bool(event.get(field)) for field in summary_flag_fields)
+
+
+def clean_event(
+    event: dict,
+    summary_flag_fields: tuple[str, ...] = DEFAULT_SUMMARY_FLAG_FIELDS,
+) -> dict | None:
     """Clean conversation events while preserving tool blocks for a raw zone."""
     if event.get("type") not in {"user", "assistant"}:
         return None
     if event.get("isMeta") is True and not is_channel_message(event):
         return None
-    if event.get("bondForgeSummary"):
+    if has_summary_flag(event, summary_flag_fields):
         return None
     role = role_of(event)
     if role not in {"user", "assistant"} or event.get("type") != role:
@@ -137,8 +146,9 @@ def clean_events(
     rows: list[dict],
     assistant_prefixes: tuple[str, ...] = (),
     user_markers: tuple[str, ...] = (),
+    summary_flag_fields: tuple[str, ...] = DEFAULT_SUMMARY_FLAG_FIELDS,
 ) -> list[dict]:
-    cleaned = [event for event in (clean_event(row) for row in rows) if event is not None]
+    cleaned = [event for event in (clean_event(row, summary_flag_fields) for row in rows) if event is not None]
     return filter_noise_turns_tool_aware(cleaned, assistant_prefixes, user_markers)
 
 
@@ -147,12 +157,13 @@ def sanitize_event(
     assistant_blocks: set[str],
     user_blocks: set[str],
     assistant_prefixes: tuple[str, ...] = (),
+    summary_flag_fields: tuple[str, ...] = DEFAULT_SUMMARY_FLAG_FIELDS,
 ) -> dict | None:
     if event.get("type") not in {"user", "assistant"}:
         return None
     if event.get("isMeta") is True and not is_channel_message(event):
         return None
-    if event.get("bondForgeSummary"):
+    if has_summary_flag(event, summary_flag_fields):
         return None
     role = role_of(event)
     if role not in {"user", "assistant"}:
@@ -182,10 +193,14 @@ def sanitize_events(
     user_blocks: set[str],
     assistant_prefixes: tuple[str, ...] = (),
     user_markers: tuple[str, ...] = (),
+    summary_flag_fields: tuple[str, ...] = DEFAULT_SUMMARY_FLAG_FIELDS,
 ) -> list[dict]:
     sanitized = [
         event
-        for event in (sanitize_event(row, assistant_blocks, user_blocks, assistant_prefixes) for row in rows)
+        for event in (
+            sanitize_event(row, assistant_blocks, user_blocks, assistant_prefixes, summary_flag_fields)
+            for row in rows
+        )
         if event is not None
     ]
     return filter_runtime_noise_turns(sanitized, assistant_prefixes, user_markers)
