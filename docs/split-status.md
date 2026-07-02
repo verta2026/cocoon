@@ -13,6 +13,7 @@ These modules are part of the reusable bridge core:
 - `bridge.history_routes` - read-only conversation history route wiring,
   with optional day-grouped, per-day merged, and full-text search routes
 - `bridge.reload_routes` - session/reload control route wiring
+- `bridge.reload_replay` - reload replay-tail delivery helpers
 - `bridge.ui_routes` - chat, terminal, and optional history UI route wiring
 - `bridge.output_routes` - terminal output, raw output, and optional messages
 - `bridge.live_archive` - session-jsonl chat mirror provider for /messages,
@@ -68,6 +69,10 @@ they are useful in a real deployment:
   does not ship VAPID keys or subscription storage.
 - `bridge.tts_routes` uses `bridge.tts`, which is disabled unless a provider is
   configured.
+- `bridge.reload_replay` provides running resume-session detection and pending
+  replay-tail delivery mechanics only. It does not ship real session files,
+  replay state, private project paths, tmux implementations, prompts,
+  manifests, or provider config.
 - `bridge.forge_handoff` provides closed-turn handoff composition, generic
   warning generation, and trimmed-tail replay payload preparation only. It does
   not ship real sessions, summaries, prompts, replay files, private paths,
