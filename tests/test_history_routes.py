@@ -86,3 +86,44 @@ class HistoryRoutesTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OptionalDayAndSearchRoutesTest(unittest.TestCase):
+    def test_day_and_search_routes_absent_by_default(self):
+        app = FakeApp()
+        register_history_routes(
+            app,
+            verify_token=lambda request: None,
+            list_conversation_sessions=lambda d: [],
+            read_conversation_messages=lambda d, f: [],
+            conversations_dir=Path("/tmp/conversations"),
+        )
+        self.assertNotIn(("GET", "/history-days"), app.routes)
+        self.assertNotIn(("GET", "/history-day/{date}"), app.routes)
+        self.assertNotIn(("GET", "/history-search"), app.routes)
+
+    def test_registers_day_and_search_routes_when_provided(self):
+        app = FakeApp()
+        calls = []
+        conversations_dir = Path("/tmp/conversations")
+
+        register_history_routes(
+            app,
+            verify_token=lambda request: calls.append("verify"),
+            list_conversation_sessions=lambda d: [],
+            read_conversation_messages=lambda d, f: [],
+            conversations_dir=conversations_dir,
+            list_conversation_days=lambda d: [{"date": "2026-06-30"}],
+            read_conversation_day=lambda d, date: [{"role": "user", "content": date}],
+            search_conversations=lambda d, q, limit: [{"snippet": q, "limit": limit}],
+        )
+
+        days = asyncio.run(app.routes[("GET", "/history-days")](SimpleNamespace()))
+        day = asyncio.run(app.routes[("GET", "/history-day/{date}")]("2026-06-30", SimpleNamespace()))
+        found = asyncio.run(app.routes[("GET", "/history-search")](SimpleNamespace(), q="hi", limit=9000))
+
+        self.assertEqual(days, [{"date": "2026-06-30"}])
+        self.assertEqual(day[0]["content"], "2026-06-30")
+        self.assertEqual(found[0]["snippet"], "hi")
+        self.assertEqual(found[0]["limit"], 500)
+        self.assertEqual(calls.count("verify"), 3)

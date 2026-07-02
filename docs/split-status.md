@@ -10,7 +10,8 @@ turned into a provider interface or mockable example.
 These modules are part of the reusable bridge core:
 
 - `bridge.upload_routes` - upload and authenticated file serving route wiring
-- `bridge.history_routes` - read-only conversation history route wiring
+- `bridge.history_routes` - read-only conversation history route wiring,
+  with optional day-grouped, per-day merged, and full-text search routes
 - `bridge.reload_routes` - session/reload control route wiring
 - `bridge.ui_routes` - chat, terminal, and optional history UI route wiring
 - `bridge.output_routes` - terminal output, raw output, and optional messages
