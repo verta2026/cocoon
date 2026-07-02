@@ -29,3 +29,10 @@ class UiSecurityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class JumpToLatestButtonTest(unittest.TestCase):
+    def test_chat_has_jump_to_latest_button(self):
+        self.assertIn('id="to-bottom"', CHAT_HTML)
+        self.assertIn("updateToBottomBtn", CHAT_HTML)
+        self.assertIn("#to-bottom.show", CHAT_HTML)

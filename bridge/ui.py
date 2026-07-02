@@ -117,6 +117,17 @@ body::before {
   padding: calc(49px + 0.5rem) 0.85rem calc(74px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 0.65rem; scroll-behavior: smooth;
 }
+#to-bottom {
+  position: fixed; right: 1rem; bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: 30; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border); color: var(--accent-strong); font-size: 1.15rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.22); cursor: pointer;
+  opacity: 0; pointer-events: none; transition: opacity 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+#to-bottom.show { opacity: 0.95; pointer-events: auto; }
 .msg-group { display: contents; }
 .msg-wrap { display: flex; gap: 0.45rem; align-items: flex-start; max-width: min(90%, 800px); }
 .msg-wrap-user { align-self: flex-end; flex-direction: row-reverse; }
@@ -283,6 +294,7 @@ body::before {
 <input type="file" id="chat-bg-input" accept="image/*" hidden onchange="handleChatBgFile(this.files && this.files[0])">
 <input type="file" id="avatar-input" accept="image/*" hidden onchange="handleAvatarFile(this.files && this.files[0])">
 <div class="chat-area" id="chat">loading...</div>
+<div id="to-bottom" title="jump to latest">&#8595;</div>
 <div id="lightbox" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;cursor:pointer;" onclick="this.style.display='none'"><img id="lb-img" style="max-width:95vw;max-height:95vh;border-radius:4px;object-fit:contain;"></div>
 <div class="input-area">
   <div id="img-preview" class="img-preview" style="display:none">
@@ -912,6 +924,17 @@ function isPinnedToBottom() {
   return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 40;
 }
 
+var toBottomBtn = document.getElementById('to-bottom');
+function updateToBottomBtn() {
+  if (!toBottomBtn) return;
+  var away = chat.scrollHeight - chat.scrollTop - chat.clientHeight > 220;
+  toBottomBtn.classList.toggle('show', away);
+}
+if (toBottomBtn) toBottomBtn.addEventListener('click', function() {
+  chat.scrollTop = chat.scrollHeight;
+});
+chat.addEventListener('scroll', updateToBottomBtn);
+
 function msgKey(m) {
   return (m.role || '') + '\u0000' + (m.timestamp || '') + '\u0000' + ((m.content || '').substring(0, 200));
 }
@@ -1006,6 +1029,7 @@ function syncMessages(messages) {
     bindVoicePlayers();
     if (pinned) { bindBottomOnMediaLoad(); scrollChatToBottom(); }
   }
+  updateToBottomBtn();
 }
 
 function paintChat(newBlocks) {
@@ -1050,6 +1074,7 @@ function paintChat(newBlocks) {
 
   bindVoicePlayers();
   if (wasAtBottom) { bindBottomOnMediaLoad(); scrollChatToBottom(); }
+  updateToBottomBtn();
 }
 
 function scrollChatToBottom() {
