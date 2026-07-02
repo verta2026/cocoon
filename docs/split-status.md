@@ -27,6 +27,7 @@ These modules are part of the reusable bridge core:
 - `presence.auth_helpers` - generic cookie/login parsing helpers
 - `presence.file_server` - shared-file path, metadata, and attachment helpers
 - `presence.settings_file` - editable JSON settings file helpers
+- `presence.editor_files` - editor path policy and download header helpers
 
 ## Provider Boundaries
 
@@ -54,6 +55,9 @@ they are useful in a real deployment:
 - `presence.settings_file` provides file read/write and JSON validation
   mechanics only. It does not ship a settings route, Claude settings path, or
   deployment configuration.
+- `presence.editor_files` provides reusable path-safety, filename header,
+  content-type, and BOM helpers only. It does not ship editor routes, blocked
+  path policy, project roots, or private files.
 
 ## Private Route Boundary
 
