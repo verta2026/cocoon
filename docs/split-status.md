@@ -28,6 +28,7 @@ These modules are part of the reusable bridge core:
 - `presence.file_server` - shared-file path, metadata, and attachment helpers
 - `presence.settings_file` - editable JSON settings file helpers
 - `presence.editor_files` - editor path policy and download header helpers
+- `presence.push_subscriptions` - push subscription state payload helpers
 
 ## Provider Boundaries
 
@@ -58,6 +59,9 @@ they are useful in a real deployment:
 - `presence.editor_files` provides reusable path-safety, filename header,
   content-type, and BOM helpers only. It does not ship editor routes, blocked
   path policy, project roots, or private files.
+- `presence.push_subscriptions` provides subscription-list and delivery-record
+  state helpers only. It does not ship VAPID keys, push subscription files,
+  notification content, webpush provider calls, or live storage.
 
 ## Private Route Boundary
 
