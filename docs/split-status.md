@@ -29,6 +29,7 @@ These modules are part of the reusable bridge core:
 - `presence.settings_file` - editable JSON settings file helpers
 - `presence.editor_files` - editor path policy and download header helpers
 - `presence.push_subscriptions` - push subscription state payload helpers
+- `presence.tts_audio` - TTS audio metadata and file retention helpers
 
 ## Provider Boundaries
 
@@ -62,6 +63,9 @@ they are useful in a real deployment:
 - `presence.push_subscriptions` provides subscription-list and delivery-record
   state helpers only. It does not ship VAPID keys, push subscription files,
   notification content, webpush provider calls, or live storage.
+- `presence.tts_audio` provides request validation, audio-id/path, public
+  metadata, latest-record, and file-retention helpers only. It does not ship TTS
+  provider calls, API keys, voice IDs, generated audio, or live storage.
 
 ## Private Route Boundary
 
