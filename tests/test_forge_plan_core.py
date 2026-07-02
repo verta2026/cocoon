@@ -50,9 +50,17 @@ class ForgePlanCoreTest(unittest.TestCase):
         self.assertGreater(scanned, retain_tokens)
         self.assertGreaterEqual(estimate_tokens(events[0]), 1)
 
-    def test_choose_kept_requires_real_user_after_cut(self):
+    def test_choose_kept_grows_backward_when_tail_has_no_real_user(self):
+        events = [user("old", "u1"), assistant("tail", "a1")]
+        kept, raw_cut, keep_start, _ = choose_kept(events, 1)
+
+        self.assertEqual([event["uuid"] for event in kept], ["u1", "a1"])
+        self.assertEqual(keep_start, 0)
+        self.assertGreater(raw_cut, keep_start)
+
+    def test_choose_kept_raises_when_session_has_no_real_user(self):
         with self.assertRaisesRegex(ValueError, "no real user"):
-            choose_kept([user("old"), assistant("tail")], 1)
+            choose_kept([assistant("tail one"), assistant("tail two")], 1)
 
     def test_forge_events_rewrites_session_and_parent_chain(self):
         events = [user("first", "old-1"), assistant("reply", "old-2")]

@@ -112,8 +112,19 @@ class ForgeTest(unittest.TestCase):
         self.assertEqual(selection.keep_start_index, 2)
         self.assertEqual(selection.estimated_tokens_scanned, 3)
 
-    def test_choose_kept_raises_when_tail_has_no_real_user(self):
-        events = [user("old"), assistant("tail")]
+    def test_choose_kept_grows_backward_when_tail_has_no_real_user(self):
+        events = [user("old"), assistant("tail one"), assistant("tail two")]
+        selection = choose_kept(events, 1, token_estimator=lambda event: 1)
+
+        self.assertEqual(
+            [event_text(event) for event in selection.kept],
+            ["old", "tail one", "tail two"],
+        )
+        self.assertEqual(selection.keep_start_index, 0)
+        self.assertGreater(selection.raw_cut_index, selection.keep_start_index)
+
+    def test_choose_kept_raises_when_session_has_no_real_user(self):
+        events = [assistant("tail one"), assistant("tail two")]
 
         with self.assertRaisesRegex(ValueError, "no real user"):
             choose_kept(events, 1, token_estimator=lambda event: 1)

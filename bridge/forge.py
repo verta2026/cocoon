@@ -188,7 +188,16 @@ def choose_kept(
             keep_start_index = index
             break
     if keep_start_index is None:
-        raise ValueError("no real user message found after cut point")
+        # Autonomous stretches (tool work with no real user message inside the
+        # retain window) must not disqualify the whole session: grow the window
+        # backward to the last real user message instead of losing the newest
+        # window entirely.
+        for index in range(raw_cut_index - 1, -1, -1):
+            if is_real_user(events[index]):
+                keep_start_index = index
+                break
+    if keep_start_index is None:
+        raise ValueError("no real user message found in session")
 
     return RetainSelection(
         kept=events[keep_start_index:],

@@ -57,7 +57,16 @@ def choose_kept(events: list[dict], retain_tokens: int) -> tuple[list[dict], int
             keep_start = index
             break
     if keep_start is None:
-        raise ValueError("no real user message found after cut point")
+        # Autonomous stretches (tool work with no real user message inside the
+        # retain window) must not disqualify the whole session: grow the window
+        # backward to the last real user message instead of losing the newest
+        # window entirely.
+        for index in range(cut - 1, -1, -1):
+            if is_real_user(events[index]):
+                keep_start = index
+                break
+    if keep_start is None:
+        raise ValueError("no real user message found in session")
     return events[keep_start:], cut, keep_start, accumulated
 
 
