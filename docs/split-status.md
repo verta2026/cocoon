@@ -24,6 +24,7 @@ These modules are part of the reusable bridge core:
 - `bridge.sticker_routes` - generic named asset route wiring
 - `bridge.tts_routes` - optional TTS route wiring
 - `bridge.push_routes` - optional push provider route wiring
+- `bridge.forge_handoff` - forge closed-turn handoff and replay warning helpers
 - `bridge.forge_io` - forge reload hashing and atomic text/JSON I/O helpers
 - `bridge.forge_plan_core` - forge event retention and parent-chain helpers
 - `bridge.forge_replay` - forge trimmed-tail user-message replay payload helper
@@ -67,6 +68,10 @@ they are useful in a real deployment:
   does not ship VAPID keys or subscription storage.
 - `bridge.tts_routes` uses `bridge.tts`, which is disabled unless a provider is
   configured.
+- `bridge.forge_handoff` provides closed-turn handoff composition, generic
+  warning generation, and trimmed-tail replay payload preparation only. It does
+  not ship real sessions, summaries, prompts, replay files, private paths,
+  manifests, provider config, or write behavior.
 - `bridge.forge_io` provides file/hash mechanics only. It does not ship forge
   prompts, summaries, private session paths, manifests, or provider config.
 - `bridge.forge_plan_core` provides event role/block checks, real-user
