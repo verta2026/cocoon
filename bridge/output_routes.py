@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 
+def clamp_messages_limit(limit: int, *, minimum: int = 20, maximum: int = 1000) -> int:
+    return max(minimum, min(int(limit), maximum))
+
+
 def build_messages_payload(
     *,
     messages: list,

@@ -1,6 +1,6 @@
 import unittest
 
-from bridge.output_routes import build_messages_payload, register_output_routes
+from bridge.output_routes import build_messages_payload, clamp_messages_limit, register_output_routes
 
 
 class FakeApp:
@@ -15,6 +15,16 @@ class FakeApp:
 
 
 class OutputRouteRegistrationTest(unittest.TestCase):
+    def test_clamp_messages_limit_bounds_values(self):
+        self.assertEqual(clamp_messages_limit(1), 20)
+        self.assertEqual(clamp_messages_limit(20), 20)
+        self.assertEqual(clamp_messages_limit(300), 300)
+        self.assertEqual(clamp_messages_limit(5000), 1000)
+
+    def test_clamp_messages_limit_accepts_custom_bounds(self):
+        self.assertEqual(clamp_messages_limit(3, minimum=5, maximum=10), 5)
+        self.assertEqual(clamp_messages_limit(30, minimum=5, maximum=10), 10)
+
     def test_build_messages_payload_core_fields(self):
         self.assertEqual(
             build_messages_payload(messages=[{"role": "user"}], running=True, busy=False),
