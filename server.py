@@ -75,7 +75,7 @@ from bridge.control_routes import register_control_routes
 from bridge.history_routes import register_history_routes
 from bridge.interaction_routes import register_interaction_routes
 from bridge.output_routes import register_output_routes
-from bridge.status_routes import register_status_route
+from bridge.status_routes import build_status_payload as _build_status_payload, register_status_route
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
     auto_reload_status as _auto_reload_status,
@@ -286,16 +286,16 @@ async def status(request: Request):
     running = claude_running() if alive else False
     dismissed_resume = dismiss_resume_summary_prompt() if running else False
     dismissed_trust = dismiss_trust_prompt() if alive else False
-    return {
-        "session": SESSION_NAME,
-        "alive": alive,
-        "running": running,
-        "command": command,
-        "busy": claude_busy() if running else False,
-        "auto_reload_paused": AUTO_RELOAD_PAUSE_FILE.exists(),
-        "dismissed_resume": dismissed_resume,
-        "dismissed_trust": dismissed_trust,
-    }
+    return _build_status_payload(
+        session_name=SESSION_NAME,
+        alive=alive,
+        running=running,
+        command=command,
+        busy=claude_busy() if running else False,
+        auto_reload_paused=AUTO_RELOAD_PAUSE_FILE.exists(),
+        dismissed_resume=dismissed_resume,
+        dismissed_trust=dismissed_trust,
+    )
 
 
 register_status_route(app, status=status)
