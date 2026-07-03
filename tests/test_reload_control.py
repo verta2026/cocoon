@@ -16,6 +16,7 @@ from bridge.reload_control import (
     consume_reload_marker,
     context_window_is_1m,
     evaluate_auto_reload_once,
+    execute_reload_fire,
     log_auto_reload,
     mark_auto_reload,
     normalized_reload_command,
@@ -418,6 +419,74 @@ class ReloadControlTest(unittest.TestCase):
             self.assertEqual(decision["action"], "skip")
             self.assertFalse(log_file.exists())
             self.assertFalse(state_file.exists())
+
+    def test_execute_reload_fire_runs_restart_mark_and_verify(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls = []
+
+            result = execute_reload_fire(
+                reason="api-error",
+                context_tokens=123,
+                lock_dir=root / ".lock",
+                lock_stale_seconds=60,
+                log_func=lambda text: calls.append(("log", text)),
+                restart_func=lambda **kwargs: calls.append(("restart", kwargs)),
+                verify_func=lambda: {"ok": True},
+                mark_func=lambda reason, tokens: calls.append(("mark", reason, tokens)),
+            )
+
+            self.assertEqual(result, "api-error")
+            self.assertEqual(
+                calls,
+                [
+                    ("log", "firing: api-error"),
+                    ("restart", {"mode": "reload"}),
+                    ("mark", "api-error", 123),
+                    ("log", "done: api-error"),
+                ],
+            )
+
+    def test_execute_reload_fire_reports_verify_failure_after_marking(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls = []
+
+            result = execute_reload_fire(
+                reason="api-error",
+                context_tokens=123,
+                lock_dir=root / ".lock",
+                lock_stale_seconds=60,
+                log_func=lambda text: calls.append(("log", text)),
+                restart_func=lambda **kwargs: calls.append(("restart", kwargs)),
+                verify_func=lambda: {"ok": False, "reason": "missing-sentinel"},
+                mark_func=lambda reason, tokens: calls.append(("mark", reason, tokens)),
+            )
+
+            self.assertEqual(result, "api-error:verify-failed:missing-sentinel")
+            self.assertIn(("mark", "api-error", 123), calls)
+            self.assertEqual(calls[-1], ("log", "verify FAILED: missing-sentinel"))
+
+    def test_execute_reload_fire_returns_empty_when_lock_is_busy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lock_dir = root / ".lock"
+            lock_dir.mkdir()
+            calls = []
+
+            result = execute_reload_fire(
+                reason="api-error",
+                context_tokens=123,
+                lock_dir=lock_dir,
+                lock_stale_seconds=60,
+                log_func=lambda text: calls.append(("log", text)),
+                restart_func=lambda **kwargs: calls.append(("restart", kwargs)),
+                verify_func=lambda: {"ok": True},
+                mark_func=lambda reason, tokens: calls.append(("mark", reason, tokens)),
+            )
+
+            self.assertEqual(result, "")
+            self.assertEqual(calls, [])
 
     def test_auto_reload_monitor_loop_runs_until_stop_and_uses_dynamic_interval(self):
         calls = []

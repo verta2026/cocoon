@@ -228,6 +228,31 @@ def run_auto_reload_tick(
     return decision
 
 
+def execute_reload_fire(
+    *,
+    reason: str,
+    context_tokens: int,
+    lock_dir: Path,
+    lock_stale_seconds: int,
+    log_func: Callable[[str], None],
+    restart_func: Callable[..., None],
+    verify_func: Callable[[], dict],
+    mark_func: Callable[[str, int], None],
+) -> str:
+    with reload_lock(lock_dir, lock_stale_seconds) as locked:
+        if not locked:
+            return ""
+        log_func(f"firing: {reason}")
+        restart_func(mode="reload")
+        mark_func(reason, context_tokens)
+        result = verify_func()
+        if not result.get("ok"):
+            log_func(f"verify FAILED: {result.get('reason', 'unknown')}")
+            return f"{reason}:verify-failed:{result.get('reason', 'unknown')}"
+        log_func(f"done: {reason}")
+    return reason
+
+
 async def auto_reload_monitor_loop(
     *,
     tick_func: Callable[[], dict],
