@@ -1,6 +1,6 @@
 import unittest
 
-from bridge.output_routes import register_output_routes
+from bridge.output_routes import build_messages_payload, register_output_routes
 
 
 class FakeApp:
@@ -15,6 +15,29 @@ class FakeApp:
 
 
 class OutputRouteRegistrationTest(unittest.TestCase):
+    def test_build_messages_payload_core_fields(self):
+        self.assertEqual(
+            build_messages_payload(messages=[{"role": "user"}], running=True, busy=False),
+            {
+                "messages": [{"role": "user"}],
+                "running": True,
+                "busy": False,
+                "source": "live-archive",
+            },
+        )
+
+    def test_build_messages_payload_can_include_auto_reload(self):
+        self.assertEqual(
+            build_messages_payload(messages=[], running=False, busy=False, auto_reload="in-progress"),
+            {
+                "messages": [],
+                "running": False,
+                "busy": False,
+                "auto_reload": "in-progress",
+                "source": "live-archive",
+            },
+        )
+
     def test_registers_output_routes_without_messages_by_default(self):
         app = FakeApp()
         get_output = object()

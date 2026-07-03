@@ -78,7 +78,7 @@ from bridge.interaction_routes import (
     build_start_session_payload as _build_start_session_payload,
     register_interaction_routes,
 )
-from bridge.output_routes import register_output_routes
+from bridge.output_routes import build_messages_payload as _build_messages_payload, register_output_routes
 from bridge.status_routes import build_status_payload as _build_status_payload, register_status_route
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
@@ -409,12 +409,11 @@ async def get_messages(request: Request, limit: int = 300):
         limit,
         primary_sender_id=PRIMARY_SENDER_ID,
     )
-    return {
-        "messages": messages,
-        "running": running,
-        "busy": claude_busy() if running else False,
-        "source": "live-archive",
-    }
+    return _build_messages_payload(
+        messages=messages,
+        running=running,
+        busy=claude_busy() if running else False,
+    )
 
 
 register_output_routes(
