@@ -73,7 +73,11 @@ from bridge.live_archive import (
 )
 from bridge.control_routes import register_control_routes
 from bridge.history_routes import register_history_routes
-from bridge.interaction_routes import register_interaction_routes
+from bridge.interaction_routes import (
+    build_send_payload as _build_send_payload,
+    build_start_session_payload as _build_start_session_payload,
+    register_interaction_routes,
+)
 from bridge.output_routes import register_output_routes
 from bridge.status_routes import build_status_payload as _build_status_payload, register_status_route
 from bridge.extensions import list_extensions as _list_extensions
@@ -305,12 +309,12 @@ async def start_session(request: Request):
     verify_token(request)
     if tmux_exists():
         if claude_running():
-            return {"message": "Session already running"}
+            return _build_start_session_payload("Session already running")
         if _launcher_in_progress(LAUNCHER_PROCESS_PATTERN):
             raise HTTPException(409, "Launcher already in progress; not interrupting")
         start_claude()
         await asyncio.sleep(3)
-        return {"message": "Claude started in existing session"}
+        return _build_start_session_payload("Claude started in existing session")
 
     subprocess.run(["tmux", "set-option", "-g", "history-limit", str(TMUX_HISTORY_LIMIT)],
                    capture_output=True)
@@ -318,7 +322,7 @@ async def start_session(request: Request):
     await asyncio.sleep(1)
     start_claude()
     await asyncio.sleep(3)
-    return {"message": "Session started", "session": SESSION_NAME}
+    return _build_start_session_payload("Session started", SESSION_NAME)
 
 
 async def send_message(msg: Message, request: Request):
@@ -333,14 +337,14 @@ async def send_message(msg: Message, request: Request):
             start_claude()
             if msg.text and wait_for_claude_ready():
                 tmux_send(msg.text.strip())
-                return {"sent": True, "reloaded": True, "length": len(msg.text)}
-            return {"sent": False, "reloaded": True, "length": len(msg.text)}
+                return _build_send_payload(sent=True, reloaded=True, length=len(msg.text))
+            return _build_send_payload(sent=False, reloaded=True, length=len(msg.text))
 
         if dismiss_resume_summary_prompt():
             if msg.text and wait_for_claude_ready():
                 tmux_send(msg.text.strip())
-                return {"sent": True, "reloaded": True, "length": len(msg.text)}
-            return {"sent": False, "reloaded": True, "length": len(msg.text)}
+                return _build_send_payload(sent=True, reloaded=True, length=len(msg.text))
+            return _build_send_payload(sent=False, reloaded=True, length=len(msg.text))
 
         if msg.text:
             tmux_send(msg.text.strip())
@@ -349,7 +353,7 @@ async def send_message(msg: Message, request: Request):
                 ["tmux", "send-keys", "-t", SESSION_NAME, "Enter"],
                 check=True,
             )
-        return {"sent": True, "length": len(msg.text)}
+        return _build_send_payload(sent=True, length=len(msg.text))
 
 
 register_interaction_routes(app, start_session=start_session, send_message=send_message)
