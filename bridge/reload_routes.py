@@ -9,6 +9,34 @@ class AutoReloadRequest(BaseModel):
     paused: bool
 
 
+def build_session_mode_payload(mode: str, allowed_modes=None) -> dict:
+    payload = {"mode": mode}
+    if allowed_modes is not None:
+        payload["allowed"] = sorted(allowed_modes)
+    return payload
+
+
+def build_auto_reload_payload(paused: bool) -> dict:
+    return {"paused": paused}
+
+
+def build_session_action_payload(
+    message: str,
+    *,
+    mode: str | None = None,
+    verify: dict | None = None,
+    command: str | None = None,
+) -> dict:
+    payload = {"message": message}
+    if mode is not None:
+        payload["mode"] = mode
+    if verify is not None:
+        payload["verify"] = verify
+    if command is not None:
+        payload["command"] = command
+    return payload
+
+
 def register_reload_routes(
     app,
     *,

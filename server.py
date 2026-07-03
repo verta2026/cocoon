@@ -88,7 +88,12 @@ from bridge.reload_control import (
     set_auto_reload_paused as _set_auto_reload_paused,
     set_reload_marker as _set_reload_marker,
 )
-from bridge.reload_routes import AutoReloadRequest, register_reload_routes
+from bridge.reload_routes import (
+    AutoReloadRequest,
+    build_auto_reload_payload as _build_auto_reload_payload,
+    build_session_action_payload as _build_session_action_payload,
+    register_reload_routes,
+)
 from bridge.tmux import (
     claude_busy as _claude_busy,
     claude_running as _claude_running,
@@ -428,12 +433,14 @@ async def extensions(request: Request):
 
 async def get_forge_auto_reload(request: Request):
     verify_token(request)
-    return _auto_reload_status(AUTO_RELOAD_PAUSE_FILE)
+    return _build_auto_reload_payload(_auto_reload_status(AUTO_RELOAD_PAUSE_FILE)["paused"])
 
 
 async def set_forge_auto_reload(req: AutoReloadRequest, request: Request):
     verify_token(request)
-    return _set_auto_reload_paused(AUTO_RELOAD_PAUSE_FILE, AUTO_RELOAD_LOG_FILE, req.paused)
+    return _build_auto_reload_payload(
+        _set_auto_reload_paused(AUTO_RELOAD_PAUSE_FILE, AUTO_RELOAD_LOG_FILE, req.paused)["paused"]
+    )
 
 
 async def reload_status(request: Request):
@@ -488,8 +495,8 @@ async def new_session(request: Request):
     start_claude()
     ready = await asyncio.to_thread(wait_for_claude_ready)
     if not ready:
-        return {"message": "Claude started but may still be loading"}
-    return {"message": "New session started"}
+        return _build_session_action_payload("Claude started but may still be loading")
+    return _build_session_action_payload("New session started")
 
 
 async def continue_session(request: Request):
@@ -507,7 +514,7 @@ async def reload_session(request: Request):
         command = send_reload_command()
         if not command:
             raise HTTPException(501, "Reload command is not configured")
-    return {"message": "Reload command sent", "command": command}
+    return _build_session_action_payload("Reload command sent", command=command)
 
 
 async def forge_reload_session(request: Request):

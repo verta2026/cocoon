@@ -1,6 +1,12 @@
 import unittest
 
-from bridge.reload_routes import AutoReloadRequest, register_reload_routes
+from bridge.reload_routes import (
+    AutoReloadRequest,
+    build_auto_reload_payload,
+    build_session_action_payload,
+    build_session_mode_payload,
+    register_reload_routes,
+)
 
 
 class FakeApp:
@@ -27,6 +33,28 @@ class FakeApp:
 
 
 class ReloadRouteRegistrationTest(unittest.TestCase):
+    def test_build_session_mode_payload_sorts_allowed_modes(self):
+        self.assertEqual(
+            build_session_mode_payload("forge", {"standard", "forge"}),
+            {"mode": "forge", "allowed": ["forge", "standard"]},
+        )
+        self.assertEqual(build_session_mode_payload("forge"), {"mode": "forge"})
+
+    def test_build_auto_reload_payload(self):
+        self.assertEqual(build_auto_reload_payload(True), {"paused": True})
+        self.assertEqual(build_auto_reload_payload(False), {"paused": False})
+
+    def test_build_session_action_payload_optional_fields(self):
+        self.assertEqual(build_session_action_payload("New session started"), {"message": "New session started"})
+        self.assertEqual(
+            build_session_action_payload("Forge reload started", mode="forge-reload", verify={"ok": True}),
+            {"message": "Forge reload started", "mode": "forge-reload", "verify": {"ok": True}},
+        )
+        self.assertEqual(
+            build_session_action_payload("Reload command sent", command="./reload.sh"),
+            {"message": "Reload command sent", "command": "./reload.sh"},
+        )
+
     def test_registers_reload_and_session_control_routes(self):
         app = FakeApp()
         handlers = {
