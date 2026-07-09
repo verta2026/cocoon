@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+uploads/
+*.log
+.claude/
+frontend/config.js

@@ -1,0 +1,692 @@
+import tempfile
+import unittest
+import os
+import time
+import asyncio
+from pathlib import Path
+
+from bridge.reload_control import (
+    active_context_threshold,
+    actual_model_from_session,
+    auto_reload_monitor_loop,
+    auto_reload_status,
+    build_reload_decision,
+    choose_reload_action,
+    choose_reload_reason,
+    consume_reload_marker,
+    context_window_is_1m,
+    evaluate_auto_reload_once,
+    execute_reload_fire,
+    log_auto_reload,
+    mark_auto_reload,
+    normalized_reload_command,
+    recent_auto_reload,
+    reload_lock,
+    reload_monitor_interval,
+    reload_marker_pending,
+    run_auto_reload_tick,
+    send_reload_command,
+    set_auto_reload_paused,
+    set_reload_marker,
+    session_idle_seconds,
+)
+
+
+class ReloadControlTest(unittest.TestCase):
+    def test_normalized_reload_command_strips_empty_values(self):
+        self.assertEqual(normalized_reload_command(None), "")
+        self.assertEqual(normalized_reload_command("  "), "")
+        self.assertEqual(normalized_reload_command("  ./reload.sh  "), "./reload.sh")
+
+    def test_send_reload_command_clears_then_sends_command(self):
+        calls = []
+
+        sent = send_reload_command(
+            " ./reload.sh --mode compact ",
+            lambda: calls.append("clear-input"),
+            lambda: calls.append("clear-scrollback"),
+            lambda text: calls.append(("send", text)),
+        )
+
+        self.assertEqual(sent, "./reload.sh --mode compact")
+        self.assertEqual(
+            calls,
+            [
+                "clear-input",
+                "clear-scrollback",
+                ("send", "./reload.sh --mode compact"),
+            ],
+        )
+
+    def test_send_reload_command_does_nothing_without_command(self):
+        calls = []
+
+        sent = send_reload_command(
+            "",
+            lambda: calls.append("clear-input"),
+            lambda: calls.append("clear-scrollback"),
+            lambda text: calls.append(("send", text)),
+        )
+
+        self.assertEqual(sent, "")
+        self.assertEqual(calls, [])
+
+    def test_mark_and_recent_auto_reload_track_cooldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_file = Path(tmp) / "reload.json"
+
+            data = mark_auto_reload(state_file, "manual-force", context_tokens=123)
+
+            self.assertEqual(data["reason"], "manual-force")
+            self.assertEqual(data["tokens"], 123)
+            self.assertTrue(recent_auto_reload(state_file, cooldown_seconds=3600))
+            self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=0))
+
+    def test_recent_auto_reload_ignores_missing_or_invalid_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_file = Path(tmp) / "reload.json"
+
+            self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=3600))
+            state_file.write_text("{bad", encoding="utf-8")
+            self.assertFalse(recent_auto_reload(state_file, cooldown_seconds=3600))
+
+    def test_session_idle_seconds_returns_age_for_existing_jsonl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.jsonl"
+            path.write_text("{}", encoding="utf-8")
+            old = time.time() - 90
+            os.utime(path, (old, old))
+
+            idle = session_idle_seconds(lambda: path)
+
+            self.assertGreaterEqual(idle, 80)
+            self.assertLess(idle, 120)
+            self.assertEqual(session_idle_seconds(lambda: None), 0)
+
+    def test_actual_model_from_session_uses_latest_assistant_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.jsonl"
+            rows = [
+                {"type": "assistant", "message": {"model": "claude-sonnet"}},
+                {"type": "assistant", "isSidechain": True, "message": {"model": "ignored[1m]"}},
+                {"type": "user", "message": {"model": "ignored-user"}},
+                {"type": "assistant", "message": {"model": "claude-opus[1m]"}},
+            ]
+            path.write_text("\n".join(json_dumps(row) for row in rows), encoding="utf-8")
+
+            self.assertEqual(actual_model_from_session(lambda: path), "claude-opus[1m]")
+
+    def test_context_window_uses_session_model_then_settings_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            session_path = root / "session.jsonl"
+            settings_file = root / "settings.json"
+
+            session_path.write_text(
+                json_dumps({"type": "assistant", "message": {"model": "claude-sonnet"}}),
+                encoding="utf-8",
+            )
+            settings_file.write_text('{"model": "claude-opus[1m]"}', encoding="utf-8")
+
+            self.assertFalse(context_window_is_1m(lambda: session_path, settings_file))
+            self.assertEqual(active_context_threshold(lambda: session_path, settings_file, 100, 500), 100)
+
+            self.assertTrue(context_window_is_1m(lambda: None, settings_file))
+            self.assertEqual(active_context_threshold(lambda: None, settings_file, 100, 500), 500)
+
+    def test_context_window_helpers_tolerate_missing_or_invalid_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_session = Path(tmp) / "missing.jsonl"
+            settings_file = Path(tmp) / "settings.json"
+            settings_file.write_text("{bad", encoding="utf-8")
+
+            self.assertEqual(actual_model_from_session(lambda: missing_session), "")
+            self.assertFalse(context_window_is_1m(lambda: missing_session, settings_file))
+
+    def test_reload_monitor_interval_speeds_up_near_threshold(self):
+        self.assertEqual(reload_monitor_interval(79, 100, 30), 30)
+        self.assertEqual(reload_monitor_interval(80, 100, 30), 10)
+        self.assertEqual(reload_monitor_interval(500, 0, 30), 30)
+        self.assertEqual(reload_monitor_interval(1, 100, 1), 5)
+
+    def test_choose_reload_reason_prioritizes_manual_force(self):
+        reason = choose_reload_reason(
+            force=True,
+            tail_text="API Error:",
+            context_tokens=999,
+            active_threshold=100,
+            idle_seconds=9999,
+            idle_min_context=10,
+            idle_threshold_seconds=60,
+        )
+
+        self.assertEqual(reason, "manual-force")
+
+    def test_choose_reload_reason_detects_api_error(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="tail\nAPI Error: overloaded",
+            context_tokens=10,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+        )
+
+        self.assertEqual(reason, "api-error")
+
+    def test_choose_reload_reason_detects_context_threshold(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="ok",
+            context_tokens=125,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+        )
+
+        self.assertEqual(reason, "context-tokens:125/100")
+
+    def test_choose_reload_reason_detects_idle_cache_expiry(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="ok",
+            context_tokens=80,
+            active_threshold=100,
+            idle_seconds=3600,
+            idle_min_context=50,
+            idle_threshold_seconds=1800,
+        )
+
+        self.assertEqual(reason, "idle-cache-expired:80@60min")
+
+    def test_choose_reload_reason_returns_empty_when_no_trigger_matches(self):
+        reason = choose_reload_reason(
+            force=False,
+            tail_text="ok",
+            context_tokens=49,
+            active_threshold=100,
+            idle_seconds=3600,
+            idle_min_context=50,
+            idle_threshold_seconds=1800,
+        )
+
+        self.assertEqual(reason, "")
+
+    def test_choose_reload_action_skips_without_reason(self):
+        self.assertEqual(choose_reload_action("", recent=False, force=False, dryrun=False), "skip")
+
+    def test_choose_reload_action_skips_recent_non_force_reload(self):
+        self.assertEqual(choose_reload_action("api-error", recent=True, force=False, dryrun=False), "skip")
+
+    def test_choose_reload_action_dryruns_non_force_reload(self):
+        self.assertEqual(choose_reload_action("api-error", recent=False, force=False, dryrun=True), "dry-run")
+
+    def test_choose_reload_action_force_bypasses_recent_and_dryrun(self):
+        self.assertEqual(choose_reload_action("manual-force", recent=True, force=True, dryrun=True), "fire")
+
+    def test_choose_reload_action_fires_regular_reload(self):
+        self.assertEqual(choose_reload_action("api-error", recent=False, force=False, dryrun=False), "fire")
+
+    def test_build_reload_decision_combines_reason_and_action(self):
+        decision = build_reload_decision(
+            force=False,
+            tail_text="API Error: overloaded",
+            context_tokens=25,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+            recent=False,
+            dryrun=True,
+        )
+
+        self.assertEqual(
+            decision,
+            {
+                "action": "dry-run",
+                "reason": "api-error",
+                "force": False,
+                "recent": False,
+                "dryrun": True,
+                "context_tokens": 25,
+                "active_threshold": 100,
+            },
+        )
+
+    def test_build_reload_decision_reports_skip_when_no_trigger_matches(self):
+        decision = build_reload_decision(
+            force=False,
+            tail_text="ok",
+            context_tokens=25,
+            active_threshold=100,
+            idle_seconds=0,
+            idle_min_context=50,
+            idle_threshold_seconds=60,
+            recent=False,
+            dryrun=False,
+        )
+
+        self.assertEqual(decision["action"], "skip")
+        self.assertEqual(decision["reason"], "")
+
+    def test_evaluate_auto_reload_once_consumes_force_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            force_file.write_text("manual-force\n", encoding="utf-8")
+
+            decision = evaluate_auto_reload_once(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                cooldown_seconds=600,
+                tail_text="ok",
+                context_tokens=1,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "fire")
+            self.assertEqual(decision["reason"], "manual-force")
+            self.assertTrue(decision["force_consumed"])
+            self.assertFalse(force_file.exists())
+
+    def test_evaluate_auto_reload_once_respects_dryrun_and_recent_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            dryrun_file.write_text("dry-run\n", encoding="utf-8")
+
+            decision = evaluate_auto_reload_once(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=1,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "dry-run")
+            self.assertEqual(decision["reason"], "api-error")
+            self.assertFalse(decision["force_consumed"])
+
+            mark_auto_reload(state_file, "api-error", context_tokens=1)
+            decision = evaluate_auto_reload_once(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=1,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "skip")
+            self.assertEqual(decision["reason"], "api-error")
+
+    def test_run_auto_reload_tick_logs_dryrun_without_marking_cooldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            log_file = root / "reload.log"
+            dryrun_file.write_text("dry-run\n", encoding="utf-8")
+
+            decision = run_auto_reload_tick(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                log_file=log_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=10,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "dry-run")
+            self.assertIn("DRY-RUN would fire: api-error", log_file.read_text(encoding="utf-8"))
+            self.assertFalse(state_file.exists())
+
+    def test_run_auto_reload_tick_marks_cooldown_on_fire(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            log_file = root / "reload.log"
+
+            decision = run_auto_reload_tick(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                log_file=log_file,
+                cooldown_seconds=600,
+                tail_text="API Error: overloaded",
+                context_tokens=10,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "fire")
+            self.assertIn("firing: api-error", log_file.read_text(encoding="utf-8"))
+            state = json_loads(state_file.read_text(encoding="utf-8"))
+            self.assertEqual(state["reason"], "api-error")
+            self.assertEqual(state["tokens"], 10)
+
+    def test_run_auto_reload_tick_skip_does_not_log_or_mark_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            force_file = root / ".force"
+            dryrun_file = root / ".dryrun"
+            state_file = root / "state.json"
+            log_file = root / "reload.log"
+
+            decision = run_auto_reload_tick(
+                force_file=force_file,
+                dryrun_file=dryrun_file,
+                state_file=state_file,
+                log_file=log_file,
+                cooldown_seconds=600,
+                tail_text="ok",
+                context_tokens=10,
+                active_threshold=100,
+                idle_seconds=0,
+                idle_min_context=50,
+                idle_threshold_seconds=60,
+            )
+
+            self.assertEqual(decision["action"], "skip")
+            self.assertFalse(log_file.exists())
+            self.assertFalse(state_file.exists())
+
+    def test_execute_reload_fire_runs_restart_mark_and_verify(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls = []
+
+            result = execute_reload_fire(
+                reason="api-error",
+                context_tokens=123,
+                lock_dir=root / ".lock",
+                lock_stale_seconds=60,
+                log_func=lambda text: calls.append(("log", text)),
+                restart_func=lambda **kwargs: calls.append(("restart", kwargs)),
+                verify_func=lambda: {"ok": True},
+                mark_func=lambda reason, tokens: calls.append(("mark", reason, tokens)),
+            )
+
+            self.assertEqual(result, "api-error")
+            self.assertEqual(
+                calls,
+                [
+                    ("log", "firing: api-error"),
+                    ("restart", {"mode": "reload"}),
+                    ("mark", "api-error", 123),
+                    ("log", "done: api-error"),
+                ],
+            )
+
+    def test_execute_reload_fire_reports_verify_failure_after_marking(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls = []
+
+            result = execute_reload_fire(
+                reason="api-error",
+                context_tokens=123,
+                lock_dir=root / ".lock",
+                lock_stale_seconds=60,
+                log_func=lambda text: calls.append(("log", text)),
+                restart_func=lambda **kwargs: calls.append(("restart", kwargs)),
+                verify_func=lambda: {"ok": False, "reason": "missing-sentinel"},
+                mark_func=lambda reason, tokens: calls.append(("mark", reason, tokens)),
+            )
+
+            self.assertEqual(result, "api-error:verify-failed:missing-sentinel")
+            self.assertIn(("mark", "api-error", 123), calls)
+            self.assertEqual(calls[-1], ("log", "verify FAILED: missing-sentinel"))
+
+    def test_execute_reload_fire_returns_empty_when_lock_is_busy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lock_dir = root / ".lock"
+            lock_dir.mkdir()
+            calls = []
+
+            result = execute_reload_fire(
+                reason="api-error",
+                context_tokens=123,
+                lock_dir=lock_dir,
+                lock_stale_seconds=60,
+                log_func=lambda text: calls.append(("log", text)),
+                restart_func=lambda **kwargs: calls.append(("restart", kwargs)),
+                verify_func=lambda: {"ok": True},
+                mark_func=lambda reason, tokens: calls.append(("mark", reason, tokens)),
+            )
+
+            self.assertEqual(result, "")
+            self.assertEqual(calls, [])
+
+    def test_auto_reload_monitor_loop_runs_until_stop_and_uses_dynamic_interval(self):
+        calls = []
+        sleeps = []
+        prints = []
+
+        async def fake_sleep(seconds):
+            sleeps.append(seconds)
+
+        def tick():
+            calls.append("tick")
+            return {"action": "skip", "count": len(calls)}
+
+        def should_stop():
+            return len(calls) >= 2
+
+        decisions = asyncio.run(
+            auto_reload_monitor_loop(
+                tick_func=tick,
+                context_tokens_func=lambda: 80 if len(calls) == 1 else 10,
+                active_threshold_func=lambda: 100,
+                default_interval_seconds=30,
+                startup_delay_seconds=5,
+                sleep_func=fake_sleep,
+                print_func=lambda *args, **kwargs: prints.append(args[0]),
+                stop_func=should_stop,
+            )
+        )
+
+        self.assertEqual(decisions, [{"action": "skip", "count": 1}, {"action": "skip", "count": 2}])
+        self.assertEqual(sleeps, [5, 10, 30])
+        self.assertEqual(prints, [])
+
+    def test_auto_reload_monitor_loop_prints_reason_and_survives_error(self):
+        calls = []
+        sleeps = []
+        prints = []
+
+        async def fake_sleep(seconds):
+            sleeps.append(seconds)
+
+        def tick():
+            calls.append("tick")
+            if len(calls) == 1:
+                return {"action": "fire", "reason": "api-error"}
+            if len(calls) == 2:
+                raise RuntimeError("boom")
+            return {"action": "skip", "reason": ""}
+
+        decisions = asyncio.run(
+            auto_reload_monitor_loop(
+                tick_func=tick,
+                context_tokens_func=lambda: 10,
+                active_threshold_func=lambda: 100,
+                default_interval_seconds=30,
+                sleep_func=fake_sleep,
+                print_func=lambda *args, **kwargs: prints.append(args[0]),
+                stop_func=lambda: len(calls) >= 3,
+            )
+        )
+
+        self.assertEqual(decisions[0], {"action": "fire", "reason": "api-error"})
+        self.assertEqual(decisions[1]["action"], "error")
+        self.assertEqual(decisions[1]["error"], "RuntimeError")
+        self.assertEqual(decisions[2], {"action": "skip", "reason": ""})
+        self.assertEqual(prints, ["[auto-reload] api-error", "[auto-reload] error: RuntimeError: boom"])
+        self.assertEqual(sleeps, [30, 30, 30])
+
+    def test_auto_reload_monitor_loop_can_stop_before_first_tick(self):
+        async def fake_sleep(seconds):
+            raise AssertionError("sleep should not run")
+
+        decisions = asyncio.run(
+            auto_reload_monitor_loop(
+                tick_func=lambda: {"action": "skip"},
+                context_tokens_func=lambda: 0,
+                active_threshold_func=lambda: 100,
+                default_interval_seconds=30,
+                sleep_func=fake_sleep,
+                stop_func=lambda: True,
+            )
+        )
+
+        self.assertEqual(decisions, [])
+
+    def test_pause_state_can_be_enabled_and_disabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pause_file = root / "state" / ".paused"
+            log_file = root / "state" / "reload.log"
+
+            self.assertEqual(auto_reload_status(pause_file), {"paused": False})
+            self.assertEqual(set_auto_reload_paused(pause_file, log_file, True), {"paused": True})
+            self.assertTrue(pause_file.exists())
+
+            self.assertEqual(
+                set_auto_reload_paused(pause_file, log_file, False, force=True),
+                {"paused": False},
+            )
+            self.assertFalse(pause_file.exists())
+            self.assertIn("manual pause enabled", log_file.read_text(encoding="utf-8"))
+            self.assertIn("manual pause disabled (forced)", log_file.read_text(encoding="utf-8"))
+
+    def test_unpause_without_force_keeps_manual_pause(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pause_file = root / "state" / ".paused"
+            log_file = root / "state" / "reload.log"
+
+            set_auto_reload_paused(pause_file, log_file, True)
+            self.assertEqual(
+                set_auto_reload_paused(pause_file, log_file, False), {"paused": True}
+            )
+            self.assertTrue(pause_file.exists())
+            self.assertIn("unpause blocked", log_file.read_text(encoding="utf-8"))
+
+    def test_unpause_without_force_clears_unmarked_pause_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pause_file = root / "state" / ".paused"
+            log_file = root / "state" / "reload.log"
+
+            pause_file.parent.mkdir(parents=True, exist_ok=True)
+            pause_file.write_text("job-hold\n", encoding="utf-8")
+            self.assertEqual(
+                set_auto_reload_paused(pause_file, log_file, False), {"paused": False}
+            )
+            self.assertFalse(pause_file.exists())
+
+    def test_set_reload_marker_creates_and_clears_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = Path(tmp) / ".force"
+
+            self.assertEqual(set_reload_marker(marker, True, "manual-force"), {"pending": True})
+            self.assertIn("manual-force", marker.read_text(encoding="utf-8"))
+
+            self.assertEqual(set_reload_marker(marker, False, "manual-force"), {"pending": False})
+            self.assertFalse(marker.exists())
+
+    def test_reload_marker_pending_and_consume_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = Path(tmp) / ".force"
+
+            self.assertFalse(reload_marker_pending(marker))
+            self.assertFalse(consume_reload_marker(marker))
+
+            marker.write_text("manual-force\n", encoding="utf-8")
+
+            self.assertTrue(reload_marker_pending(marker))
+            self.assertTrue(consume_reload_marker(marker))
+            self.assertFalse(reload_marker_pending(marker))
+
+    def test_log_auto_reload_throttle_skips_recent_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_file = Path(tmp) / "reload.log"
+
+            log_auto_reload(log_file, "first")
+            log_auto_reload(log_file, "second", throttle=3600)
+
+            text = log_file.read_text(encoding="utf-8")
+            self.assertIn("first", text)
+            self.assertNotIn("second", text)
+
+    def test_reload_lock_blocks_concurrent_acquire(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lock_dir = Path(tmp) / ".reload.lock"
+
+            with reload_lock(lock_dir, stale_seconds=60) as first:
+                self.assertTrue(first)
+                with reload_lock(lock_dir, stale_seconds=60) as second:
+                    self.assertFalse(second)
+
+            self.assertFalse(lock_dir.exists())
+
+    def test_reload_lock_reclaims_stale_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lock_dir = Path(tmp) / ".reload.lock"
+            lock_dir.mkdir()
+            old = time.time() - 120
+            os.utime(lock_dir, (old, old))
+
+            with reload_lock(lock_dir, stale_seconds=60) as acquired:
+                self.assertTrue(acquired)
+                owner = (lock_dir / "owner.json").read_text(encoding="utf-8")
+                self.assertIn("stale_reclaimed", owner)
+
+            self.assertFalse(lock_dir.exists())
+
+
+def json_dumps(data):
+    import json
+
+    return json.dumps(data, ensure_ascii=False)
+
+
+def json_loads(text):
+    import json
+
+    return json.loads(text)
+
+
+if __name__ == "__main__":
+    unittest.main()

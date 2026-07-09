@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta name="theme-color" content="#F7F1E8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=nowidth=device-width, initial-scale=1.0">
+<title>login</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #FBF3E4;
+  --card: #FFFAF2;
+  --text: #3D2E1F;
+  --muted: #8B7355;
+  --accent: #C4956A;
+  --border: #E8DCC8;
+}
+body {
+  font-family: "Noto Serif SC", Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.container {
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+.dash {
+  font-size: 2rem;
+  color: var(--accent);
+  margin-bottom: 2rem;
+  letter-spacing: 0.3em;
+}
+input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+input:focus { border-color: var(--accent); }
+input::placeholder { color: var(--border); }
+.hint {
+  margin-top: 0.8rem;
+  font-size: 0.75rem;
+  color: var(--border);
+  min-height: 1.2em;
+}
+.hint.error { color: var(--accent); }
+
+/* Aster visual polish 2026-06-16 */
+body {
+  background: linear-gradient(180deg, #fbf3e4 0%, #f1e3cc 100%);
+}
+.container { max-width: 340px; }
+input {
+  min-height: 44px;
+  box-shadow: 0 10px 28px rgba(60,40,20,0.08), inset 0 1px 0 rgba(255,255,255,0.45);
+}
+.dash { margin-bottom: 1.5rem; }
+/* End Aster visual polish */
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="dash">—</div>
+  <input id="pw" type="password" placeholder="..." autofocus>
+  <div class="hint" id="hint"></div>
+</div>
+<script src="/config.js"></script>
+<script>
+var CFG = window.CFG || {};
+var NS = CFG.storageNs || 'cocoon';
+if (CFG.siteName) document.title = CFG.siteName;
+async function check(pw) {
+  const res = await fetch('/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({password: pw})
+  });
+  if (!res.ok) return false;
+  // Cookie-based deployments return {ok}; token-based ones also return
+  // {token} for the page to store for the bridge API.
+  try {
+    const data = await res.json();
+    if (data && data.token) localStorage.setItem(NS + '_token', data.token);
+  } catch (e) {}
+  return true;
+}
+
+document.getElementById('pw').addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return;
+  const pw = e.target.value;
+  if (await check(pw)) {
+    const next = new URLSearchParams(location.search).get('next') || '/';
+    location.href = next;
+  } else {
+    document.getElementById('hint').textContent = '...';
+    document.getElementById('hint').className = 'hint error';
+    e.target.value = '';
+  }
+});
+</script>
+</body>
+</html>
