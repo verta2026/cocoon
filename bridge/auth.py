@@ -27,16 +27,15 @@ def request_token_matches(
     expected: str,
     *,
     cookie_name: str = "token",
-    query_name: str = "token",
 ) -> bool:
+    # Accept a Bearer header (XHR) or the HttpOnly session cookie (page nav and
+    # <img>/<audio> requests, which the browser attaches automatically).
+    # Query-string tokens are intentionally NOT accepted: a token in a URL leaks
+    # into access logs, proxy logs, browser history and Referer headers — for
+    # this service that is equivalent to handing over full terminal control.
     auth = request.headers.get("Authorization", "")
     cookie_token = request.cookies.get(cookie_name, "")
-    query_token = request.query_params.get(query_name, "")
-    return (
-        bearer_token_matches(auth, expected)
-        or token_matches(cookie_token, expected)
-        or token_matches(query_token, expected)
-    )
+    return bearer_token_matches(auth, expected) or token_matches(cookie_token, expected)
 
 
 def verify_request_token(
@@ -44,16 +43,17 @@ def verify_request_token(
     expected: str,
     *,
     cookie_name: str = "token",
-    query_name: str = "token",
 ) -> None:
-    if request_token_matches(request, expected, cookie_name=cookie_name, query_name=query_name):
+    if request_token_matches(request, expected, cookie_name=cookie_name):
         return
     raise HTTPException(403, "Bad token")
 
 
 def verify_media_token(request: Request, expected: str, query_token: str | None = None) -> None:
-    auth = request.headers.get("Authorization", "")
-    if bearer_token_matches(auth, expected) or token_matches(query_token, expected):
+    # query_token is accepted for call-signature compatibility but ignored on
+    # purpose (see request_token_matches): media authenticates via the HttpOnly
+    # session cookie the browser sends automatically, or a Bearer header.
+    if request_token_matches(request, expected):
         return
     raise HTTPException(403, "Bad token")
 

@@ -22,7 +22,7 @@ class AuthHelpersTest(unittest.TestCase):
         self.assertFalse(bearer_token_matches("Bearer wrong", "secret"))
         self.assertFalse(bearer_token_matches("secret", "secret"))
 
-    def test_request_token_matches_bearer_cookie_or_query(self):
+    def test_request_token_matches_bearer_or_cookie(self):
         self.assertTrue(
             request_token_matches(
                 SimpleNamespace(headers={"Authorization": "Bearer secret"}, cookies={}, query_params={}),
@@ -35,15 +35,19 @@ class AuthHelpersTest(unittest.TestCase):
                 "secret",
             )
         )
-        self.assertTrue(
-            request_token_matches(
-                SimpleNamespace(headers={}, cookies={}, query_params={"token": "secret"}),
-                "secret",
-            )
-        )
         self.assertFalse(
             request_token_matches(
                 SimpleNamespace(headers={}, cookies={"token": "wrong"}, query_params={}),
+                "secret",
+            )
+        )
+
+    def test_request_token_matches_rejects_query_token(self):
+        # A correct token supplied only via the URL query string must NOT
+        # authenticate — URL tokens leak into logs/history (blocker #5).
+        self.assertFalse(
+            request_token_matches(
+                SimpleNamespace(headers={}, cookies={}, query_params={"token": "secret"}),
                 "secret",
             )
         )

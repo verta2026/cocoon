@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -401,8 +401,33 @@ class LoginRequest(BaseModel):
     password: str = ""
 
 
-async def login(req: LoginRequest):
-    return _login_payload(req.password, TOKEN)
+def _request_is_https(request: Request) -> bool:
+    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    if forwarded:
+        return forwarded == "https"
+    return request.url.scheme == "https"
+
+
+SESSION_COOKIE_MAX_AGE = 30 * 24 * 3600
+
+
+async def login(req: LoginRequest, request: Request, response: Response):
+    payload = _login_payload(req.password, TOKEN)  # raises 403 on bad password
+    # Set an HttpOnly session cookie so the token never has to ride in a URL
+    # (media/page nav authenticate via the cookie the browser sends automatically)
+    # and is not readable by JavaScript. Secure when the request arrived over
+    # HTTPS; SameSite=Lax so top-level same-site navigation (e.g. /terminal)
+    # still carries it.
+    response.set_cookie(
+        "token",
+        TOKEN,
+        max_age=SESSION_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=_request_is_https(request),
+        path="/",
+    )
+    return payload
 
 
 register_auth_routes(app, login=login)

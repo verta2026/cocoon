@@ -31,6 +31,27 @@ class ServerFileRouteIntegrationTest(unittest.TestCase):
         self.assertNotEqual(r.status_code, 500, r.text)
         self.assertIn(r.status_code, (401, 403))
 
+    def test_media_url_query_token_is_rejected(self):
+        # blocker #5: a token in the URL must not authenticate media.
+        from fastapi.testclient import TestClient
+
+        fresh = TestClient(self.server.app)
+        r = fresh.get("/files/does-not-exist.png?token=" + self.server.TOKEN)
+        self.assertEqual(r.status_code, 403, r.text)
+
+    def test_login_sets_httponly_cookie_and_media_then_authenticates(self):
+        from fastapi.testclient import TestClient
+
+        client = TestClient(self.server.app)
+        r = client.post("/login", json={"password": self.server.TOKEN})
+        self.assertEqual(r.status_code, 200)
+        set_cookie = r.headers.get("set-cookie", "")
+        self.assertIn("token=", set_cookie)
+        self.assertIn("HttpOnly", set_cookie)
+        # TestClient now carries the cookie; media auth passes (404 = missing file).
+        r2 = client.get("/files/does-not-exist.png")
+        self.assertEqual(r2.status_code, 404, r2.text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -161,7 +161,7 @@ var $fileInput = document.getElementById('file-input');
 
 function avatarSrc(role) {
   var src = role === 'user' ? (localStorage.getItem(LOOK.userAvatar) || USER_AVATAR) : (localStorage.getItem(LOOK.aiAvatar) || AI_AVATAR);
-  if (src.indexOf(API + '/') === 0) src += (src.indexOf('?') > -1 ? '&' : '?') + 'token=' + TOKEN;
+  // Media authenticates via the HttpOnly session cookie; no token in the URL.
   return src;
 }
 
@@ -636,7 +636,7 @@ function renderMessages() {
     var uploadImgMatch;
     var uploadAtts = [];
     while ((uploadImgMatch = uploadImgRe.exec(body))) {
-      var uSrc = API + '/files/' + encodeURIComponent(uploadImgMatch[1]) + '?token=' + encodeURIComponent(TOKEN);
+      var uSrc = API + '/files/' + encodeURIComponent(uploadImgMatch[1]);
       uploadAtts.push({ is_image: true, src: uSrc, name: uploadImgMatch[1] });
     }
     if (uploadAtts.length) body = body.replace(uploadImgRe, '').trim();
@@ -650,7 +650,7 @@ function renderMessages() {
     var uploadFileMatch = body.match(/(?:^|\n)\[文件\]\s*\S*\/([\w.\-]+)/);
     if (uploadFileMatch) {
       var ufName = uploadFileMatch[1];
-      var ufUrl = API + '/files/' + encodeURIComponent(ufName) + '?token=' + encodeURIComponent(TOKEN);
+      var ufUrl = API + '/files/' + encodeURIComponent(ufName);
       allAtts = allAtts.concat([{ is_image: false, name: ufName, src: ufUrl }]);
       body = body.replace(uploadFileMatch[0], '').trim();
     }
@@ -1294,7 +1294,7 @@ function playMusicById(id, title, artist, cover) {
     .then(function(d) {
       var rawUrl = d.url || d.play_url || '';
       if (!rawUrl) { TRACK.title = '无法播放'; localStorage.removeItem(NS + '_music'); renderOverlays(); return; }
-      var streamUrl = API + '/music-stream?url=' + encodeURIComponent(rawUrl) + '&token=' + encodeURIComponent(TOKEN);
+      var streamUrl = API + '/music-stream?url=' + encodeURIComponent(rawUrl);
       _audio.src = streamUrl;
       _audio.load();
       localStorage.setItem(NS + '_music', JSON.stringify({ id: id, title: title, artist: artist, cover: cover }));
@@ -1335,8 +1335,8 @@ function playMusicById(id, title, artist, cover) {
 function updateWallpaper() {
   var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   var bg = (isDark ? localStorage.getItem(LOOK.bgDark) : null) || localStorage.getItem(LOOK.bg) || DEFAULT_BG;
-  var bgUrl = bg.indexOf(API + '/') === 0 ? bg + (bg.indexOf('?') > -1 ? '&' : '?') + 'token=' + TOKEN : bg;
-  $wall.style.background = 'url(' + bgUrl + ') center center / cover no-repeat';
+  // Media (incl. bridge-served wallpaper) authenticates via the session cookie.
+  $wall.style.background = 'url(' + bg + ') center center / cover no-repeat';
   document.body.style.background = 'var(--c-bg)';
   extractWallpaperColors(bgUrl);
 }
