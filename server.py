@@ -176,6 +176,27 @@ app = FastAPI(title="Cocoon", docs_url=None)
 SEND_LOCK = asyncio.Lock()
 AUTO_RELOAD_TASK = None
 
+# Baseline security response headers. nosniff / Referrer-Policy / X-Frame-Options
+# are pure wins. The CSP is deliberately conservative — frame-ancestors, object-src
+# and base-uri never affect normal resource loading, so they are safe to ship
+# without a browser render pass. A full script-src/default-src CSP (this frontend
+# is inline-heavy; it needs 'unsafe-inline' or a per-request nonce) is left as a
+# follow-up so we don't silently break rendering.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'; object-src 'none'; base-uri 'none'",
+}
+
+
+@app.middleware("http")
+async def _apply_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
+
 
 def token_matches(candidate: str | None) -> bool:
     return _token_matches(candidate, TOKEN)
