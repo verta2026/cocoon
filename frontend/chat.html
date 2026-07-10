@@ -732,7 +732,7 @@ function renderMessages() {
     if (nImg) {
       var imgWrap = el('div', 'display:flex;flex-wrap:wrap;gap:2px;width:min(62vw,260px);border-radius:14px;overflow:hidden;margin:0 0 6px;box-shadow:0 2px 8px rgba(60,40,20,0.08)');
       attImgs.forEach(function(a) {
-        var imgDiv = el('div', 'flex:1 1 ' + (nImg === 1 ? '100%' : 'calc(50% - 1px)') + ';height:' + (nImg === 1 ? '160px' : (nImg <= 4 ? '110px' : '86px')) + ';background:var(--c-code) url(' + (a.src || '') + ') center/cover no-repeat;cursor:pointer');
+        var imgDiv = el('div', 'flex:1 1 ' + (nImg === 1 ? '100%' : 'calc(50% - 1px)') + ';height:' + (nImg === 1 ? '160px' : (nImg <= 4 ? '110px' : '86px')) + ';background-color:var(--c-code);background-image:' + cssUrl(a.src || '') + ';background-position:center;background-size:cover;background-repeat:no-repeat;cursor:pointer');
         imgDiv.addEventListener('click', function(ev){ ev.stopPropagation(); state.lb = a.src; renderOverlays(); });
         imgWrap.appendChild(imgDiv);
       });

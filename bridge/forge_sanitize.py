@@ -36,12 +36,7 @@ def content_text(content) -> str:
     return "\n".join(parts)
 
 
-# See summary._user_marker_hit: bare plumbing tokens match first-line + capped so
-# a real message mentioning the token survives; "<...>" tags stay substrings.
-_BARE_MARKER_MAX_LEN = 200
-
-
-def _user_marker_hit(text: str, markers, max_len: int = _BARE_MARKER_MAX_LEN) -> bool:
+def _user_marker_hit(text: str, markers) -> bool:
     first_line = text.lstrip().split("\n", 1)[0]
     for marker in markers:
         if not marker:

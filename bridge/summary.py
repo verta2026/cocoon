@@ -108,10 +108,7 @@ def event_timestamp(event: dict) -> str:
 # merely *mentions* the token — e.g. asking what "FORGE_RESUME_READY_" is — must
 # not be dropped from the summary. Structural "<...>" command tags stay substring
 # matches: they never occur in prose, and their blocks can be long/multi-line.
-_BARE_MARKER_MAX_LEN = 200
-
-
-def _user_marker_hit(text: str, markers, max_len: int = _BARE_MARKER_MAX_LEN) -> bool:
+def _user_marker_hit(text: str, markers) -> bool:
     first_line = text.lstrip().split("\n", 1)[0]
     for marker in markers:
         if not marker:
