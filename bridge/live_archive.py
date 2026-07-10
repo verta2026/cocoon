@@ -68,15 +68,14 @@ def bare_marker_noise(text: str, markers, max_len: int = BARE_MARKER_MAX_LEN) ->
     tokens, launcher paths). The naive ``any(m in text for m in markers)`` is a
     footgun: a real chat message that happens to *mention* the marker string —
     e.g. a report explaining "I replaced the ``FOO_VERIFY_`` token" — gets eaten
-    whole. Anchor the match to the first line and cap the length instead, so the
-    filter only fires on the plumbing rows it was meant for.
+    whole. Anchor the match: the first line must *start with* the marker, so
+    plumbing rows fire regardless of total length while a casual mention
+    mid-sentence survives.
     """
     if not markers:
         return False
-    if len(text) > max_len:
-        return False
     first_line = text.lstrip().split("\n", 1)[0]
-    return any(marker in first_line for marker in markers)
+    return any(first_line.startswith(marker) for marker in markers)
 
 
 # Assistant heartbeat rows ("Group quiet — no need to reply.") are short. A
@@ -378,9 +377,14 @@ def dedup_cross_source_rows(
             if cid and mid and (cid, mid) in chan_ids:
                 continue
             ts = timestamp_epoch(row)
+            if cid:
+                buckets = [chan_content_ts.get((cid, content), ())]
+            else:
+                buckets = [v for k, v in chan_content_ts.items() if k[1] == content]
             if any(
                 abs(ts - t) <= window_seconds
-                for t in chan_content_ts.get((cid, content), ())
+                for bucket in buckets
+                for t in bucket
             ):
                 continue
         out.append(row)

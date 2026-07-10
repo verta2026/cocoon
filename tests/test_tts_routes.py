@@ -31,7 +31,7 @@ class TtsRoutesTest(unittest.TestCase):
         def verify_token(request):
             calls.append(("verify", request.name))
 
-        def verify_media_token(request, token):
+        def verify_media_token(request, expected, token):
             calls.append(("media", request.name, token))
 
         def latest_tts(tts_dir):
@@ -51,6 +51,7 @@ class TtsRoutesTest(unittest.TestCase):
             synthesize_tts=synthesize_tts,
             serve_tts_audio=serve_tts_audio,
             tts_dir=Path("/tmp/tts"),
+            bridge_token="test-secret-token",
         )
 
         latest = asyncio.run(app.routes[("GET", "/tts/latest")](SimpleNamespace(name="latest")))

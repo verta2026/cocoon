@@ -794,7 +794,7 @@ function renderMessages() {
       }
       // inline image
       if (img) {
-        var imgEl = el('div', 'width:min(58vw,240px);height:180px;border-radius:10px;margin:2px 0;background:var(--c-code) url(' + img + ') center/cover no-repeat;cursor:pointer');
+        var imgEl = el('div', 'width:min(58vw,240px);height:180px;border-radius:10px;margin:2px 0;background-color:var(--c-code);background-image:' + cssUrl(img) + ';background-position:center;background-size:cover;background-repeat:no-repeat;cursor:pointer');
         imgEl.addEventListener('click', function(ev){ ev.stopPropagation(); state.lb = img; renderOverlays(); });
         bub.appendChild(imgEl);
       }
@@ -1354,7 +1354,7 @@ function updateWallpaper() {
   // Media (incl. bridge-served wallpaper) authenticates via the session cookie.
   $wall.style.background = 'url(' + bg + ') center center / cover no-repeat';
   document.body.style.background = 'var(--c-bg)';
-  extractWallpaperColors(bgUrl);
+  extractWallpaperColors(bg);
 }
 
 function extractWallpaperColors(url) {
@@ -1747,6 +1747,15 @@ if (savedMood && savedMood !== 'off') {
 try { var draft = sessionStorage.getItem('chatDraft'); if (draft) { state.input = draft; $input.value = draft; } } catch(e){}
 
 updateWallpaper();
+
+// Refresh the HttpOnly session cookie on every page load so media auth
+// stays in sync with the localStorage bearer token (the cookie expires
+// after 30 days but the bearer token is permanent).
+fetch(API + '/login', {
+  method: 'POST',
+  headers: HEADERS,
+  body: JSON.stringify({ password: TOKEN })
+}).catch(function(){});
 
 // 幂等引导：默认前端首次加载时确保底层 tmux/Claude 会话存在，
 // 否则 fresh clone 无会话，/send 永远 404。/start 服务端幂等，失败不阻断轮询。

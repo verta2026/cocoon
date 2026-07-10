@@ -24,6 +24,7 @@ def register_tts_routes(
     synthesize_tts,
     serve_tts_audio,
     tts_dir: Path,
+    bridge_token: str,
 ) -> None:
     @app.get("/tts/latest")
     async def tts_latest(request: Request):
@@ -37,5 +38,5 @@ def register_tts_routes(
 
     @app.get("/tts/audio/{audio_name}")
     async def tts_audio(audio_name: str, request: Request, token: str = None):
-        verify_media_token(request, token)
+        verify_media_token(request, bridge_token, token)
         return serve_tts_audio(tts_dir, audio_name)

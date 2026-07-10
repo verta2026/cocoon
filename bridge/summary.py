@@ -119,7 +119,7 @@ def _user_marker_hit(text: str, markers, max_len: int = _BARE_MARKER_MAX_LEN) ->
         if marker.startswith("<"):
             if marker in text:
                 return True
-        elif len(text) <= max_len and marker in first_line:
+        elif first_line.startswith(marker):
             return True
     return False
 

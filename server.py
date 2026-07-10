@@ -56,6 +56,7 @@ from config import (
     SESSION_NAME,
     START_COMMAND,
     TOKEN,
+    TRUST_PROXY,
     TMUX_HISTORY_LIMIT,
     STICKER_DIR,
     TTS_DIR,
@@ -423,9 +424,10 @@ class LoginRequest(BaseModel):
 
 
 def _request_is_https(request: Request) -> bool:
-    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
-    if forwarded:
-        return forwarded == "https"
+    if TRUST_PROXY:
+        forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+        if forwarded:
+            return forwarded == "https"
     return request.url.scheme == "https"
 
 
@@ -716,6 +718,7 @@ register_tts_routes(
     synthesize_tts=_synthesize_tts,
     serve_tts_audio=_serve_tts_audio,
     tts_dir=TTS_DIR,
+    bridge_token=TOKEN,
 )
 
 

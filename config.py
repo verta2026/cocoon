@@ -158,6 +158,8 @@ ASSISTANT_AVATAR = os.environ.get("COCOON_ASSISTANT_AVATAR", "")
 USER_NAME = os.environ.get("COCOON_USER_NAME", "You")
 USER_AVATAR = os.environ.get("COCOON_USER_AVATAR", "")
 
+TRUST_PROXY = _env_bool("COCOON_TRUST_PROXY", False)
+
 MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
 MINIMAX_VOICE_ID = os.environ.get("MINIMAX_VOICE_ID", "")
 MINIMAX_TTS_MODEL = os.environ.get("MINIMAX_TTS_MODEL", "speech-2.8-hd")
