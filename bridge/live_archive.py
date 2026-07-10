@@ -56,6 +56,71 @@ def default_transcript_noise(role: str, text: str) -> bool:
     return False
 
 
+# Short cap for line-anchored marker matching. Real ping/echo rows carrying a
+# bare marker are single short lines; genuine messages are longer or multi-line.
+BARE_MARKER_MAX_LEN = 200
+
+
+def bare_marker_noise(text: str, markers, max_len: int = BARE_MARKER_MAX_LEN) -> bool:
+    """True only when a bare token marker *is* the message, not merely quoted in it.
+
+    Deployments inject their own plumbing markers (verification pings, resume
+    tokens, launcher paths). The naive ``any(m in text for m in markers)`` is a
+    footgun: a real chat message that happens to *mention* the marker string —
+    e.g. a report explaining "I replaced the ``FOO_VERIFY_`` token" — gets eaten
+    whole. Anchor the match to the first line and cap the length instead, so the
+    filter only fires on the plumbing rows it was meant for.
+    """
+    if not markers:
+        return False
+    if len(text) > max_len:
+        return False
+    first_line = text.lstrip().split("\n", 1)[0]
+    return any(marker in first_line for marker in markers)
+
+
+# Assistant heartbeat rows ("Group quiet — no need to reply.") are short. A
+# mid-line status *phrase* is often natural language, so match it only on very
+# short rows to keep a real sentence that merely uses those words alive.
+STATUS_MARKER_MAX_LEN = 80
+
+
+def make_transcript_noise(
+    *,
+    bare_markers=(),
+    status_prefixes=(),
+    status_markers=(),
+    max_len: int = BARE_MARKER_MAX_LEN,
+    status_max_len: int = STATUS_MARKER_MAX_LEN,
+    base=default_transcript_noise,
+) -> Callable[[str, str], bool]:
+    """Build a deployment noise filter without hand-rolling the substring footgun.
+
+    ``bare_markers`` are distinctive plumbing tokens matched via
+    :func:`bare_marker_noise` (line-anchored + length-capped). ``status_prefixes``
+    are assistant heartbeat lines matched by first-line ``startswith`` (safe: real
+    messages rarely open with "Replied"). ``status_markers`` are mid-line
+    heartbeat phrases — often natural language, so they only fire on rows no
+    longer than ``status_max_len``, letting a real sentence that reuses the same
+    words survive. ``base`` runs first for the always-safe tag/continuation checks.
+    """
+    def _is_noise(role: str, text: str) -> bool:
+        text = text or ""
+        if base(role, text):
+            return True
+        if bare_marker_noise(text, bare_markers, max_len):
+            return True
+        if role == "assistant":
+            first_line = text.lstrip().split("\n", 1)[0]
+            if len(text) <= max_len and any(first_line.startswith(p) for p in status_prefixes):
+                return True
+            if len(text) <= status_max_len and any(m in first_line for m in status_markers):
+                return True
+        return False
+
+    return _is_noise
+
+
 def archive_parts_from_message(
     role,
     content,
@@ -293,7 +358,12 @@ def dedup_cross_source_rows(
                 continue
             if meta.get("chat_id") and meta.get("message_id"):
                 chan_ids.add((str(meta["chat_id"]), str(meta["message_id"])))
-            chan_content_ts.setdefault(meta.get("content", ""), []).append(timestamp_epoch(row))
+            # Bucket the content-window fallback by chat_id: two chats can send the
+            # same short text ("OK") seconds apart, and a chat-agnostic content key
+            # would drop the second chat's message as a phantom duplicate.
+            chan_content_ts.setdefault(
+                (str(meta.get("chat_id", "")), meta.get("content", "")), []
+            ).append(timestamp_epoch(row))
     out = []
     for row in rows:
         content = (row.get("content") or "").strip()
@@ -308,7 +378,10 @@ def dedup_cross_source_rows(
             if cid and mid and (cid, mid) in chan_ids:
                 continue
             ts = timestamp_epoch(row)
-            if any(abs(ts - t) <= window_seconds for t in chan_content_ts.get(content, ())):
+            if any(
+                abs(ts - t) <= window_seconds
+                for t in chan_content_ts.get((cid, content), ())
+            ):
                 continue
         out.append(row)
     return out
@@ -584,13 +657,35 @@ def pure_chat_messages(
             continue
         epoch_ms = int(timestamp_epoch(row) * 1000)
         fingerprint = archive_key(row)[:8]
-        dedup_key = f"{epoch_ms}|{item['role']}|{text[:80]}"
+        # Per-message identity keeps distinct external messages apart even when
+        # their text, second and role coincide (two chats both say "OK"). A row
+        # without an identity (assistant text, a transcript echo, a recv row that
+        # only carries a name) is treated as a twin of any row in the same content
+        # bucket, so genuine cross-source duplicates still collapse and the named
+        # sender still wins. Two rows are kept apart only when both carry an
+        # identity and the identities differ.
+        cid = str(row.get("chat_id") or "")
+        mid = str(row.get("message_id") or "")
+        if not (cid or mid) and "<channel " in (row.get("content") or ""):
+            meta = parse_channel_message(row.get("content") or "") or {}
+            cid = str(meta.get("chat_id") or "")
+            mid = str(meta.get("message_id") or "")
+        identity = f"{cid}\x1f{mid}" if (cid or mid) else ""
+        content_key = f"{epoch_ms}|{item['role']}|{text[:80]}"
         sender = item.get("sender", "")
         sender_is_name = bool(sender) and not sender.isdigit()
-        if dedup_key in seen_dedup:
-            if sender_is_name and not seen_dedup[dedup_key].get("_named"):
-                seen_dedup[dedup_key]["sender"] = sender
-                seen_dedup[dedup_key]["_named"] = True
+        twin = None
+        for candidate in seen_dedup.get(content_key, ()):
+            cand_id = candidate["_identity"]
+            if not cand_id or not identity or cand_id == identity:
+                twin = candidate
+                break
+        if twin is not None:
+            if sender_is_name and not twin.get("_named"):
+                twin["sender"] = sender
+                twin["_named"] = True
+            if identity and not twin["_identity"]:
+                twin["_identity"] = identity
             continue
         entry = {
             "id": f"{epoch_ms:015d}-{fingerprint}",
@@ -600,10 +695,12 @@ def pure_chat_messages(
             "channel": item.get("channel", ""),
             "sender": sender,
             "_named": sender_is_name,
+            "_identity": identity,
         }
-        seen_dedup[dedup_key] = entry
+        seen_dedup.setdefault(content_key, []).append(entry)
         if entry["id"] > (since or ""):
             out.append(entry)
     for entry in out:
         entry.pop("_named", None)
+        entry.pop("_identity", None)
     return out

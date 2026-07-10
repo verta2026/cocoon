@@ -55,6 +55,16 @@ class ForgeSanitizeTest(unittest.TestCase):
         self.assertTrue(is_runtime_noise("assistant", "API Error: overloaded", ("API Error:",), ()))
         self.assertTrue(is_runtime_noise("user", "FORGE_CONTEXT_SUMMARY:\nhidden", (), ("FORGE_CONTEXT_SUMMARY:",)))
         self.assertFalse(is_runtime_noise("user", "normal", (), ("FORGE_CONTEXT_SUMMARY:",)))
+        # A real message that merely mentions the token (not as its opening line)
+        # must survive — the marker is not a free substring filter.
+        self.assertFalse(
+            is_runtime_noise(
+                "user",
+                "Here is my report.\nI reworked how FORGE_CONTEXT_SUMMARY: is handled.",
+                (),
+                ("FORGE_CONTEXT_SUMMARY:",),
+            )
+        )
 
     def test_sanitize_event_removes_runtime_fields_and_meta(self):
         event = assistant("reply", requestId="rid")

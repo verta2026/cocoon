@@ -103,13 +103,34 @@ def event_timestamp(event: dict) -> str:
     return event.get("timestamp") or event.get("created_at") or ""
 
 
+# Bare plumbing tokens (resume/summary markers, deployment-supplied) are matched
+# first-line + length-capped, not as free substrings: a real user message that
+# merely *mentions* the token — e.g. asking what "FORGE_RESUME_READY_" is — must
+# not be dropped from the summary. Structural "<...>" command tags stay substring
+# matches: they never occur in prose, and their blocks can be long/multi-line.
+_BARE_MARKER_MAX_LEN = 200
+
+
+def _user_marker_hit(text: str, markers, max_len: int = _BARE_MARKER_MAX_LEN) -> bool:
+    first_line = text.lstrip().split("\n", 1)[0]
+    for marker in markers:
+        if not marker:
+            continue
+        if marker.startswith("<"):
+            if marker in text:
+                return True
+        elif len(text) <= max_len and marker in first_line:
+            return True
+    return False
+
+
 def is_runtime_noise(role: str, content, *, extra_user_markers: tuple[str, ...] = ()) -> bool:
     text = content_text(content).strip()
     if role == "assistant":
         return any(text.startswith(prefix) for prefix in ASSISTANT_RUNTIME_NOISE_PREFIXES)
     if role == "user":
         markers = USER_RUNTIME_NOISE_MARKERS + tuple(extra_user_markers)
-        return any(marker in text for marker in markers)
+        return _user_marker_hit(text, markers)
     return False
 
 

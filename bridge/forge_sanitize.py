@@ -36,6 +36,24 @@ def content_text(content) -> str:
     return "\n".join(parts)
 
 
+# See summary._user_marker_hit: bare plumbing tokens match first-line + capped so
+# a real message mentioning the token survives; "<...>" tags stay substrings.
+_BARE_MARKER_MAX_LEN = 200
+
+
+def _user_marker_hit(text: str, markers, max_len: int = _BARE_MARKER_MAX_LEN) -> bool:
+    first_line = text.lstrip().split("\n", 1)[0]
+    for marker in markers:
+        if not marker:
+            continue
+        if marker.startswith("<"):
+            if marker in text:
+                return True
+        elif len(text) <= max_len and marker in first_line:
+            return True
+    return False
+
+
 def is_runtime_noise(
     role: str | None,
     content,
@@ -46,7 +64,7 @@ def is_runtime_noise(
     if role == "assistant":
         return any(text.startswith(prefix) for prefix in assistant_prefixes)
     if role == "user":
-        return any(marker in text for marker in user_markers)
+        return _user_marker_hit(text, user_markers)
     return False
 
 

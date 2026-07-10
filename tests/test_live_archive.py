@@ -4,9 +4,11 @@ from bridge.live_archive import (
     archive_key,
     archive_parts_from_message,
     archive_rows_from_claude_jsonl,
+    bare_marker_noise,
     dedup_cross_source_rows,
     dedup_external_send_rows,
     live_messages,
+    make_transcript_noise,
     parse_channel_message,
     pure_chat_messages,
     read_recv_sidecar_rows,
@@ -41,6 +43,40 @@ def test_parts_text_and_reply_tool():
     assert parts[1]["content"] == "sent to channel"
     assert parts[1]["channel"] == "group"
     assert parts[1]["source"] == "external-send"
+
+
+def test_bare_marker_noise_only_eats_plumbing_rows():
+    markers = ("FOO_VERIFY_", "RESUME_READY_")
+    # The bare ping row is filtered.
+    assert bare_marker_noise("FOO_VERIFY_9f3a", markers)
+    assert bare_marker_noise("RESUME_READY_beef", markers)
+    # A real message that merely quotes the marker survives — this is the
+    # self-referential bug: a report about replacing the token must not vanish.
+    report = (
+        "Pushed the squash. While re-filtering I caught a leftover FOO_VERIFY_\n"
+        "token in the test fixtures and replaced it. " + "All green. " * 40
+    )
+    assert not bare_marker_noise(report, markers)
+    # A short first line mentioning the marker mid-line still survives when long.
+    assert not bare_marker_noise("done, dropped FOO_VERIFY_ everywhere " * 10, markers)
+
+
+def test_make_transcript_noise_keeps_real_messages():
+    is_noise = make_transcript_noise(
+        bare_markers=("FOO_VERIFY_",),
+        status_prefixes=("Replied", "Waiting for"),
+        status_markers=("no need to reply",),
+    )
+    # Plumbing and heartbeat rows are noise.
+    assert is_noise("user", "FOO_VERIFY_9f3a")
+    assert is_noise("assistant", "Replied in group; nothing pending.")
+    assert is_noise("assistant", "Group quiet — no need to reply.")
+    assert is_noise("user", "<command-name>/exit</command-name>")
+    assert is_noise("assistant", "")
+    # Real conversation survives even when it contains the same words.
+    assert not is_noise("assistant", "Morning — no need to reply right away, " * 5)
+    long_report = "Pushed it. Replaced the FOO_VERIFY_ token too.\n" + "Done. " * 60
+    assert not is_noise("assistant", long_report)
 
 
 def test_parts_voice_marker_from_tool_result():
@@ -313,6 +349,25 @@ def test_cross_source_dedup_keeps_recv_row_when_transcript_missed_it():
     assert len(out) == 1
 
 
+def test_cross_source_dedup_keeps_distinct_chats_with_same_text():
+    # Two different chats send the same short text a second apart. A chat-agnostic
+    # content-window key would drop the second as a phantom duplicate of the first.
+    tag = '<channel source="chat" chat_id="55" message_id="7" user_id="99">ok</channel>'
+    rows = [
+        {"role": "user", "content": tag, "timestamp": "2026-07-01T10:00:00.000Z"},
+        {
+            "role": "user",
+            "content": "ok",
+            "timestamp": "2026-07-01T10:00:01.000Z",
+            "source": "external-recv",
+            "chat_id": "66",
+            "message_id": "3",
+        },
+    ]
+    out = dedup_cross_source_rows(rows)
+    assert len(out) == 2
+
+
 def test_sync_merges_recv_sidecar_and_dedups_against_channel_row(tmp_path):
     tag = '<channel source="chat" chat_id="55" message_id="7" user_id="99">covered</channel>'
     jsonl = tmp_path / "sess-9.jsonl"
@@ -430,3 +485,26 @@ def test_pure_chat_recv_row_channel_role():
     msgs = pure_chat_messages(rows, primary_sender_id="1")
     assert msgs[0]["role"] == "channel"
     assert msgs[1]["role"] == "user"
+
+
+def test_pure_chat_keeps_distinct_chats_with_same_text():
+    # Same second, same text, same role, different chats -> both must survive.
+    tag_a = '<channel source="chat" chat_id="55" message_id="7" user="a">ok</channel>'
+    tag_b = '<channel source="chat" chat_id="66" message_id="3" user="b">ok</channel>'
+    rows = [
+        {"role": "user", "content": tag_a, "timestamp": "2026-07-01T10:00:00.000Z"},
+        {"role": "user", "content": tag_b, "timestamp": "2026-07-01T10:00:00.000Z"},
+    ]
+    msgs = pure_chat_messages(rows, primary_sender_id="1")
+    assert len(msgs) == 2
+    assert sorted(m["sender"] for m in msgs) == ["a", "b"]
+
+
+def test_pure_chat_collapses_identityless_duplicate():
+    # No identity on either row (a plain transcript echo) -> still collapse to one.
+    rows = [
+        {"role": "assistant", "content": "same", "timestamp": "2026-07-01T10:00:00.000Z"},
+        {"role": "assistant", "content": "same", "timestamp": "2026-07-01T10:00:00.000Z"},
+    ]
+    msgs = pure_chat_messages(rows)
+    assert len(msgs) == 1
