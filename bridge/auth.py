@@ -8,7 +8,12 @@ from fastapi import HTTPException, Request
 
 
 def token_matches(candidate: str | None, expected: str) -> bool:
-    return hmac.compare_digest(candidate or "", expected or "")
+    # Fail closed on an empty expected token: an unset/blank server token must
+    # never authenticate an anonymous ("") request. Without this guard both sides
+    # normalize to "" and hmac.compare_digest("", "") returns True (fail-open).
+    if not expected:
+        return False
+    return hmac.compare_digest(candidate or "", expected)
 
 
 def bearer_token_matches(auth: str, expected: str) -> bool:

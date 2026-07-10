@@ -74,7 +74,49 @@ FRONTEND_DIR = Path(
 )
 HOST = os.environ.get("COCOON_HOST", "127.0.0.1")
 PORT = _env_int("COCOON_PORT", 8080, minimum=1)
-TOKEN = os.environ.get("COCOON_TOKEN", "cocoon-default-token")
+DEFAULT_TOKEN = "cocoon-default-token"
+TOKEN = os.environ.get("COCOON_TOKEN", DEFAULT_TOKEN)
+MIN_PUBLIC_TOKEN_LEN = 24
+_LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", ""})
+
+
+def is_local_bind(host: str) -> bool:
+    return (host or "").strip() in _LOCAL_HOSTS
+
+
+def validate_security(*, token: str = None, host: str = None) -> None:
+    """Refuse to start on an insecure token/bind combination.
+
+    Enforced in-process (not only in start.sh/doctor) so that running
+    ``uvicorn server:app`` directly cannot silently come up fail-open or with a
+    guessable token on a public interface — where a leaked token equals full
+    terminal control. Empty token is rejected on any bind; the built-in default
+    and short tokens are rejected on a non-local bind.
+    """
+    token = TOKEN if token is None else token
+    host = HOST if host is None else host
+    problems = []
+    if not token:
+        problems.append(
+            "COCOON_TOKEN is empty — an empty token authenticates every request. "
+            "Set COCOON_TOKEN to a strong random value."
+        )
+    if not is_local_bind(host):
+        if token == DEFAULT_TOKEN:
+            problems.append(
+                f"COCOON_TOKEN is the built-in default on a public bind ({host}). "
+                "Set a strong random COCOON_TOKEN before exposing the server."
+            )
+        elif token and len(token) < MIN_PUBLIC_TOKEN_LEN:
+            problems.append(
+                f"COCOON_TOKEN is too short ({len(token)} < {MIN_PUBLIC_TOKEN_LEN}) "
+                f"for a public bind ({host})."
+            )
+    if problems:
+        raise RuntimeError(
+            "Cocoon refuses to start due to insecure configuration:\n  - "
+            + "\n  - ".join(problems)
+        )
 TMUX_HISTORY_LIMIT = _env_int("COCOON_TMUX_HISTORY_LIMIT", 20000, minimum=100)
 UPLOAD_DIR = Path(
     os.environ.get("COCOON_UPLOAD_DIR", str(Path(tempfile.gettempdir()) / "cocoon-uploads"))

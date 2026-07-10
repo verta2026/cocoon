@@ -61,6 +61,7 @@ from config import (
     TTS_DIR,
     UPLOAD_DIR,
     WORK_DIR,
+    validate_security,
 )
 from bridge.session import (
     launcher_in_progress as _launcher_in_progress,
@@ -165,6 +166,11 @@ from bridge.auth import (
 UPLOAD_DIR.mkdir(exist_ok=True)
 STICKER_DIR.mkdir(exist_ok=True)
 TTS_DIR.mkdir(exist_ok=True)
+
+# Fail fast in-process on an insecure token/bind combination, so a bare
+# ``uvicorn server:app`` cannot come up fail-open or publicly exposed with a
+# guessable token (start.sh / doctor guards alone are bypassable).
+validate_security()
 
 app = FastAPI(title="Cocoon", docs_url=None)
 SEND_LOCK = asyncio.Lock()

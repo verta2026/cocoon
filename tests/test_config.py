@@ -60,5 +60,29 @@ class ConfigParsingTest(unittest.TestCase):
         self.assertTrue(cfg.AUTO_RELOAD_ENABLED)
 
 
+class ValidateSecurityTest(unittest.TestCase):
+    def test_local_default_token_is_allowed(self):
+        config.validate_security(token=config.DEFAULT_TOKEN, host="127.0.0.1")
+        config.validate_security(token=config.DEFAULT_TOKEN, host="localhost")
+
+    def test_empty_token_rejected_on_any_bind(self):
+        for host in ("127.0.0.1", "0.0.0.0"):
+            with self.assertRaises(RuntimeError):
+                config.validate_security(token="", host=host)
+
+    def test_public_bind_rejects_default_token(self):
+        with self.assertRaises(RuntimeError):
+            config.validate_security(token=config.DEFAULT_TOKEN, host="0.0.0.0")
+
+    def test_public_bind_rejects_short_token(self):
+        with self.assertRaises(RuntimeError):
+            config.validate_security(
+                token="x" * (config.MIN_PUBLIC_TOKEN_LEN - 1), host="1.2.3.4"
+            )
+
+    def test_public_bind_allows_strong_token(self):
+        config.validate_security(token="a" * config.MIN_PUBLIC_TOKEN_LEN, host="0.0.0.0")
+
+
 if __name__ == "__main__":
     unittest.main()
