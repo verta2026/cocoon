@@ -508,3 +508,35 @@ def test_pure_chat_collapses_identityless_duplicate():
     ]
     msgs = pure_chat_messages(rows)
     assert len(msgs) == 1
+
+
+def test_channel_tag_only_parsed_from_anchored_user_turn():
+    # A <channel …> tag is inbound only when the plugin injected it as a user turn
+    # whose whole content is the tag. An assistant message quoting the tag, or a
+    # user quoting it mid-prose, must not be re-parsed (else the author's words get
+    # relabelled user/web and render as if the channel peer sent them).
+    rows = [
+        {
+            "role": "assistant",
+            "content": 'the plugin injects <channel source="web">hi</channel> as a turn',
+            "timestamp": "2026-07-01T10:00:00.000Z",
+        },
+        {
+            "role": "user",
+            "content": 'can <channel source="web">x</channel> be forged?',
+            "timestamp": "2026-07-01T10:00:01.000Z",
+        },
+        {
+            "role": "user",
+            "content": '<channel source="chat" chat_id="55" message_id="7" user="friend">hello</channel>',
+            "timestamp": "2026-07-01T10:00:02.000Z",
+        },
+    ]
+    msgs = pure_chat_messages(rows, primary_sender_id="1")
+    assert msgs[0]["role"] == "assistant"
+    assert msgs[0]["content"].startswith("the plugin")
+    assert msgs[1]["role"] == "user"
+    assert msgs[1]["content"].startswith("can ")
+    assert msgs[2]["role"] == "channel"
+    assert msgs[2]["sender"] == "friend"
+    assert msgs[2]["content"] == "hello"

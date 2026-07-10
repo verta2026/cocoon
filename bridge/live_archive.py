@@ -352,7 +352,7 @@ def dedup_cross_source_rows(
         content = (row.get("content") or "").strip()
         if row.get("source") == send_source and row.get("role") == "assistant":
             reply_ts.setdefault(content, []).append(timestamp_epoch(row))
-        elif row.get("role") == "user" and "<channel " in content:
+        elif row.get("role") == "user" and content.startswith("<channel"):
             meta = parse_channel_message(content)
             if not meta or meta.get("source") == "web":
                 continue
@@ -512,6 +512,22 @@ def sync_live_archive(
     return {"updated": True, "messages": len(merged), "path": str(path)}
 
 
+def inbound_channel_meta(role, content):
+    """Parse a ``<channel …>`` tag only when it is a genuine inbound message.
+
+    The messaging plugin injects an inbound message as a *user* turn whose whole
+    content is the tag. An assistant turn — or a user turn that merely quotes the
+    tag in prose while discussing this parser — must never be re-parsed as an
+    inbound message, or the author's own words get relabelled as user/web and
+    render as if the channel peer sent them. Guard on role + an anchored tag.
+    """
+    if role != "user":
+        return None
+    if not (content or "").lstrip().startswith("<channel"):
+        return None
+    return parse_channel_message(content)
+
+
 def parse_channel_message(text):
     """Parse an inbound ``<channel ...>`` tag injected by a messaging plugin."""
     found = re.search(r"<channel\s([^>]*)>(.*?)</channel>", text or "", flags=re.S)
@@ -563,7 +579,7 @@ def live_messages(
             "channel": row.get("channel", ""),
             "sender": "",
         }
-        channel = parse_channel_message(content)
+        channel = inbound_channel_meta(role, content)
         if channel:
             source = channel.get("source", "")
             sender_id = channel.get("user_id") or channel.get("user") or channel.get("chat_id") or ""
@@ -599,7 +615,7 @@ def _normalize_chat_row(row, *, primary_sender_id: str, is_noise, recv_source: s
         "channel": row.get("channel", ""),
         "sender": "",
     }
-    channel = parse_channel_message(content)
+    channel = inbound_channel_meta(role, content)
     if channel:
         source = channel.get("source", "")
         sender_id = channel.get("user_id") or channel.get("user") or channel.get("chat_id") or ""
@@ -666,8 +682,8 @@ def pure_chat_messages(
         # identity and the identities differ.
         cid = str(row.get("chat_id") or "")
         mid = str(row.get("message_id") or "")
-        if not (cid or mid) and "<channel " in (row.get("content") or ""):
-            meta = parse_channel_message(row.get("content") or "") or {}
+        if not (cid or mid):
+            meta = inbound_channel_meta(row.get("role", ""), row.get("content") or "") or {}
             cid = str(meta.get("chat_id") or "")
             mid = str(meta.get("message_id") or "")
         identity = f"{cid}\x1f{mid}" if (cid or mid) else ""
