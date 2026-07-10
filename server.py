@@ -183,8 +183,10 @@ def verify_token(request: Request):
     _verify_request_token(request, TOKEN)
 
 
-def verify_media_token(request: Request, token: str = None):
-    _verify_media_token(request, TOKEN, token)
+def verify_media_token(request: Request, expected: str = None, token: str = None):
+    # register_upload_routes 以 (request, bridge_token, query_token) 三参调用；
+    # expected 缺省回落 TOKEN，兼容按 (request, token) 两参直调的旧用法。
+    _verify_media_token(request, expected if expected is not None else TOKEN, token)
 
 
 register_upload_routes(

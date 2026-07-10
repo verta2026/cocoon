@@ -1732,6 +1732,12 @@ try { var draft = sessionStorage.getItem('chatDraft'); if (draft) { state.input 
 
 updateWallpaper();
 
+// 幂等引导：默认前端首次加载时确保底层 tmux/Claude 会话存在，
+// 否则 fresh clone 无会话，/send 永远 404。/start 服务端幂等，失败不阻断轮询。
+function ensureSession() {
+  return fetch(API + '/start', { method: 'POST', headers: HEADERS }).catch(function(){});
+}
+
 openDb().then(function(d) {
   db = d;
   return Promise.all([idbAll(), idbFiles()]);
@@ -1743,10 +1749,10 @@ openDb().then(function(d) {
   state.rows = rows.sort(function(a,b){ var ta = new Date(a.ts).getTime() || 0, tb = new Date(b.ts).getTime() || 0; return ta - tb || (a.id < b.id ? -1 : 1); });
   renderMessages();
   scrollBottom();
-  return poll();
+  return ensureSession().then(poll);
 }).catch(function(e) {
   console.error('init error', e);
-  poll();
+  ensureSession().then(poll);
 });
 
 setInterval(poll, 3000);
