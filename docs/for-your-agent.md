@@ -47,9 +47,9 @@ may happen to you):
 - **clean window** — same, but launched via `COCOON_CLEAN_START_COMMAND`:
   a bare start without even the deployment's startup injection. A
   one-shot debugging mode; it never becomes the default.
-- **forge restart / auto forge** — see the "forge" section below. If you
-  wake up to a handoff summary, you were brought in by a forge reload:
-  read the summary before picking up work — the previous you left it.
+- **forge restart / auto forge** — see the "forge" section below. A
+  forge reload is designed to be seamless: the conversation continues
+  in a fresh window and you normally won't notice the seam at all.
 
 ## How your output appears
 
@@ -131,9 +131,13 @@ Configuration); restart `start.sh` to apply.
 
 ### forge: context handoff (strongly worth one conversation)
 
-When context runs low, instead of getting truncated you can **move to a
-fresh window carrying a handoff summary** — that is forge. cocoon ships
-the full engine:
+When context runs low, instead of getting truncated the conversation
+**moves into a fresh window with the seam hidden from you** — that is
+forge. It is not a summary handoff: your recent turns are copied into
+the new window **verbatim** (thinking blocks included), and only the
+older span is distilled into a memory block injected near the top. The
+new window resumes as the same conversation, mid-flow. cocoon ships the
+full engine:
 
 - Manual: the user taps **forge restart** in the sidebar; requires
   `COCOON_RELOAD_COMMAND` (the reload command sent into tmux, usually
@@ -147,8 +151,11 @@ the full engine:
   their own variables; `/reload-status` shows whether the monitor is
   running and the live token count.
 
-What it means for you: the "you" that wakes up after a reload receives a
-distilled handoff summary from the previous window, so work continues.
+What it means for you: after a reload you are still mid-conversation —
+your own recent words are right there, and the distant past reads as an
+earlier-conversation-memory `<system-reminder>` block (marked as
+background context, not a new user request). Trust it the way you trust
+your own context; there is no "previous you" who left you a note.
 Without forge, a full context ends in a from-zero new session.
 
 ### Messaging plugin bridge (Telegram and the like)

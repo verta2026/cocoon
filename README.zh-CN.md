@@ -122,7 +122,7 @@ npm install -g @anthropic-ai/claude-code
 | `COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS` | `30` | 自动重载监控器的默认轮询间隔（接近阈值时降到 10 秒） |
 | `COCOON_AUTO_RELOAD_STARTUP_DELAY_SECONDS` | `120` | 服务启动后监控器首次检查前的延迟 |
 | `COCOON_CLAUDE_SETTINGS_FILE` | `~/.claude/settings.json` | Claude Code 设置文件，只用于检测 `[1m]` 上下文窗口模型 |
-| `COCOON_RELOAD_COMMAND` | 空 | `POST /reload-session` 和自动重载监控器发给 tmux 的命令（例如你的 forge/交接启动器） |
+| `COCOON_RELOAD_COMMAND` | 空 | `POST /reload-session` 和自动重载监控器发给 tmux 的命令（例如你的 forge 启动器） |
 | `COCOON_RELOAD_LOCK_DIR` | `COCOON_STATE_DIR/.reload.lock` | 手动重载集成的锁目录 |
 | `COCOON_RELOAD_LOCK_STALE_SECONDS` | `300` | 重载锁可被回收前的秒数 |
 | `COCOON_UPLOAD_DIR` | 系统临时目录 / `cocoon-uploads` | 上传文件的目录 |
