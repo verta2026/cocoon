@@ -52,3 +52,28 @@ input::placeholder { color: var(--border); }
   min-height: 1.2em;
 }
 .hint.error { color: var(--accent); }
+.guide { margin-top: 1.6rem; }
+.guide-toggle {
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 0.75rem; color: var(--muted);
+  padding: 0.3rem 0.6rem; opacity: 0.7;
+}
+.guide-toggle:hover { opacity: 1; }
+.guide-card {
+  margin-top: 0.8rem; padding: 1rem 1.1rem; text-align: left;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  font-size: 0.78rem; line-height: 1.7; color: var(--muted);
+  box-shadow: 0 10px 28px rgba(60,40,20,0.08);
+}
+.guide-card p { margin: 0.4rem 0; }
+.guide-card code {
+  font-family: "Courier New", monospace; font-size: 0.75rem;
+  background: rgba(196,149,106,0.12); border-radius: 4px; padding: 0 0.3em;
+  color: var(--text);
+}
+.guide-card pre {
+  font-family: "Courier New", monospace; font-size: 0.75rem;
+  background: rgba(196,149,106,0.12); border-radius: 6px;
+  padding: 0.45rem 0.7rem; margin: 0.45rem 0; overflow-x: auto;
+  color: var(--text);
+}

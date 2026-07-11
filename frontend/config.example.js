@@ -25,6 +25,9 @@ window.CFG = {
   apiBase: '',
   // Site title
   siteName: 'chat',
+  // Show the "第一次用？" quickstart card on the login page (where the token
+  // lives, how to paste it). Set false on personal deployments
+  loginGuide: true,
   // Extra sidebar entries for deployment-specific pages the public bundle
   // knows nothing about. Kinds:
   //   link   — {icon, label, href}                 navigates to href

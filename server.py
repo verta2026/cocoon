@@ -92,7 +92,10 @@ from bridge.claude_session import (
     new_pick_state,
     pick_session_jsonl,
 )
-from bridge.control_routes import register_control_routes
+from bridge.control_routes import (
+    register_control_routes,
+    resolve_terminal_key as _resolve_terminal_key,
+)
 from bridge.history_routes import register_history_routes
 from bridge.interaction_routes import (
     build_send_payload as _build_send_payload,
@@ -873,7 +876,26 @@ async def send_escape(request: Request):
     return {"sent": True, "key": "Escape"}
 
 
-register_control_routes(app, send_escape=send_escape)
+async def send_key(request: Request):
+    verify_token(request)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    key = _resolve_terminal_key((payload or {}).get("key"))
+    if key is None:
+        raise HTTPException(400, "Unknown key")
+    async with SEND_LOCK:
+        if not tmux_exists():
+            raise HTTPException(404, "No active session")
+        subprocess.run(
+            ["tmux", "send-keys", "-t", SESSION_NAME, key],
+            check=True,
+        )
+    return {"sent": True, "key": key}
+
+
+register_control_routes(app, send_escape=send_escape, send_key=send_key)
 
 
 async def chat_ui():

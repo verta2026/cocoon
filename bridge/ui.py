@@ -19,6 +19,9 @@ body { background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; f
 .input-row { display:flex; gap:8px; padding:8px 12px; background:#16132a; border-top:1px solid #333; flex-shrink:0; }
 .input-row input { flex:1; background:#222; border:1px solid #444; color:#e0e0e0; padding:8px 12px; border-radius:6px; font-family:inherit; font-size:13px; }
 .input-row button { background:#c8b496; color:#1a1a2e; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; }
+.key-row { display:flex; gap:8px; padding:0 12px 8px; background:#16132a; flex-shrink:0; }
+.key-row button { flex:1; background:#222; color:#c8b496; border:1px solid #444; padding:8px 0; border-radius:6px; cursor:pointer; font-family:inherit; font-size:13px; }
+.key-row button:active { background:#333; }
 </style>
 </head>
 <body>
@@ -30,6 +33,12 @@ body { background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; f
 <div class="input-row">
   <input id="raw-input" placeholder="send raw keys..." onkeydown="if(event.key==='Enter')sendRaw()">
   <button onclick="sendRaw()">send</button>
+</div>
+<div class="key-row">
+  <button onclick="sendKey('esc')">esc</button>
+  <button onclick="sendKey('up')">&uarr;</button>
+  <button onclick="sendKey('down')">&darr;</button>
+  <button onclick="sendKey('enter')">enter</button>
 </div>
 <script>
 const TOKEN = localStorage.getItem('cocoon_token') || '';  // 绝不从 URL 读 token：查询串会进日志/历史
@@ -67,6 +76,10 @@ async function refresh() {
     el.textContent = r.ok ? filterRawOutput(await r.text()) || '(empty)' : '(no output)';
     if (wasNearBottom) el.scrollTop = el.scrollHeight;
   } catch(e) {}
+}
+async function sendKey(key) {
+  await fetch('/key', {method:'POST', headers:H, body:JSON.stringify({key})});
+  setTimeout(refresh, 400);
 }
 async function sendRaw() {
   const inp = document.getElementById('raw-input');

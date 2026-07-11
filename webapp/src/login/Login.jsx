@@ -30,6 +30,7 @@ function safeNext(raw, fallback) {
 export default function Login() {
   const [value, setValue] = useState('')
   const [error, setError] = useState(false)
+  const [guide, setGuide] = useState(false)
 
   async function onKeyDown(e) {
     if (e.key !== 'Enter') return
@@ -53,6 +54,22 @@ export default function Login() {
         onKeyDown={onKeyDown}
       />
       <div className={error ? 'hint error' : 'hint'}>{error ? '...' : ''}</div>
+      {CFG.loginGuide !== false && (
+        <div className="guide">
+          <button className="guide-toggle" onClick={() => setGuide(g => !g)}>
+            {guide ? '收起' : '第一次用？'}
+          </button>
+          {guide && (
+            <div className="guide-card">
+              <p>这里要的是访问口令（token）。它在首次运行 <code>./start.sh</code> 时自动生成，只完整显示一次，之后存在服务器的 <code>cocoon/.env</code> 里：</p>
+              <pre>grep COCOON_TOKEN .env</pre>
+              <p>把它粘贴到上面的输入框，回车。登录状态会留在这个浏览器里。</p>
+              <p>进来之后：聊天页侧栏 → 会话 → <code>new session</code> 启动 Claude；<code>/terminal</code> 能看原始终端。</p>
+              <p>忘了口令：改 <code>.env</code> 里的 <code>COCOON_TOKEN</code> 再重启即可。</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
