@@ -138,7 +138,6 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
             </>
           ) : (
             <>
-              <Item icon="+" label="新会话" onClick={onClose} />
               {extras.filter(x => x.section === 'top').map(extraItem)}
               <Item icon="✎" label="编辑器" onClick={() => { window.location.href = '/editor.html' }} />
               <div className="sb-sep" />

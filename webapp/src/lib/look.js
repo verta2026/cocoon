@@ -155,6 +155,8 @@ export function extractWallpaperColors(url, frostEl) {
         frostEl.style.display = 'block'
       }
       vars = {
+        // 实底色：history/编辑页这类盖在壁纸上的全屏层用它，必须跟着染
+        '--c-bg': hsl(H, S, 11),
         '--c-bubble': hsl(H, S, 95, 0.10),
         '--c-me': hsl(H, S, 95, 0.16),
         '--c-me-text': hsl(H, Math.min(S, 15), 92),
@@ -176,6 +178,7 @@ export function extractWallpaperColors(url, frostEl) {
     } else {
       if (frostEl) frostEl.style.display = 'none'
       vars = {
+        '--c-bg': hsl(H, Math.min(S + 10, 30), 96),
         '--c-bubble': hsl(H, Math.min(S + 10, 35), 96, 0.88),
         '--c-me': hsl(H, Math.min(S + 15, 40), 88, 0.9),
         '--c-me-text': hsl(H, Math.min(S, 20), 18),
