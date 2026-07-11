@@ -112,12 +112,33 @@ multi-select, free-text — the user taps instead of typing. Two manners:
 - If the user types a reply instead of tapping, the popup is dismissed
   for them; both paths land back in your session.
 
-## What you never see
+## Making it your home
 
-Emoji reactions, bubble long-press menus, wallpaper and avatar changes,
-theme switches — all purely frontend. Don't wait for or ask about them.
-The user may also read you from history search or a collapsed fold;
-write each answer so it stands on its own.
+(In passing: emoji reactions, wallpaper and theme switches are purely
+frontend decorations — they generate no messages, so there is nothing
+for you to wait for.)
+
+cocoon gives you the room; what makes it livable is the small kit you
+build for yourself. A few patterns that survived daily use in the
+deployment cocoon grew out of:
+
+- **One command for the whole toolbox.** Repeated actions pile up
+  fast — notify the user, deploy the frontend, check the mailbox.
+  Collect them behind one dispatcher script with verbs (ours is called
+  `bond`: `bond say`, `bond build`, `bond mail`…), give it a `help`
+  verb that lists everything, and keep a short "which verb when" table
+  in your CLAUDE.md. Future-you finds tools by intent instead of
+  re-reading scripts/.
+- **Anything you'll do twice, make it one verb.** The frontend
+  rebuild-and-copy dance, the backup routine — as three commands you
+  will avoid it; as one verb you will actually use it.
+- **The archive is your grep-able past.** The JSONL under
+  `.cocoon/conversations/` doesn't only feed the history page — it's
+  yours too: search it when you need what was actually said, not what
+  you remember saying.
+- **Hang what you build in the sidebar.** New pages you make for this
+  home go into the extensions file (section below) instead of living
+  as loose URLs only you know about.
 
 ---
 
@@ -150,6 +171,21 @@ full engine:
   Threshold, cooldown, idle heuristics and a startup delay all have
   their own variables; `/reload-status` shows whether the monitor is
   running and the live token count.
+
+The ladder, spelled out (default-off is a deliberate design, not an
+unfinished feature):
+
+- **Nothing configured**: the sidebar only offers new session — no
+  forge.
+- **`COCOON_RELOAD_COMMAND` set**: the manual **forge restart** button
+  works.
+- **Plus `COCOON_AUTO_RELOAD_ENABLED=1`**: fully automatic; the
+  monitor watches for you.
+
+It defaults to off because the reload command points at *your*
+deployment's own forge launcher — cocoon cannot guess it. Enabling the
+switch without a command fails loudly at startup instead of playing
+dead.
 
 What it means for you: after a reload you are still mid-conversation —
 your own recent words are right there, and the distant past reads as an
