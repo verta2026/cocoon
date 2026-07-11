@@ -86,14 +86,14 @@ export default function Login() {
           <div className="notice-card">
             <div className="notice-title">开始之前</div>
             <ul>
-              <li><strong>先登录 Claude 才能用。</strong>进来后打开 terminal 页，输入 <code>/login</code> 登录 Pro/Max 账号；或者走 API：在编辑器里找到 Claude 的 settings 配置文件，自行填入接入信息。</li>
+              <li><strong>先登录 Claude 才能用。</strong>进来后在 terminal 页输入 <code>/login</code> 登录 Claude Pro/Max 账号，或使用 Claude 官方 API；也可以外接 API，需要自行查找 Claude Code 换模型教程。</li>
               <li><strong>token 不要给任何人。</strong>拿到 token 的人可以在你的服务器上执行任意命令，等于交出整台机器。</li>
               <li>这个前端是 <strong>Claude Code 的渲染界面</strong>，自带 forge 无缝换窗（上下文写满自动开新窗，对话不中断）。</li>
               <li>机在这里的能力和 Claude Code 完全相同。界面不顺手、想加功能、出了 bug，直接让机自己改。</li>
               <li>欢迎反馈 bug，欢迎二改。</li>
             </ul>
             <div className="notice-doc">
-              <p>登录后，把这句话发给机（cocoon 里的机和装 cocoon 的不是同一个，它还不认识这里）：</p>
+              <p>登录后，把这句话发给机（这是给机看的使用说明）：</p>
               <div className="notice-doc-row">
                 <code>{agentDocMsg}</code>
                 <button className="notice-copy" onClick={copyAgentDoc}>{copied ? '已复制' : '复制'}</button>
