@@ -442,6 +442,13 @@ Your own files are never touched by an update: `config.js`,
 `config.private.json`, uploads and the `.cocoon/` state directory
 (token, conversations, look, extensions) are all untracked.
 
+## Acknowledgments
+
+The forge engine — the seamless window-handover that keeps a Claude Code
+session alive past its context limit — descends from **离落 (Liluo)**'s
+original forge. cocoon's implementation has since evolved on its own, but
+the idea and the first working design are theirs.
+
 ## License
 
 MIT.

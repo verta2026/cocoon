@@ -29,10 +29,22 @@ function safeNext(raw, fallback) {
   return raw
 }
 
+// 首访须知：读完才解锁输入框；确认后记在本地，之后不再弹
+function noticeSeen() {
+  try { return localStorage.getItem(NS + '_notice_ack') === '1' } catch (e) { return true }
+}
+
 export default function Login() {
   const [value, setValue] = useState('')
   const [error, setError] = useState(false)
   const [guide, setGuide] = useState(false)
+  const [notice, setNotice] = useState(() => CFG.loginGuide !== false && !noticeSeen())
+
+  function ackNotice() {
+    try { localStorage.setItem(NS + '_notice_ack', '1') } catch (e) {}
+    setNotice(false)
+    setTimeout(() => document.querySelector('input')?.focus(), 50)
+  }
 
   async function onKeyDown(e) {
     if (e.key !== 'Enter') return
@@ -46,11 +58,26 @@ export default function Login() {
 
   return (
     <div className="container">
+      {notice && (
+        <div className="notice-ov">
+          <div className="notice-card">
+            <div className="notice-title">开始之前</div>
+            <p><strong>这串 token 千万不要给任何人。</strong>拿到它的人可以指挥一个能在你服务器上执行命令的 Claude，等于交出半台机器。</p>
+            <p>这个前端本质上是 <strong>Claude Code 的渲染界面</strong>，外加自带的 forge 无缝换窗。机在这里的能力和在终端里跑 Claude Code 没有任何区别——所以使用中遇到的任何问题（界面不顺手、想加功能、出了 bug），都可以直接让机自己动手改。</p>
+            <p>欢迎反馈 bug，欢迎二改。</p>
+            <p className="notice-thanks">forge 换窗引擎致谢其作者——离落。</p>
+            <button className="notice-btn" onClick={ackNotice}>读完了，输入 token</button>
+          </div>
+        </div>
+      )}
+      <div className="brand">cocoon</div>
       <div className="dash">—</div>
+      <div className="label">请输入 token</div>
       <input
         type="password"
         placeholder="..."
-        autoFocus
+        autoFocus={!notice}
+        disabled={notice}
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={onKeyDown}

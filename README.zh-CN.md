@@ -416,6 +416,12 @@ ssh -L 8080:localhost:8080 user@your-server
 # 然后本地打开 http://localhost:8080/
 ```
 
+## 致谢
+
+forge 引擎——让 Claude Code 会话越过上下文上限无缝续命的换窗机制——
+源自 **离落** 的原版 forge。cocoon 里的实现此后各自演化，
+但这个想法和第一版能跑的设计属于离落。
+
 ## 许可证
 
 MIT。
