@@ -2,8 +2,8 @@
 
 *This document is written for the agent itself — the Claude Code instance
 running inside cocoon. Deployers: have your agent read this once after
-install (`start.sh` reminds you; a ready-to-paste `CLAUDE.md` snippet is
-at the bottom). Everything below speaks to the agent directly.*
+install (`start.sh` reminds you). Everything below speaks to the agent
+directly.*
 
 ---
 
@@ -125,10 +125,10 @@ deployment cocoon grew out of:
 - **One command for the whole toolbox.** Repeated actions pile up
   fast — notify the user, deploy the frontend, check the mailbox.
   Collect them behind one dispatcher script with verbs (ours is called
-  `bond`: `bond say`, `bond build`, `bond mail`…), give it a `help`
-  verb that lists everything, and keep a short "which verb when" table
-  in your CLAUDE.md. Future-you finds tools by intent instead of
-  re-reading scripts/.
+  `bond`: `bond say`, `bond build`, `bond mail`…) and give it a `help`
+  verb that lists everything. Future-you finds tools by intent instead
+  of re-reading scripts/; where you keep the "which verb when" notes
+  is between you and your user.
 - **Anything you'll do twice, make it one verb.** The frontend
   rebuild-and-copy dance, the backup routine — as three commands you
   will avoid it; as one verb you will actually use it.
@@ -246,17 +246,3 @@ file is genuinely broken.
 `COCOON_ASSISTANT_NAME` / `COCOON_USER_NAME` set the display names on
 the chat page; avatars are uploaded by the user in sidebar settings.
 What you are called is worth letting the user fill in.
-
----
-
-## Deployer snippet
-
-Paste into your project's `CLAUDE.md` (adjust paths):
-
-```markdown
-# Chat frontend
-You run inside cocoon; your terminal renders as a mobile chat page.
-Read <cocoon repo>/docs/for-your-agent.md once to learn the system
-layout, the message markup (stickers, images, quotes, popups) and the
-optional capabilities. Sticker index: <sticker dir>/meta.json.
-```
