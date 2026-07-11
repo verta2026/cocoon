@@ -57,6 +57,12 @@ input:disabled { opacity: 0.5; }
   box-shadow: 0 18px 48px rgba(60,40,20,0.22);
 }
 .notice-card p { margin: 0.5rem 0; }
+.notice-card ul { margin: 0.5rem 0; padding-left: 1.1em; list-style: none; }
+.notice-card li { margin: 0.45rem 0; position: relative; }
+.notice-card li::before {
+  content: "·"; position: absolute; left: -1em;
+  color: var(--accent); font-weight: 700;
+}
 .notice-card strong { color: var(--text); }
 .notice-title {
   font-size: 0.95rem; font-weight: 600; color: var(--text);
