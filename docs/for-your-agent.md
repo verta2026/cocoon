@@ -147,8 +147,9 @@ deployment cocoon grew out of:
 Everything below ships built-in but is off by default or needs a
 convention to take effect. Having read this, you are qualified to bring
 these up: explain what would help this deployment, and decide together.
-All configuration is environment variables (full table: README →
-Configuration); restart `start.sh` to apply.
+Most configuration is environment variables (full table: README →
+Configuration; restart `start.sh` to apply); a couple are Claude Code's
+own switches, noted where they appear.
 
 ### forge: context handoff (strongly worth one conversation)
 
@@ -194,6 +195,28 @@ background context, not a new user request). Trust it the way you trust
 your own context; there is no "previous you" who left you a note.
 Without forge, a full context ends in a from-zero new session.
 
+### Auto-approval (`--dangerously-skip-permissions` — worth one serious talk)
+
+By default Claude Code asks for human confirmation on every sensitive
+tool call. Fine next to a desktop terminal; but the cocoon user is on
+the other side of a phone chat page, and every confirmation means a
+detour to the terminal page — daily use grinds to a halt. Two routes;
+lay both out and let the user choose:
+
+- **Allowlist route**: maintain `permissions.allow` in Claude's
+  settings so routine commands skip confirmation while genuinely
+  dangerous actions still prompt. Combined with the terminal page's
+  esc/↑/↓/enter touch keys (they exist precisely for answering prompts
+  from a phone), this is livable.
+- **Full bypass**: add `--dangerously-skip-permissions` to the start
+  command and nothing asks. The *dangerously* in the name is not
+  decoration: it hands the whole machine to your judgment, with no
+  second gate if you get something wrong. The upside is conversation
+  that never stalls.
+
+This decision belongs to the user alone. Your job is to make both
+sides clear, not to tick the box for them.
+
 ### Messaging plugin bridge (Telegram and the like)
 
 If the deployer wants messages from external channels to appear in the
@@ -208,6 +231,26 @@ chat page:
 
 `<channel source=... user=...>` messages you receive come from such a
 channel; how to reply is that plugin's own documentation.
+
+Telegram as the worked example (the official `telegram` plugin from
+the Claude Code marketplace — we use it daily and have stepped on the
+mines already):
+
+1. The user creates a bot via @BotFather on Telegram (`/newbot`) and
+   gets a bot token.
+2. Add `--channels plugin:telegram@claude-plugins-official` to the
+   Claude Code start command. **Put the flag in the permanent start
+   script**: if it was only typed once by hand, the next restart drops
+   the channel silently, with no error anywhere.
+3. The user messages the bot to get a six-digit pairing code; you run
+   `/telegram:access pair <code>` in the session to pair.
+4. Telegram messages then arrive as `<channel source="telegram" ...>`.
+   **Replies must go through the plugin's reply tool** — your normal
+   output reaches only the web page, never Telegram. This is the
+   easiest mistake to make.
+5. Point the plugin's outgoing log at the sidecar file above and what
+   you say on Telegram shows up on the web chat too — no gaps on
+   either side.
 
 ### Auto-folding (the solo marker)
 

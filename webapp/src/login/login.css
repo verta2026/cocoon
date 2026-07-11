@@ -68,6 +68,30 @@ input:disabled { opacity: 0.5; }
   font-size: 0.95rem; font-weight: 600; color: var(--text);
   letter-spacing: 0.12em; margin-bottom: 0.6rem;
 }
+.notice-doc {
+  margin-top: 0.7rem; padding-top: 0.55rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+.notice-doc-row {
+  display: flex; align-items: stretch; gap: 0.5rem; margin-top: 0.4rem;
+}
+.notice-doc-row code {
+  flex: 1; min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+  background: rgba(61,46,31,0.06); border: 1px solid var(--border);
+  border-radius: 7px; padding: 0.4rem 0.5rem;
+  font-size: 0.68rem; line-height: 1.55; word-break: break-all;
+}
+.notice-copy {
+  flex-shrink: 0; align-self: center;
+  font-family: inherit; font-size: 0.72rem; letter-spacing: 0.06em;
+  padding: 0.45rem 0.7rem; min-height: 36px;
+  background: none; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 7px; cursor: pointer;
+}
+.notice-copy:active { filter: brightness(0.93); }
 .notice-thanks {
   padding-top: 0.55rem; border-top: 1px solid var(--border);
   font-size: 0.75rem;

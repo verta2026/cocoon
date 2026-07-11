@@ -39,6 +39,29 @@ export default function Login() {
   const [error, setError] = useState(false)
   const [guide, setGuide] = useState(false)
   const [notice, setNotice] = useState(() => CFG.loginGuide !== false && !noticeSeen())
+  const [copied, setCopied] = useState(false)
+
+  // 给机看的住户手册。cocoon 里跑的机和装 cocoon 的往往不是同一个，
+  // 得由用户把说明亲手递进对话里
+  const agentDoc = CFG.agentDocUrl
+    || 'https://github.com/verta2026/cocoon/blob/main/docs/for-your-agent.zh-CN.md'
+  const agentDocMsg = '请读一遍 cocoon 仓库里的 docs/for-your-agent.zh-CN.md'
+    + '（在线版：' + agentDoc + '），学会你现在住的这个聊天前端怎么用。'
+
+  async function copyAgentDoc() {
+    try {
+      await navigator.clipboard.writeText(agentDocMsg)
+    } catch (e) {
+      const ta = document.createElement('textarea')
+      ta.value = agentDocMsg
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy') } catch (e2) {}
+      ta.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   function ackNotice() {
     try { localStorage.setItem(NS + '_notice_ack', '1') } catch (e) {}
@@ -63,11 +86,19 @@ export default function Login() {
           <div className="notice-card">
             <div className="notice-title">开始之前</div>
             <ul>
+              <li><strong>先登录 Claude 才能用。</strong>进来后打开 terminal 页，输入 <code>/login</code> 登录 Pro/Max 账号；或者走 API：在编辑器里找到 Claude 的 settings 配置文件，自行填入接入信息。</li>
               <li><strong>token 不要给任何人。</strong>拿到 token 的人可以在你的服务器上执行任意命令，等于交出整台机器。</li>
               <li>这个前端是 <strong>Claude Code 的渲染界面</strong>，自带 forge 无缝换窗（上下文写满自动开新窗，对话不中断）。</li>
               <li>机在这里的能力和 Claude Code 完全相同。界面不顺手、想加功能、出了 bug，直接让机自己改。</li>
               <li>欢迎反馈 bug，欢迎二改。</li>
             </ul>
+            <div className="notice-doc">
+              <p>登录后，把这句话发给机（cocoon 里的机和装 cocoon 的不是同一个，它还不认识这里）：</p>
+              <div className="notice-doc-row">
+                <code>{agentDocMsg}</code>
+                <button className="notice-copy" onClick={copyAgentDoc}>{copied ? '已复制' : '复制'}</button>
+              </div>
+            </div>
             <p className="notice-thanks">致谢 forge 作者：离落。</p>
             <button className="notice-btn" onClick={ackNotice}>读完了，输入 token</button>
           </div>
