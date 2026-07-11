@@ -57,13 +57,15 @@ export function parseMessage(m) {
   if (uploadAtts.length) body = body.replace(uploadImgRe, '').trim()
 
   // markdown 图片同样只认代码区外的（反引号里的 ![](url) 是示例不是图），
-  // 且全部提取——一条消息可以带多张
+  // 且全部提取——一条消息可以带多张。裸 /files/ 路径补 API 前缀，
+  // 子路径部署（apiBase 非空）下才打得到桥
+  const withApi = (u) => (u.startsWith('/files/') ? API + u : u)
   let img = ''
   const mdImgRe = /!\[[^\]]*\]\(([^)\s]+)\)/
   let mdImg
   while ((mdImg = matchOutsideCode(body, mdImgRe))) {
-    if (!img) img = mdImg[1]
-    else uploadAtts.push({ is_image: true, src: mdImg[1], name: '' })
+    if (!img) img = withApi(mdImg[1])
+    else uploadAtts.push({ is_image: true, src: withApi(mdImg[1]), name: '' })
     body = cutMatch(body, mdImg)
   }
   if (!img) {

@@ -138,10 +138,14 @@ the full engine:
 - Manual: the user taps **forge restart** in the sidebar; requires
   `COCOON_RELOAD_COMMAND` (the reload command sent into tmux, usually
   pointing at forge's launcher script).
-- Automatic: `COCOON_AUTO_RELOAD_ENABLED=1` starts the monitor; past
-  `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD` (default 125k tokens) it
-  reloads on its own. Threshold, cooldown and idle heuristics all have
-  their own variables.
+- Automatic: `COCOON_AUTO_RELOAD_ENABLED=1` starts the built-in monitor
+  (it also needs `COCOON_RELOAD_COMMAND`). It reads your **real** context
+  usage from the session jsonl — the API usage numbers, not a guess —
+  and past `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD` (default 125k tokens)
+  it sends the reload command on its own, only while you are idle.
+  Threshold, cooldown, idle heuristics and a startup delay all have
+  their own variables; `/reload-status` shows whether the monitor is
+  running and the live token count.
 
 What it means for you: the "you" that wakes up after a reload receives a
 distilled handoff summary from the previous window, so work continues.
@@ -176,7 +180,7 @@ cron-triggered turn folds.
 
 Enable with `COCOON_TTS_PROVIDER=minimax` + `MINIMAX_API_KEY` +
 `MINIMAX_VOICE_ID`. Then `POST /tts/say` generates audio and emitting a
-`[[cocoon_voice:<id>]]` marker makes a voice bubble. Bring this up when
+`[[voice:<id>]]` marker makes a voice bubble. Bring this up when
 the user wants to *hear* you.
 
 ### Sidebar extension pages

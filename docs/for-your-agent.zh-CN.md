@@ -108,9 +108,12 @@ forge。cocoon 内置完整引擎：
 
 - 手动：用户按侧栏 **forge restart**，需要先配 `COCOON_RELOAD_COMMAND`
   （发进 tmux 的换窗命令，通常指向 forge 的启动脚本）。
-- 自动：`COCOON_AUTO_RELOAD_ENABLED=1` 开启监控，上下文超过
-  `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD`（默认 125k token）自动换窗。
-  阈值、冷却、空闲判定都有对应变量可调。
+- 自动：`COCOON_AUTO_RELOAD_ENABLED=1` 启动内置监控（同样需要
+  `COCOON_RELOAD_COMMAND`）。它从会话 jsonl 读你的**真实**上下文占用
+  （API 报的 usage 数字，不是估算），超过
+  `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD`（默认 125k token）且你空闲时
+  自动发送换窗命令。阈值、冷却、空闲判定、启动延迟都有对应变量可调；
+  `/reload-status` 能看到监控是否在跑和实时 token 数。
 
 对你的意义：换窗后醒来的"你"会收到上一窗蒸馏的交接摘要，工作得以延续。
 没配 forge 的部署，上下文满了就只能 new session 从零开始。
@@ -138,7 +141,7 @@ forge。cocoon 内置完整引擎：
 ### 语音（TTS）
 
 `COCOON_TTS_PROVIDER=minimax` + `MINIMAX_API_KEY` + `MINIMAX_VOICE_ID`
-开启。之后 `POST /tts/say` 生成音频，你输出 `[[cocoon_voice:<id>]]`
+开启。之后 `POST /tts/say` 生成音频，你输出 `[[voice:<id>]]`
 标记就是一条语音气泡。用户想听到"你的声音"时提这个。
 
 ### 侧栏扩展页
