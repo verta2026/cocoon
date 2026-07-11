@@ -5,6 +5,12 @@ import { useEffect, useRef, useState } from 'react'
 import { API, CFG, HEADERS, ID } from '../lib/api.js'
 import { LOOK, uploadToServer, saveLook, shrinkImage } from '../lib/look.js'
 
+// 侧栏三个页面跳转的目标。cocoon 部署里编辑器/terminal/首页都由 API 基座服务，
+// 默认拼 API 前缀即可；套在别的后端前面时（编辑器是独立静态页等），用 CFG 指路。
+const EDITOR_URL = CFG.editorUrl || (API + '/editor.html')
+const TERMINAL_URL = CFG.terminalUrl || (API + '/terminal')
+const HOME_URL = CFG.homeUrl || (API + '/')
+
 function Item({ icon, label, onClick, color }) {
   return (
     <button className="sb-item" style={color ? { color } : undefined} onClick={onClick}>
@@ -114,7 +120,7 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
   return (
     <div className="sb-ov" onClick={onClose}>
       <div className="sb-panel" onClick={e => e.stopPropagation()}>
-        <div className="sb-header" onClick={() => (view !== 'main' ? setView('main') : (window.location.href = API + '/'))}>
+        <div className="sb-header" onClick={() => (view !== 'main' ? setView('main') : (window.location.href = HOME_URL))}>
           <span style={{ color: 'var(--c-accent)' }}>←</span>{view === 'settings' ? '设置' : view === 'help' ? '功能说明' : '返回'}
           {view === 'main' && (
             <button className="sb-help-btn" title="功能说明"
@@ -164,11 +170,11 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
           ) : (
             <>
               {extras.filter(x => x.section === 'top').map(extraItem)}
-              <Item icon="✎" label="编辑器" onClick={() => { window.location.href = API + '/editor.html' }} />
+              <Item icon="✎" label="编辑器" onClick={() => { window.location.href = EDITOR_URL }} />
               <div className="sb-sep" />
               <div className="sb-title">工具</div>
               <Item icon="☰" label="history" onClick={() => { onClose(); window.location.hash = '#/history' }} />
-              <Item icon=">_" label="terminal" onClick={() => { window.location.href = API + '/terminal' }} />
+              <Item icon=">_" label="terminal" onClick={() => { window.location.href = TERMINAL_URL }} />
               <div className="sb-title">外观</div>
               <Item icon="❐" label={'mode: ' + (mode === 'doc' ? 'claude' : 'bubble')} onClick={onToggleMode} />
               <Item icon="☯" label={'theme: ' + theme} onClick={onCycleTheme} />

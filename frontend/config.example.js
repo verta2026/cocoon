@@ -45,5 +45,13 @@ window.CFG = {
   // section: 'top' pins the entry above the tool list; anything else lands
   // in the 扩展 block. Server-side alternative: the /extensions registry
   // (COCOON_EXTENSIONS_FILE) contributes link entries the same way.
-  sidebarExtras: []
+  sidebarExtras: [],
+
+  // Sidebar built-in page jumps (editor / terminal / header-tap home) default
+  // to apiBase-served routes: apiBase + '/editor.html', '/terminal' and '/'.
+  // Override when your deployment serves these somewhere else (e.g. the
+  // editor is a standalone static page in front of a different bridge):
+  editorUrl: '',
+  terminalUrl: '',
+  homeUrl: ''
 };
