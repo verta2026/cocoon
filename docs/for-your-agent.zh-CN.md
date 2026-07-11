@@ -1,15 +1,42 @@
 # 给你的 agent 看的：住在 cocoon 里
 
 *这份文档的读者是 agent 本身——跑在 cocoon 里的那个 Claude Code。部署者：
-在 `CLAUDE.md` 里指一句让它来读（文末有现成的片段）。以下所有内容直接对
-agent 说话。*
+装好之后让它读一遍这份文档（`start.sh` 会提醒你；也可以在 `CLAUDE.md`
+里指一句，文末有现成的片段）。以下所有内容直接对 agent 说话。*
 
 ---
 
 你正运行在 cocoon 里。你的终端会话被渲染成了浏览器里的聊天页——多半在
 一台手机上。你的工作方式没有任何变化：工具、hooks、记忆、slash 命令照常。
 变的是你的话**长什么样**，以及有几个文本标记能解锁前端功能。这一页告诉你
-屏幕那头的人真正看到了什么。
+屏幕那头的人真正看到了什么——读完它你就不需要为了理解这个系统去翻代码。
+
+## 三分钟系统全景
+
+整个系统就三块：
+
+1. **tmux**——你住在一个 tmux 会话里（默认叫 `cocoon-cc`）。cocoon 靠
+   `capture-pane` 抓你的屏幕、靠 `send-keys` 替用户打字。你感觉不到这层。
+2. **桥（`server.py` + `bridge/`）**——一个 FastAPI 进程，把 tmux 翻译成
+   HTTP API：读消息、发消息、历史归档、贴纸、上传、语音、会话管理。每个
+   功能对应 `bridge/` 里一个同名模块，要深挖哪个就只看哪个，不用通读。
+3. **前端（`webapp/` 构建到 `/app/`）**——React 聊天页，把 API 渲染成
+   气泡。另有 `/terminal` 原始终端页，用户能直接看你的屏幕、发 esc/↑/↓/
+   enter 键。
+
+消息流一句话：用户在网页输入 → 桥 `send-keys` 进 tmux → 你回答 → 桥抓屏
+解析成气泡 → 网页显示。你的对话同时被镜像到 `.cocoon/conversations/` 的
+JSONL 归档，供历史页检索——所以每条回答写成独立可读的，用户可能从归档里
+单独读到它。
+
+会话按钮（用户侧栏里的，也解释了你可能经历什么）：
+
+- **new session**——关掉你、开一个全新会话。新会话没有这段对话的记忆。
+- **clean window**——同上，但用 `COCOON_CLEAN_START_COMMAND` 裸启动，
+  连部署方配置的开机注入都不带。一次性排查模式，绝不会变成默认。
+- **forge restart / auto forge**——见下面「forge」一节。醒来时如果看到
+  一份交接摘要，说明你是被 forge 换窗接进来的：先读摘要再接活，那是
+  上一个你留下的。
 
 ## 你的输出会变成什么
 
@@ -68,6 +95,71 @@ agent 说话。*
 
 ---
 
+## 预留的可选能力——值得跟用户商量开不开
+
+下面这些都已经内置在 cocoon 里，但默认关闭或需要约定才生效。你读到这里
+就有了跟用户提议的资格：哪个对这个部署有用，讲给用户听，一起决定。
+配置全靠环境变量（完整表：README → 配置），改完重启 `start.sh` 生效。
+
+### forge：换窗续命（强烈建议聊一次）
+
+上下文快满时，与其被截断，不如**带着交接摘要换一个新窗口**——这就是
+forge。cocoon 内置完整引擎：
+
+- 手动：用户按侧栏 **forge restart**，需要先配 `COCOON_RELOAD_COMMAND`
+  （发进 tmux 的换窗命令，通常指向 forge 的启动脚本）。
+- 自动：`COCOON_AUTO_RELOAD_ENABLED=1` 开启监控，上下文超过
+  `COCOON_AUTO_RELOAD_CONTEXT_THRESHOLD`（默认 125k token）自动换窗。
+  阈值、冷却、空闲判定都有对应变量可调。
+
+对你的意义：换窗后醒来的"你"会收到上一窗蒸馏的交接摘要，工作得以延续。
+没配 forge 的部署，上下文满了就只能 new session 从零开始。
+
+### 消息插件桥（Telegram 之类）
+
+如果部署方想让外部渠道的消息也出现在聊天页：
+
+- `COCOON_SEND_SIDECAR_FILE`——消息插件把出站消息追加到这个 JSONL，
+  聊天页会把它们渲染成你的气泡（你在别的渠道说的话，网页上也看得到）。
+- `COCOON_PRIMARY_SENDER_ID`——入站 `<channel>` 消息里，这个 sender id
+  渲染成用户本人的气泡，其他 sender 渲染成第三方"频道"气泡。
+
+你收到的 `<channel source=... user=...>` 消息就是从外部渠道进来的，
+回复方式看该插件自己的说明。
+
+### 自动折叠（solo 标记）
+
+你在用户不在场时的自主输出（定时任务、后台巡检、自言自语），可以在
+**消息第一行**写 `[[solo]]` 标记——聊天页会把连续的 solo 消息折叠成
+一条细线，用户想看再展开，不想看不刷屏。归档消息带 `solo: true` 字段
+也是同样效果。什么算"用户不在场"由你和用户约定——比如 cron 唤醒的轮次
+一律折叠。
+
+### 语音（TTS）
+
+`COCOON_TTS_PROVIDER=minimax` + `MINIMAX_API_KEY` + `MINIMAX_VOICE_ID`
+开启。之后 `POST /tts/say` 生成音频，你输出 `[[cocoon_voice:<id>]]`
+标记就是一条语音气泡。用户想听到"你的声音"时提这个。
+
+### 侧栏扩展页
+
+部署方可以把自己的页面挂进侧栏：往 `COCOON_EXTENSIONS_FILE`（默认
+`.cocoon/extensions.json`）里写 `{"id","title","href"}` 条目即可。
+你给这个家写了什么新页面，就用它挂上去。
+
+### 终端弹窗自动处理
+
+`COCOON_AUTO_DISMISS_PROMPTS`（默认开）会自动关掉 Claude Code 的常见
+终端弹窗（resume 摘要、评分、目录信任）。settings 警告默认**不**自动接受
+（`COCOON_AUTO_ACCEPT_SETTINGS_WARNING=0`）——那通常意味着配置真的坏了。
+
+### 名字和头像
+
+`COCOON_ASSISTANT_NAME` / `COCOON_USER_NAME` 定聊天页显示的名字，
+头像用户可以直接在侧栏设置里传图。你叫什么，值得让用户自己填。
+
+---
+
 ## 部署者片段
 
 粘进你项目的 `CLAUDE.md`（路径自己调整）：
@@ -75,6 +167,7 @@ agent 说话。*
 ```markdown
 # 聊天前端
 你运行在 cocoon 里，终端被渲染成手机聊天页。
-先读一遍 <cocoon 仓库>/docs/for-your-agent.zh-CN.md 了解消息标记
-（贴纸、图片、引用、弹窗）。贴纸索引：<贴纸目录>/meta.json。
+先读一遍 <cocoon 仓库>/docs/for-your-agent.zh-CN.md 了解系统结构、
+消息标记（贴纸、图片、引用、弹窗）和可选能力。
+贴纸索引：<贴纸目录>/meta.json。
 ```

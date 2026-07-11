@@ -114,11 +114,35 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
   return (
     <div className="sb-ov" onClick={onClose}>
       <div className="sb-panel" onClick={e => e.stopPropagation()}>
-        <div className="sb-header" onClick={() => (view === 'settings' ? setView('main') : (window.location.href = '/'))}>
-          <span style={{ color: 'var(--c-accent)' }}>←</span>{view === 'settings' ? '设置' : '返回'}
+        <div className="sb-header" onClick={() => (view !== 'main' ? setView('main') : (window.location.href = '/'))}>
+          <span style={{ color: 'var(--c-accent)' }}>←</span>{view === 'settings' ? '设置' : view === 'help' ? '功能说明' : '返回'}
+          {view === 'main' && (
+            <button className="sb-help-btn" title="功能说明"
+              onClick={e => { e.stopPropagation(); setView('help') }}>?</button>
+          )}
         </div>
         <div className="sb-nav">
-          {view === 'settings' ? (
+          {view === 'help' ? (
+            <div className="sb-help">
+              <div className="sb-title">聊天</div>
+              <p>长按气泡贴表情；左滑气泡引用回复；双击气泡进选字页。</p>
+              <p>输入框旁 <b>＋</b> 发图片和文件；语音气泡点了就播（部署配了 TTS 才有）。</p>
+              <p>Claude 干活的过程（读文件、跑命令）折叠成细线，点开可看。</p>
+              <div className="sb-title">工具</div>
+              <p><b>history</b>——全部聊天记录按月归档，可搜索，点任意一条跳回当时的上下文。</p>
+              <p><b>terminal</b>——Claude 的原始终端画面，esc/↑/↓/enter 四个键可以直接遥控它。</p>
+              <p><b>编辑器</b>——浏览和修改工作目录里的文件。</p>
+              <div className="sb-title">外观</div>
+              <p><b>mode</b> 切换气泡/文档两种排版；<b>theme</b> 切日夜；壁纸头像在「设置」里换，界面颜色会自动跟着壁纸走。</p>
+              <div className="sb-title">会话</div>
+              <p><b>new session</b>——重开一个全新会话（Claude 不记得刚才聊的）。</p>
+              <p><b>clean window</b>——同上但什么都不带的真空白，排查问题用。</p>
+              <p><b>forge restart</b>——卡住或上下文快满时按：换新窗口并把刚才的进展交接过去，接着聊。</p>
+              <p><b>auto forge</b>——上下文快满时自动做上面这件事的开关。</p>
+              <div className="sb-title">扩展</div>
+              <p>「扩展」一栏是这个部署自己加的页面，各家不同——问部署它的人。</p>
+            </div>
+          ) : view === 'settings' ? (
             <>
               <div className="sb-title">外观</div>
               <Item icon="☀" label="日间背景" onClick={() => { bgTarget.current = 'light'; bgRef.current.click() }} />

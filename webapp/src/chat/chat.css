@@ -255,6 +255,17 @@ textarea::placeholder { color: var(--c-muted); }
   gap: 6px; padding: 0 16px 13px;
   font-size: 0.95rem; color: var(--c-text); cursor: pointer;
 }
+.sb-help-btn {
+  margin-left: auto; width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid var(--c-muted); background: none; color: var(--c-muted);
+  font-size: 0.7rem; line-height: 1; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.sb-help { padding: 0 2px; }
+.sb-help p {
+  margin: 2px 0 8px; padding: 0 18px; font-size: 0.76rem; line-height: 1.65;
+  color: var(--c-text); opacity: 0.85;
+}
 .sb-nav { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 8px 0; }
 .sb-title {
   padding: 8px 18px 4px; font-size: 0.65rem; color: var(--c-muted);

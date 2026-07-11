@@ -106,7 +106,8 @@ if [[ "${COCOON_TOKEN_IS_FRESH}" == "1" && -t 1 ]]; then
 else
   echo "  token:    <in .env — grep COCOON_TOKEN .env>"
 fi
-echo "  legacy terminal-parsing UI: http://${COCOON_HOST}:${COCOON_PORT}/chat"
+echo "  raw terminal: http://${COCOON_HOST}:${COCOON_PORT}/terminal"
+echo "  first install? have your agent read docs/for-your-agent.md (中文: docs/for-your-agent.zh-CN.md)"
 
 # React 前端是可选构建；但一份过期的 dist 比没有更糟——页面能开、功能却停在
 # 上次 build 的那天（源码更新对它毫无作用），这类"旧盖新"故障极难自查
