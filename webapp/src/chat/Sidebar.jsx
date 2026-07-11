@@ -114,7 +114,7 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
   return (
     <div className="sb-ov" onClick={onClose}>
       <div className="sb-panel" onClick={e => e.stopPropagation()}>
-        <div className="sb-header" onClick={() => (view !== 'main' ? setView('main') : (window.location.href = '/'))}>
+        <div className="sb-header" onClick={() => (view !== 'main' ? setView('main') : (window.location.href = API + '/'))}>
           <span style={{ color: 'var(--c-accent)' }}>←</span>{view === 'settings' ? '设置' : view === 'help' ? '功能说明' : '返回'}
           {view === 'main' && (
             <button className="sb-help-btn" title="功能说明"
@@ -164,7 +164,7 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
           ) : (
             <>
               {extras.filter(x => x.section === 'top').map(extraItem)}
-              <Item icon="✎" label="编辑器" onClick={() => { window.location.href = '/editor.html' }} />
+              <Item icon="✎" label="编辑器" onClick={() => { window.location.href = API + '/editor.html' }} />
               <div className="sb-sep" />
               <div className="sb-title">工具</div>
               <Item icon="☰" label="history" onClick={() => { onClose(); window.location.hash = '#/history' }} />

@@ -21,7 +21,11 @@ window.CFG = {
   // Built-in stickers for the emoji panel (optional)
   demoStickers: [],
   // Bridge API prefix ('' when the bridge serves the pages itself;
-  // '/bridge' when a reverse proxy mounts it there)
+  // '/bridge' when a reverse proxy mounts it there). Subpath deploys work
+  // too: mount the whole bridge at e.g. /test/ with nginx
+  //   location /test/ { proxy_pass http://127.0.0.1:8080/;
+  //                     proxy_redirect / /test/; proxy_cookie_path / /test/; }
+  // and set apiBase: '/test' — pages, assets and cookies all follow the prefix.
   apiBase: '',
   // Site title
   siteName: 'chat',

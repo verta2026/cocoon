@@ -920,4 +920,4 @@ register_core_ui_routes(app, chat_ui=chat_ui, terminal_page=terminal_page)
 if SERVE_FRONTEND and FRONTEND_DIR.is_dir():
     register_frontend_routes(app, frontend_dir=FRONTEND_DIR, verify_token=verify_token)
     # dist 缺失也注册：/app/ 会给出「先去 build」的说明页，而不是裸 404
-    register_webapp_routes(app, webapp_dist=FRONTEND_DIR.parent / "webapp" / "dist")
+    register_webapp_routes(app, webapp_dist=FRONTEND_DIR.parent / "webapp" / "dist", frontend_dir=FRONTEND_DIR)

@@ -91,12 +91,19 @@ def register_frontend_routes(app, *, frontend_dir: Path, verify_token=None) -> N
         return _serve(safe_child_path(frontend_dir, f"{name}.png", suffix=".png"))
 
 
-def register_webapp_routes(app, *, webapp_dist: Path) -> None:
+def register_webapp_routes(app, *, webapp_dist: Path, frontend_dir: Path | None = None) -> None:
     """Serve the React webapp build (webapp/dist) at /app/ alongside the
     classic frontend. Callers register this only when a build exists, so
     deployments without Node lose nothing. Assets use relative paths
     (vite base './'), hence the trailing-slash redirect."""
     webapp_dist = Path(webapp_dist)
+
+    if frontend_dir is not None:
+        @app.get("/app/config.js")
+        async def webapp_config():
+            # HTML 用相对路径 ./config.js 引它：挂在子路径反代（/test/app/）
+            # 下也能拉到；内容和根 /config.js 完全同源
+            return _serve(config_js_path(Path(frontend_dir)))
 
     @app.get("/app")
     async def webapp_root_redirect():

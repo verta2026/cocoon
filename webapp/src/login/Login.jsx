@@ -3,9 +3,11 @@ import './login.css'
 
 const CFG = window.CFG || {}
 const NS = CFG.storageNs || 'cocoon'
+// 与 api.js 同一旋钮：挂子路径反代（apiBase:'/test' 之类）时登录也走前缀
+const API = CFG.apiBase !== undefined ? CFG.apiBase : ''
 
 async function check(pw) {
-  const res = await fetch('/login', {
+  const res = await fetch(API + '/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: pw }),

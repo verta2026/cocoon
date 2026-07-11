@@ -70,7 +70,7 @@ function filterRawOutput(text) {
 }
 async function refresh() {
   try {
-    const r = await fetch('/output?lines=1500', { headers: H });
+    const r = await fetch('output?lines=1500', { headers: H });
     const el = document.getElementById('terminal');
     const wasNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
     el.textContent = r.ok ? filterRawOutput(await r.text()) || '(empty)' : '(no output)';
@@ -78,14 +78,14 @@ async function refresh() {
   } catch(e) {}
 }
 async function sendKey(key) {
-  await fetch('/key', {method:'POST', headers:H, body:JSON.stringify({key})});
+  await fetch('key', {method:'POST', headers:H, body:JSON.stringify({key})});
   setTimeout(refresh, 400);
 }
 async function sendRaw() {
   const inp = document.getElementById('raw-input');
   const text = inp.value.trim();
   if (!text) return;
-  await fetch('/send', {method:'POST', headers:H, body:JSON.stringify({text})});
+  await fetch('send', {method:'POST', headers:H, body:JSON.stringify({text})});
   inp.value = '';
   setTimeout(refresh, 500);
 }

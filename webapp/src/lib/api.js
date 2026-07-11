@@ -5,14 +5,15 @@ export const CFG = window.CFG || {}
 export const NS = CFG.storageNs || 'cocoon'
 export const API = CFG.apiBase !== undefined ? CFG.apiBase : '/bridge'
 export const AI_KEY = CFG.aiKey || 'ai'
-export const DEFAULT_BG = CFG.defaultWallpaper || '/wallpaper_default.png'
+// 默认素材也从桥拉：挂子路径反代时根绝对路径会漏到宿主站点去
+export const DEFAULT_BG = CFG.defaultWallpaper || API + '/wallpaper_default.png'
 export const DEMO_STICKERS = CFG.demoStickers || []
 
 export const ID = {
   aiName: CFG.aiName || 'AI',
   userName: CFG.userName || 'User',
-  aiAvatar: CFG.aiAvatar || '/avatar_ai.png',
-  userAvatar: CFG.userAvatar || '/avatar_user.png',
+  aiAvatar: CFG.aiAvatar || API + '/avatar_ai.png',
+  userAvatar: CFG.userAvatar || API + '/avatar_user.png',
   userId: CFG.userId || 'user',
   channelNames: CFG.channelNames || {},
 }
