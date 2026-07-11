@@ -56,10 +56,17 @@ export function parseMessage(m) {
   }
   if (uploadAtts.length) body = body.replace(uploadImgRe, '').trim()
 
+  // markdown 图片同样只认代码区外的（反引号里的 ![](url) 是示例不是图），
+  // 且全部提取——一条消息可以带多张
   let img = ''
-  const mdImg = body.match(/!\[[^\]]*\]\(([^)]+)\)/)
-  if (mdImg) { img = mdImg[1]; body = body.replace(mdImg[0], '').trim() }
-  else {
+  const mdImgRe = /!\[[^\]]*\]\(([^)\s]+)\)/
+  let mdImg
+  while ((mdImg = matchOutsideCode(body, mdImgRe))) {
+    if (!img) img = mdImg[1]
+    else uploadAtts.push({ is_image: true, src: mdImg[1], name: '' })
+    body = cutMatch(body, mdImg)
+  }
+  if (!img) {
     const bare = body.trim().match(/^(https?:\/\/\S+\.(?:png|jpe?g|gif|webp)(?:\?\S*)?|data:image\/[^\s"']+)$/i)
     if (bare) { img = bare[1]; body = '' }
   }

@@ -95,4 +95,12 @@ describe('parseMessage', () => {
       delete CFG.legacyStripTags
     }
   })
+  it('代码区里的markdown图片是示例不是图;多张全提取', () => {
+    const r = parseMessage({ role: 'assistant', content: '气泡认 `![](url)` 格式:\n\n![引导](https://x.y/a.png)\n\n![须知](https://x.y/b.png) 完' })
+    expect(r.img).toBe('https://x.y/a.png')
+    expect(r.attImgs.map(a => a.src)).toContain('https://x.y/b.png')
+    expect(r.body).toContain('`![](url)`')
+    expect(r.body).not.toContain('a.png')
+    expect(r.body).toContain('完')
+  })
 })
