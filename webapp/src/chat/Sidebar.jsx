@@ -124,23 +124,21 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
         <div className="sb-nav">
           {view === 'help' ? (
             <div className="sb-help">
-              <div className="sb-title">聊天</div>
-              <p>长按气泡贴表情；左滑气泡引用回复；双击气泡进选字页。</p>
-              <p>输入框旁 <b>＋</b> 发图片和文件；语音气泡点了就播（部署配了 TTS 才有）。</p>
-              <p>Claude 干活的过程（读文件、跑命令）折叠成细线，点开可看。</p>
-              <div className="sb-title">工具</div>
-              <p><b>history</b>——全部聊天记录按月归档，可搜索，点任意一条跳回当时的上下文。</p>
-              <p><b>terminal</b>——Claude 的原始终端画面，esc/↑/↓/enter 四个键可以直接遥控它。</p>
-              <p><b>编辑器</b>——浏览和修改工作目录里的文件。</p>
-              <div className="sb-title">外观</div>
-              <p><b>mode</b> 切换气泡/文档两种排版；<b>theme</b> 切日夜；壁纸头像在「设置」里换，界面颜色会自动跟着壁纸走。</p>
               <div className="sb-title">会话</div>
-              <p><b>new session</b>——重开一个全新会话（Claude 不记得刚才聊的）。</p>
-              <p><b>clean window</b>——同上但什么都不带的真空白，排查问题用。</p>
-              <p><b>forge restart</b>——卡住或上下文快满时按：换新窗口并把刚才的进展交接过去，接着聊。</p>
-              <p><b>auto forge</b>——上下文快满时自动做上面这件事的开关。</p>
+              <div className="h-item"><div className="h-term">forge restart</div><div className="h-desc">卡住、或上下文快满时按。换新窗口并交接进展，接着聊</div></div>
+              <div className="h-item"><div className="h-term">auto forge</div><div className="h-desc">上下文快满时自动换窗的开关</div></div>
+              <div className="h-item"><div className="h-term">new session</div><div className="h-desc">全新会话，不带刚才的记忆</div></div>
+              <div className="h-item"><div className="h-term">clean window</div><div className="h-desc">什么都不带的真空白，排查用</div></div>
+              <div className="sb-title">聊天手势</div>
+              <div className="h-item"><div className="h-desc"><b>长按</b>气泡贴表情 · <b>左滑</b>引用回复 · <b>双击</b>选字 · <b>＋</b>发图片文件</div></div>
+              <div className="sb-title">工具</div>
+              <div className="h-item"><div className="h-term">history</div><div className="h-desc">聊天记录按月归档，可搜索，点一条跳回当时</div></div>
+              <div className="h-item"><div className="h-term">terminal</div><div className="h-desc">Claude 的原始画面，esc/↑/↓/enter 可遥控</div></div>
+              <div className="h-item"><div className="h-term">编辑器</div><div className="h-desc">浏览、修改工作目录里的文件</div></div>
+              <div className="sb-title">外观</div>
+              <div className="h-item"><div className="h-desc"><b>mode</b> 气泡/文档排版 · <b>theme</b> 日夜 · 壁纸头像在「设置」，配色自动跟壁纸</div></div>
               <div className="sb-title">扩展</div>
-              <p>「扩展」一栏是这个部署自己加的页面，各家不同——问部署它的人。</p>
+              <div className="h-item"><div className="h-desc">这个部署自己加的页面，各家不同</div></div>
             </div>
           ) : view === 'settings' ? (
             <>
