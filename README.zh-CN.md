@@ -14,11 +14,11 @@ Cocoon 是一个起点，不是成品。代码结构很简单——一个 FastAP
 - 你想**用手机跟 Claude 聊天**——可 Claude Code 只跑在终端里
 - 你在做一个 **AI 伴侣**，需要的是温馨的界面，而不是开发者控制台
 - 你想要 Claude Code 的全部能力（工具、记忆、hook、MCP），但配一个**不懂技术的伴侣 / 朋友也能用的聊天界面**
-- 你在服务器 / 桌面上跑 Claude Code，想**随时随地跟它说话**
+- 你在服务器 / 桌面上跑 Claude Code，想**随时随地跟机说话**
 
 ## 它做什么
 
-Cocoon 把 Claude Code 跑在 tmux 里，把对话在浏览器里渲染成聊天界面。默认前端（在 `/` 提供）是一个结构化聊天页——气泡、引用回复、emoji 反应、贴纸、图片上传、按壁纸取色的主题、离线缓存——读取的是一条结构化消息流。另有一个更简单的老界面在 `/chat`，它直接解析原始终端输出。你和 Claude Code 说话的方式跟它在终端里跑时完全一样，只是隔着一个干净、适配手机的网页。Claude Code 的所有能力（工具、记忆、hook、MCP 服务器、斜杠命令）原样可用——cocoon 是一层渲染，不是替代品。用 [CC Switch](https://github.com/farion1231/cc-switch) 切换后端；cocoon 不在乎你用哪个。
+Cocoon 把 Claude Code 跑在 tmux 里，把对话在浏览器里渲染成聊天界面。默认前端（在 `/` 提供）是一个结构化聊天页——气泡、引用回复、emoji 反应、贴纸、图片上传、按壁纸取色的主题、离线缓存——读取的是一条结构化消息流。你和 Claude Code 说话的方式跟机在终端里跑时完全一样，只是隔着一个干净、适配手机的网页。Claude Code 的所有能力（工具、记忆、hook、MCP 服务器、斜杠命令）原样可用——cocoon 是一层渲染，不是替代品。用 [CC Switch](https://github.com/farion1231/cc-switch) 切换后端；cocoon 不在乎你用哪个。
 
 ## 工作原理
 
@@ -197,7 +197,7 @@ MINIMAX_VOICE_ID=your-voice-id \
 > [docs/for-your-agent.zh-CN.md](docs/for-your-agent.zh-CN.md)。
 > 在 `CLAUDE.md` 里指一句，你的 agent 读一遍就住熟了。
 
-贴纸是双向功能：你从面板发，**AI 也能发回来**——但 AI 从头到尾看不见图片，它读的是文字。
+贴纸是双向功能：你从面板发，**AI 也能发回来**——但 AI 从头到尾看不见图片，机读的是文字。
 
 **聊天页里**（结构化前端）：输入栏的贴纸按钮打开面板，`＋` 上传图片（自动缩到
 256px PNG），单点发送。**长按贴纸进入编辑**——改名字、改描述、或删除。描述比看起来
@@ -215,7 +215,7 @@ MINIMAX_VOICE_ID=your-voice-id \
 { "happy_cat.png": { "name": "开心猫", "desc": "得意满足，干完活的时候用" } }
 ```
 
-想让你的 AI 会用贴纸，在 `CLAUDE.md` 里给它指个路：
+想让你的 AI 会用贴纸，在 `CLAUDE.md` 里给机指个路：
 
 ```markdown
 贴纸：想在聊天里发贴纸，回复里写 [sticker:<文件名>]。
@@ -388,7 +388,7 @@ hostname -I
 ifconfig | grep "inet " | grep -v 127.0.0.1
 ```
 
-然后在手机上：`http://192.168.x.x:8080/chat`
+然后在手机上：`http://192.168.x.x:8080/`
 
 ### 从任何地方——Tailscale（推荐）
 
@@ -397,7 +397,7 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 1. 在电脑和手机上装 Tailscale（[下载](https://tailscale.com/download)）
 2. 两台设备都登录
 3. 你的电脑会拿到一个固定 IP，像 `100.x.x.x`——用 `tailscale ip` 查
-4. 在手机上：`http://100.x.x.x:8080/chat`
+4. 在手机上：`http://100.x.x.x:8080/`
 
 到哪都能用——家里、咖啡馆、通勤路上。不用开端口，不用买域名，默认加密。
 
@@ -413,7 +413,7 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 
 ```bash
 ssh -L 8080:localhost:8080 user@your-server
-# 然后本地打开 http://localhost:8080/chat
+# 然后本地打开 http://localhost:8080/
 ```
 
 ## 许可证

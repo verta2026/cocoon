@@ -19,7 +19,7 @@ memory, personal pages, games, and secrets stay out of the reusable core.
 
 ## What it does
 
-Cocoon runs Claude Code inside tmux and renders the conversation as a chat interface in your browser. The default frontend (served at `/`) is a structured chat page — bubbles, quote-replies, emoji reactions, stickers, image upload, wallpaper-derived theming, offline cache — reading a structured message stream. A simpler legacy UI that parses raw terminal output directly lives at `/chat`. You talk to Claude Code exactly as it runs in the terminal, but through a clean, mobile-friendly web page. All Claude Code features (tools, memory, hooks, MCP servers, slash commands) work as-is — cocoon is a rendering layer, not a replacement. Switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use.
+Cocoon runs Claude Code inside tmux and renders the conversation as a chat interface in your browser. The default frontend (served at `/`) is a structured chat page — bubbles, quote-replies, emoji reactions, stickers, image upload, wallpaper-derived theming, offline cache — reading a structured message stream. You talk to Claude Code exactly as it runs in the terminal, but through a clean, mobile-friendly web page. All Claude Code features (tools, memory, hooks, MCP servers, slash commands) work as-is — cocoon is a rendering layer, not a replacement. Switch providers with [CC Switch](https://github.com/farion1231/cc-switch); cocoon doesn't care which backend you use.
 
 ## How it works
 
@@ -397,7 +397,7 @@ hostname -I
 ifconfig | grep "inet " | grep -v 127.0.0.1
 ```
 
-Then on your phone: `http://192.168.x.x:8080/chat`
+Then on your phone: `http://192.168.x.x:8080/`
 
 ### From anywhere — Tailscale (recommended)
 
@@ -406,7 +406,7 @@ Then on your phone: `http://192.168.x.x:8080/chat`
 1. Install Tailscale on your computer and phone ([download](https://tailscale.com/download))
 2. Sign in on both devices
 3. Your computer gets a fixed IP like `100.x.x.x` — find it with `tailscale ip`
-4. On your phone: `http://100.x.x.x:8080/chat`
+4. On your phone: `http://100.x.x.x:8080/`
 
 Works from anywhere — home, café, commute. No ports to open, no domain to buy, encrypted by default.
 
@@ -422,7 +422,7 @@ If cocoon runs on a remote server and you just want access from your laptop:
 
 ```bash
 ssh -L 8080:localhost:8080 user@your-server
-# then open http://localhost:8080/chat locally
+# then open http://localhost:8080/ locally
 ```
 
 

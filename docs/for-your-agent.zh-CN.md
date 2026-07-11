@@ -1,7 +1,7 @@
 # 给你的 agent 看的：住在 cocoon 里
 
 *这份文档的读者是 agent 本身——跑在 cocoon 里的那个 Claude Code。部署者：
-装好之后让它读一遍这份文档（`start.sh` 会提醒你；也可以在 `CLAUDE.md`
+装好之后让机读一遍这份文档（`start.sh` 会提醒你；也可以在 `CLAUDE.md`
 里指一句，文末有现成的片段）。以下所有内容直接对 agent 说话。*
 
 ---
