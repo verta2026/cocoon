@@ -43,7 +43,7 @@ chmod +x start.sh
 ./start.sh
 ```
 
-On first run the script generates a random access token (saved to `.env`) and creates `frontend/config.js` and `frontend/config.private.json` from the templates. Open `http://localhost:8080/` in your browser and enter the token on the login page.
+On first run the script generates a random access token (saved to `.env`), creates `frontend/config.js` and `frontend/config.private.json` from the templates, and builds the web frontend (needs Node.js/npm). Open `http://localhost:8080/` in your browser and enter the token on the login page.
 
 Edit `frontend/config.private.json` to set display names, avatars, and channel-name mappings — identity lives there because it is only served after login (`/app-config`). `frontend/config.js` holds the public basics (site title, API prefix, storage namespace); it is served unauthenticated so the login page can load it, so keep anything identifying out of it. See [`docs/frontend.md`](docs/frontend.md) for the full frontend/API reference.
 
@@ -63,6 +63,7 @@ Edit `frontend/config.private.json` to set display names, avatars, and channel-n
 ### Requirements
 
 - **Python 3.10+**
+- **Node.js 18+ / npm** — the chat page is a React build; `start.sh` builds it automatically on first run
 - **tmux** — cocoon runs Claude Code inside a tmux session. This is how it captures output without needing a separate API integration
 - **[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)** — installed and authenticated (`claude` command works in terminal)
 
@@ -259,11 +260,10 @@ cocoon/
     └── ui.py         # chat UI (HTML/CSS/JS)
 ```
 
-### React webapp (optional, in progress)
+### React webapp
 
-`webapp/` holds a React port of the chat frontend built with Vite. It is
-optional: deployments serve `frontend/` as always, and Node.js is only
-needed on the machine that builds the bundle — never at runtime.
+`webapp/` is the chat frontend, built with Vite. `start.sh` builds it
+automatically on first run; to rebuild by hand:
 
 ```bash
 cd webapp
@@ -272,9 +272,8 @@ npm run build     # outputs webapp/dist (static files)
 npm test          # renderer + parser unit tests
 ```
 
-When `webapp/dist/index.html` exists, the server also serves the app at
-`/app/` next to the classic frontend at `/`. Both talk to the same bridge
-API and can be used interchangeably while the port matures.
+The server serves the build at `/app/` and redirects `/` there. Node.js is
+only needed on the machine that builds the bundle — never at runtime.
 
 ## Limitations
 

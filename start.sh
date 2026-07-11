@@ -109,16 +109,29 @@ fi
 echo "  raw terminal: http://${COCOON_HOST}:${COCOON_PORT}/terminal"
 echo "  first install? have your agent read docs/for-your-agent.md (中文: docs/for-your-agent.zh-CN.md)"
 
-# React 前端是可选构建；但一份过期的 dist 比没有更糟——页面能开、功能却停在
-# 上次 build 的那天（源码更新对它毫无作用），这类"旧盖新"故障极难自查
+# React 前端就是唯一前端（/ 直通 /app/），dist 缺失 = 开门只有一页占位说明；
+# 过期的 dist 更糟——页面能开、功能却停在上次 build 的那天（源码更新对它毫无
+# 作用），这类"旧盖新"故障极难自查。所以：缺了/旧了就地重建，没 npm 才提示
+build_webapp() {
+  if ! command -v npm >/dev/null 2>&1; then
+    echo ""
+    echo "  ✗ The web app is NOT built and npm is missing — the chat page will not work."
+    echo "    Install Node.js (https://nodejs.org), then run: cd webapp && npm install && npm run build"
+    return
+  fi
+  echo ""
+  echo "  building the web app (first run only takes a minute)..."
+  (cd webapp && { [[ -d node_modules ]] || npm install --no-fund --no-audit; } && npm run build) \
+    || echo "  ✗ web app build failed — run it by hand to see why: cd webapp && npm install && npm run build"
+}
 if [[ -f webapp/dist/index.html ]]; then
   if [[ -n "$(find webapp/src webapp/index.html webapp/login.html -newer webapp/dist/index.html -print -quit 2>/dev/null)" ]]; then
     echo ""
-    echo "  ⚠ webapp/dist is OLDER than webapp/src — the React app at /app/ is stale."
-    echo "    rebuild it:  cd webapp && npm install && npm run build"
+    echo "  ⚠ webapp/dist is older than webapp/src — rebuilding so /app/ matches the source."
+    build_webapp
   fi
 else
-  echo "  React app not built (optional): cd webapp && npm install && npm run build"
+  build_webapp
 fi
 echo ""
 

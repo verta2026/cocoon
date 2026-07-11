@@ -149,8 +149,11 @@ export function useChat() {
       const local = { id: 'local-' + now, role: 'user', content: out, ts: new Date().toISOString(), attachments: sendAtts, _fresh: true }
       setRows(prev => prev.concat(local))
       sendText(out)
-        .then(r => {
-          if (r.ok) poll()
+        .then(async r => {
+          // /send 用 200 + {sent:false} 表示"没送进终端"（TUI 还没画好等）——
+          // 只看 r.ok 会把丢掉的消息当成功，气泡永远不长失败标
+          const j = await r.json().catch(() => ({}))
+          if (r.ok && j.sent !== false) poll()
           else throw 0
         })
         .catch(() => {
@@ -277,8 +280,9 @@ export function useChat() {
   const retry = useCallback(msg => {
     setRows(prev => prev.map(m => (m.id === msg.id ? { ...m, failed: false } : m)))
     sendText(msg.content)
-      .then(r => {
-        if (r.ok) poll()
+      .then(async r => {
+        const j = await r.json().catch(() => ({}))
+        if (r.ok && j.sent !== false) poll()
         else throw 0
       })
       .catch(() => {

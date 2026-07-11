@@ -62,6 +62,7 @@ chmod +x start.sh
 ### 环境要求
 
 - **Python 3.10+**
+- **Node.js 18+ / npm**——聊天页是 React 构建产物；首次运行 `start.sh` 会自动 build
 - **tmux**——cocoon 把 Claude Code 跑在 tmux 会话里。这正是它无需单独 API 集成就能抓取输出的方式
 - **[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)**——已安装并登录（终端里 `claude` 命令可用）
 
@@ -252,10 +253,9 @@ cocoon/
     └── ui.py         # 聊天界面（HTML/CSS/JS）
 ```
 
-### React 版前端（可选，进行中）
+### React 版前端
 
-`webapp/` 是聊天前端的 React 重写（Vite 构建）。完全可选：部署照常伺服
-`frontend/`，Node.js 只在构建打包的机器上需要——运行时不需要。
+`webapp/` 就是聊天前端（Vite 构建）。首次运行 `start.sh` 会自动构建；手动重建：
 
 ```bash
 cd webapp
@@ -264,8 +264,8 @@ npm run build     # 产出 webapp/dist（纯静态文件）
 npm test          # 渲染器 + 解析器单元测试
 ```
 
-`webapp/dist/index.html` 存在时，服务器会在 `/app/` 挂出 React 版，与
-`/` 上的经典前端并行。两者走同一套桥 API，移植成熟前可随时切换。
+服务器把构建产物挂在 `/app/`，`/` 直接跳转过去。Node.js 只在构建打包的
+机器上需要——运行时不需要。
 
 ## 局限
 

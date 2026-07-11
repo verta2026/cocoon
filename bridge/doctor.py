@@ -125,6 +125,20 @@ def run_checks(strict: bool = False) -> int:
     if token == DEFAULT_TOKEN and host not in {"127.0.0.1", "localhost"}:
         errors.append("refusing public bind with the default token. Set a strong COCOON_TOKEN first.")
 
+    # The React build is the only frontend (/ redirects to /app/): without
+    # webapp/dist the browser gets a placeholder page, not a chat. start.sh
+    # builds it automatically when npm exists, so only its absence is fatal.
+    npm_path = shutil.which("npm")
+    dist_built = (Path(__file__).resolve().parent.parent / "webapp" / "dist" / "index.html").is_file()
+    if dist_built:
+        _print("ok", "web app built: webapp/dist")
+    elif npm_path:
+        _print("ok", f"npm: {npm_path} (web app not built yet — start.sh will build it)")
+    else:
+        errors.append(
+            "web app is not built and npm is missing. Install Node.js, then: cd webapp && npm install && npm run build"
+        )
+
     if port:
         free, reason = _port_is_free(host, port)
         if free:

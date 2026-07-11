@@ -145,6 +145,7 @@ from bridge.prompts import (
     dismiss_settings_warning_prompt as _dismiss_settings_warning_prompt,
     dismiss_trust_prompt as _dismiss_trust_prompt,
     wait_for_claude_ready as _wait_for_claude_ready,
+    wait_for_claude_tui as _wait_for_claude_tui,
 )
 from bridge.uploads import (
     list_upload_files as _list_upload_files,
@@ -376,6 +377,10 @@ def wait_for_claude_ready(timeout=70):
     )
 
 
+def wait_for_claude_tui(timeout=20):
+    return _wait_for_claude_tui(SESSION_NAME, timeout)
+
+
 def captured_output_or_404(lines=1500):
     if not tmux_exists():
         raise HTTPException(404, "No active session")
@@ -469,6 +474,13 @@ async def send_message(msg: Message, request: Request):
             return _build_send_payload(sent=False, reloaded=True, length=len(msg.text))
 
         if msg.text:
+            # claude_running() is true from the instant the process owns the
+            # pane, but the TUI needs a few more seconds before it accepts
+            # input — keystrokes typed into that window vanish (a fresh
+            # install's very first message died exactly here). Idle prompt and
+            # active generation both count as drawn; only the boot window blocks.
+            if not await asyncio.to_thread(wait_for_claude_tui):
+                return _build_send_payload(sent=False, length=len(msg.text))
             tmux_send(msg.text.strip())
         else:
             subprocess.run(

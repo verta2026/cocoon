@@ -48,6 +48,26 @@ def dismiss_trust_prompt(session_name: str):
     return False
 
 
+def wait_for_claude_tui(session_name: str, timeout=20) -> bool:
+    """Wait until the Claude Code TUI has finished drawing.
+
+    claude_running() flips true the moment the `claude` process owns the pane,
+    but for the first few seconds the TUI is still initializing and keystrokes
+    sent then are swallowed — a fresh install loses the user's very first
+    message this way. "Drawn" means either an idle input prompt or an active
+    generation; both accept (or queue) typed input safely.
+    """
+    deadline = time.time() + timeout
+    markers = ("? for shortcuts", "bypass permissions", "⏵⏵", "❯", "esc to interrupt")
+    while time.time() < deadline:
+        screen = tmux_capture(session_name, 80)
+        tail = "\n".join(screen.splitlines()[-24:])
+        if any(marker in tail for marker in markers):
+            return True
+        time.sleep(1)
+    return False
+
+
 def wait_for_claude_ready(
     session_name: str,
     timeout=70,

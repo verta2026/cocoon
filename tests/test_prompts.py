@@ -53,5 +53,41 @@ class PromptHelpersTest(unittest.TestCase):
             prompts.time.sleep = originals["sleep"]
 
 
+class WaitForClaudeTuiTest(unittest.TestCase):
+    """TUI-drawn gate: boot window blocks, idle prompt and generation pass."""
+
+    def _run(self, screens, timeout=5):
+        originals = (prompts.tmux_capture, prompts.time.time, prompts.time.sleep)
+        seq = iter(screens)
+        last = screens[-1]
+        clock = {"t": 0}
+
+        def fake_time():
+            return clock["t"]
+
+        def fake_sleep(seconds):
+            clock["t"] += seconds
+
+        try:
+            prompts.tmux_capture = lambda session_name, lines=80: next(seq, last)
+            prompts.time.time = fake_time
+            prompts.time.sleep = fake_sleep
+            return prompts.wait_for_claude_tui("test", timeout=timeout)
+        finally:
+            prompts.tmux_capture, prompts.time.time, prompts.time.sleep = originals
+
+    def test_idle_prompt_passes_immediately(self):
+        self.assertTrue(self._run(["❯ Try \"how does x work?\""]))
+
+    def test_generation_counts_as_drawn(self):
+        self.assertTrue(self._run(["✻ Crunching… (esc to interrupt)"]))
+
+    def test_boot_window_blocks_then_passes(self):
+        self.assertTrue(self._run(["", "", "? for shortcuts"]))
+
+    def test_never_drawn_times_out(self):
+        self.assertFalse(self._run([""], timeout=3))
+
+
 if __name__ == "__main__":
     unittest.main()
