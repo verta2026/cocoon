@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy to config.private.json. Served only after auth (via /app-config), unlike the public config.js — identity lives here. Note the default avatar images under frontend/ are still served unauthenticated; point avatars at an authenticated /files/ upload if the pictures themselves are private.",
+  "aiName": "AI",
+  "userName": "User",
+  "aiAvatar": "/avatar_ai.png",
+  "userAvatar": "/avatar_user.png",
+  "userId": "user",
+  "channelNames": {}
+}

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#EFE4CE">
+<title>文件编辑器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Ma+Shan+Zheng&family=Meie+Script&family=Noto+Serif+SC:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/vendor/highlight.min.js"></script>
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/purify.min.js"></script>
+<script src="/config.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100dvh;overflow:hidden;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#EFE4CE;--panel:#FBF6EE;--panel2:#F0E6D0;--ink:#3A2A18;--ink2:#6B5238;--muted:#9B8262;
+  --line:rgba(138,111,75,0.16);--accent:#B0562F;--gold:#A9803F;--ed-bg:#FCF8EF;--ed-ink:#42301C;--code-bg:#F1E8D5;--sel:rgba(176,86,47,0.14);
+  --hl-kw:#B0562F;--hl-str:#5F8A55;--hl-com:#A79A82;--hl-num:#8A6D1F;--hl-fn:#4C7AA8;--hl-tag:#B0562F;--hl-attr:#8A6D1F;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+@keyframes ed-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes ed-in{from{opacity:0}to{opacity:1}}
+@keyframes dw-in{from{transform:translateX(-102%)}to{transform:translateX(0)}}
+.md-body{font-family:'Noto Serif SC',Georgia,serif;color:var(--ink);font-size:15px;line-height:1.85;padding:20px 20px 72px;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;background:var(--panel);max-width:780px;margin:0 auto}
+.md-body h1{font-family:'Ma Shan Zheng',cursive;font-weight:400;font-size:1.8rem;margin:14px 0 12px}
+.md-body h2{font-size:1.34rem;margin:20px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}
+.md-body h3{font-size:1.13rem;color:var(--ink2);margin:15px 0 6px}
+.md-body h4,.md-body h5{font-size:1rem;color:var(--ink2);margin:12px 0 4px}
+.md-body p{margin:9px 0}
+.md-body ul,.md-body ol{margin:8px 0 8px 1.35em}
+.md-body li{margin:4px 0}
+.md-body a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.md-body blockquote{border-left:3px solid var(--gold);padding:4px 14px;margin:11px 0;color:var(--ink2);background:var(--panel2);border-radius:0 7px 7px 0}
+.md-body hr{border:none;border-top:1px solid var(--line);margin:18px 0}
+.md-body code{font-family:'JetBrains Mono',monospace;font-size:0.85em;background:var(--code-bg);padding:1px 5px;border-radius:4px;color:var(--accent)}
+.md-body pre{background:var(--code-bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px;overflow:auto;margin:11px 0}
+.md-body pre code{background:none;padding:0;color:var(--ed-ink);font-size:12.5px;line-height:1.7;white-space:pre;display:block}
+.md-body table{border-collapse:collapse;margin:11px 0;font-size:13px;width:100%}
+.md-body th,.md-body td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+.md-body th{background:var(--panel2)}
+.md-body img{max-width:100%;border-radius:8px}
+.code-scroll{height:100%;overflow:auto;background:var(--ed-bg);-webkit-overflow-scrolling:touch}
+.code-pre{margin:0}
+.code-pre code{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.85;display:block;padding:18px 18px 72px;color:var(--ed-ink);white-space:pre}
+.hljs-keyword,.hljs-selector-tag,.hljs-built_in,.hljs-name,.hljs-literal,.hljs-meta{color:var(--hl-kw)}
+.hljs-string,.hljs-template-tag,.hljs-regexp,.hljs-addition{color:var(--hl-str)}
+.hljs-comment,.hljs-quote{color:var(--hl-com);font-style:italic}
+.hljs-number,.hljs-symbol,.hljs-bullet,.hljs-link{color:var(--hl-num)}
+.hljs-title,.hljs-title.function_,.hljs-section{color:var(--hl-fn)}
+.hljs-tag,.hljs-doctag,.hljs-type{color:var(--hl-tag)}
+.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-params{color:var(--hl-attr)}
+</style>
+</head>
+<body>
+<div id="app" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);font-family:'Noto Sans SC',sans-serif;color:var(--ink)">
+
+  <!-- TOP BAR -->
+  <div id="topbar" style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 0.65rem) 13px 0.6rem;background:var(--panel);border-bottom:1px solid var(--line)">
+    <button id="drawer-btn" title="文件树" style="flex-shrink:0;width:34px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">☰</button>
+    <div id="title-nofile" style="flex:1;min-width:0;display:flex;flex-direction:column;line-height:1">
+      <span style="font-family:'Meie Script',cursive;font-size:0.9rem;color:var(--gold)">editor</span>
+      <span style="font-size:0.9rem;font-weight:600;white-space:nowrap">文件编辑器</span>
+    </div>
+    <div id="title-file" style="display:none;flex:1;min-width:0;align-items:center;gap:6px">
+      <span id="dirty-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:ed-dot 1.6s ease-in-out infinite"></span>
+      <span id="file-name" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink2)"></span>
+    </div>
+    <button id="theme-btn" title="日夜切换" style="flex-shrink:0;width:34px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--gold);font-size:15px;cursor:pointer">☾</button>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar" style="display:none;flex-shrink:0;align-items:center;gap:10px;padding:8px 13px;background:var(--bg);border-bottom:1px solid var(--line)">
+    <div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel2)">
+      <button id="tab-edit" style="border:none;padding:6px 16px;font-size:12.5px;font-family:'Noto Sans SC';font-weight:600;cursor:pointer;white-space:nowrap;background:var(--accent);color:#fff">编辑</button>
+      <button id="tab-preview" style="border:none;padding:6px 16px;font-size:12.5px;font-family:'Noto Sans SC';font-weight:600;cursor:pointer;white-space:nowrap;background:transparent;color:var(--ink2)">预览</button>
+    </div>
+    <div style="flex:1"></div>
+    <button id="save-btn" disabled style="border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:'Noto Sans SC';font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap;background:var(--panel2);color:var(--muted);cursor:default">保存</button>
+    <button id="dl-btn" disabled style="border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:'Noto Sans SC';font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap;background:transparent;color:var(--muted);border:1px solid var(--line);cursor:default">下载</button>
+  </div>
+
+  <!-- MAIN SURFACE -->
+  <div id="surface" style="flex:1;min-height:0;position:relative;background:var(--ed-bg)">
+    <textarea id="editor" spellcheck="false" style="display:none;position:absolute;inset:0;width:100%;height:100%;background:var(--ed-bg);color:var(--ed-ink);border:none;padding:18px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.85;resize:none;outline:none;tab-size:2;caret-color:var(--accent);white-space:pre;overflow:auto"></textarea>
+    <div id="preview" style="display:none;position:absolute;inset:0;overflow:hidden"></div>
+    <div id="empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:30px;background:var(--bg)">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.3"><path d="M14 3v5h5"/><path d="M7 3h8l4 4v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>
+      <div style="font-size:14.5px;color:var(--ink2)">从文件树打开一个笔记</div>
+      <button id="empty-open" style="border:1px solid var(--line);background:var(--panel);color:var(--accent);border-radius:9px;padding:9px 20px;font-size:13.5px;font-family:'Noto Sans SC';font-weight:600;cursor:pointer">☰ 打开文件树</button>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);line-height:1.7">⌘/Ctrl+S 保存　·　Tab 缩进　·　右上角切换日夜</div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div id="statusbar" style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:6px 14px;background:var(--panel);border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:11px">
+    <span id="status-text" style="color:var(--muted)">加载中…</span>
+    <span style="flex:1"></span>
+    <span id="counter" style="color:var(--muted)"></span>
+  </div>
+
+  <!-- DRAWER -->
+  <div id="drawer" style="display:none;position:absolute;inset:0;z-index:40">
+    <div id="drawer-overlay" style="position:absolute;inset:0;background:rgba(20,14,6,0.42);animation:ed-in .2s ease"></div>
+    <div id="drawer-panel" style="position:relative;width:min(84%,330px);height:100%;background:var(--panel);border-right:1px solid var(--line);box-shadow:6px 0 30px rgba(20,12,4,0.3);display:flex;flex-direction:column;animation:dw-in .26s cubic-bezier(.2,.8,.3,1)">
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 0.7rem) 14px 0.5rem">
+        <span style="font-family:'Meie Script',cursive;font-size:1.05rem;color:var(--gold)">vault</span>
+        <span style="font-size:0.95rem;font-weight:600;color:var(--ink)">文件</span>
+        <div style="flex:1"></div>
+        <a href="/" style="font-size:12px;color:var(--accent);text-decoration:none">首页</a>
+        <button id="drawer-close" style="border:none;background:transparent;color:var(--muted);font-size:19px;cursor:pointer;line-height:1;padding:0 2px">×</button>
+      </div>
+      <div style="flex-shrink:0;padding:6px 12px 10px">
+        <input id="filter" placeholder="搜索文件…" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12.5px;outline:none;caret-color:var(--accent)">
+      </div>
+      <div id="tree" style="flex:1;min-height:0;overflow-y:auto;padding:0 6px 20px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+var S = { treeCache:{}, expanded:{}, file:null, content:'', original:'', dirty:false, mode:'edit', dark:false, filter:'' };
+
+// ── Wallpaper-derived tint (same source as the chat pages) ──────────────
+// The wallpaper choice is cloud-backed (/look) with localStorage as cache,
+// under the exact same keys the chat pages use — change the chat wallpaper
+// and the editor follows. A 64px average sample yields hue/saturation; the
+// full palette (incl. hljs colors, hue-rotated) is regenerated from it while
+// keeping the original paper lightness structure. Day/night stays a toggle.
+var CFG = window.CFG || {};
+var NS = CFG.storageNs || 'cocoon';
+var API = (CFG.apiBase !== undefined) ? CFG.apiBase : '';
+var LOOK = { bg: NS + '_chat_bg_image', bgDark: NS + '_chat_bg_image_dark' };
+var DEFAULT_BG = CFG.defaultWallpaper || '/wallpaper_default.png';
+var TOKEN = null;
+try { TOKEN = localStorage.getItem(NS + '_token'); } catch(e){}
+if (!TOKEN) { window.location.href = '/login.html'; return; }
+var HEADERS = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
+var TINT_KEY = NS + '_editor_tint_v1';
+// Fallback tint before any wallpaper sample lands ≈ the original warm paper
+var TINT = { day: { h: 35, s: 25 }, night: { h: 35, s: 20 } };
+try { var _t = JSON.parse(localStorage.getItem(TINT_KEY)); if (_t && _t.day && _t.night) TINT = _t; } catch(e){}
+
+function hsl(h, s, l, a) { h = ((h % 360) + 360) % 360; return a !== undefined ? 'hsla(' + h + ',' + s + '%,' + l + '%,' + a + ')' : 'hsl(' + h + ',' + s + '%,' + l + '%)'; }
+
+function makePalette(h, s, dark) {
+  if (dark) {
+    var sd = Math.min(s, 20);
+    return {
+      '--bg': hsl(h, sd, 7), '--panel': hsl(h, sd, 10), '--panel2': hsl(h, sd, 9),
+      '--ink': hsl(h, Math.min(s, 25), 86), '--ink2': hsl(h, Math.min(s, 25), 62), '--muted': hsl(h, Math.min(s, 18), 47),
+      '--line': hsl(h, 45, 58, 0.14), '--accent': hsl(h, Math.min(s + 30, 50), 60), '--gold': hsl(h, Math.min(s + 25, 45), 58),
+      '--ed-bg': hsl(h, sd, 6), '--ed-ink': hsl(h, Math.min(s, 25), 86), '--code-bg': hsl(h, sd, 8), '--sel': hsl(h, 50, 60, 0.16),
+      '--hl-kw': hsl(h, 50, 62), '--hl-str': hsl(h + 90, 25, 58), '--hl-com': hsl(h, 12, 36),
+      '--hl-num': hsl(h + 25, 40, 58), '--hl-fn': hsl(h + 180, 40, 64), '--hl-tag': hsl(h + 15, 50, 60), '--hl-attr': hsl(h + 25, 40, 58)
+    };
+  }
+  return {
+    '--bg': hsl(h, Math.min(s + 15, 45), 88), '--panel': hsl(h, Math.min(s + 18, 48), 95), '--panel2': hsl(h, Math.min(s + 15, 45), 89),
+    '--ink': hsl(h, Math.min(s, 25), 16), '--ink2': hsl(h, Math.min(s, 30), 32), '--muted': hsl(h, Math.min(s, 25), 50),
+    '--line': hsl(h, 30, 42, 0.16), '--accent': hsl(h, Math.min(s + 35, 60), 42), '--gold': hsl(h, Math.min(s + 25, 46), 45),
+    '--ed-bg': hsl(h, Math.min(s + 20, 50), 96), '--ed-ink': hsl(h, Math.min(s, 30), 19), '--code-bg': hsl(h, Math.min(s + 15, 45), 89), '--sel': hsl(h, 55, 44, 0.14),
+    '--hl-kw': hsl(h, 55, 44), '--hl-str': hsl(h + 90, 28, 42), '--hl-com': hsl(h, 15, 58),
+    '--hl-num': hsl(h + 25, 55, 34), '--hl-fn': hsl(h + 180, 38, 48), '--hl-tag': hsl(h, 55, 44), '--hl-attr': hsl(h + 25, 55, 34)
+  };
+}
+
+function rgb2hs(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, s = 0;
+  if (mx !== mn) {
+    var d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (mx === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [Math.round(h * 360), Math.round(s * 100)];
+}
+
+// Bridge media can't take an Authorization header from CSS/<img>; it
+// authenticates via the HttpOnly session cookie instead (established below).
+// Never put the token in a URL — it would leak into logs and history, and
+// the server ignores query tokens anyway.
+function ensureCookie() {
+  return fetch(API + '/session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN } }).catch(function(){});
+}
+
+function wallpaperUrl(dark) {
+  var raw = null;
+  try { raw = (dark ? localStorage.getItem(LOOK.bgDark) : null) || localStorage.getItem(LOOK.bg); } catch(e){}
+  return raw || DEFAULT_BG;
+}
+
+// Sample one wallpaper's average color, remember it, refresh if it's the
+// currently displayed theme.
+function sampleTint(dark) {
+  var url = wallpaperUrl(dark);
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    try {
+      var c = document.createElement('canvas'); c.width = 64; c.height = 64;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, 64, 64);
+      var d = ctx.getImageData(0, 0, 64, 64).data, rT = 0, gT = 0, bT = 0, n = d.length / 4;
+      for (var i = 0; i < d.length; i += 4) { rT += d[i]; gT += d[i + 1]; bT += d[i + 2]; }
+      var hs = rgb2hs(Math.round(rT / n), Math.round(gT / n), Math.round(bT / n));
+      TINT[dark ? 'night' : 'day'] = { h: hs[0], s: Math.min(hs[1], 30) };
+      try { localStorage.setItem(TINT_KEY, JSON.stringify(TINT)); } catch(e){}
+      if (S.dark === dark) applyTheme(S.dark);
+    } catch(e){}
+  };
+  img.src = url;
+}
+
+// Server-side wallpaper choice wins over the local cache (survives cleared
+// storage / new devices). Bridges without /look just fall through silently.
+function loadLookAndTint() {
+  sampleTint(S.dark);
+  fetch(API + '/look', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d) {
+      var L = (d && d.look) || {};
+      var changed = false;
+      [['bg', LOOK.bg], ['bgDark', LOOK.bgDark]].forEach(function(p) {
+        if (!L[p[0]]) return;
+        try { if (localStorage.getItem(p[1]) !== L[p[0]]) { localStorage.setItem(p[1], L[p[0]]); changed = true; } } catch(e){}
+      });
+      if (changed) { sampleTint(false); sampleTint(true); }
+    })
+    .catch(function(){});
+}
+
+var $ed = document.getElementById('editor');
+var $pv = document.getElementById('preview');
+var $empty = document.getElementById('empty');
+var $toolbar = document.getElementById('toolbar');
+var $titleNo = document.getElementById('title-nofile');
+var $titleFile = document.getElementById('title-file');
+var $fileName = document.getElementById('file-name');
+var $dirtyDot = document.getElementById('dirty-dot');
+var $saveBtn = document.getElementById('save-btn');
+var $dlBtn = document.getElementById('dl-btn');
+var $status = document.getElementById('status-text');
+var $counter = document.getElementById('counter');
+var $drawer = document.getElementById('drawer');
+var $tree = document.getElementById('tree');
+var $filter = document.getElementById('filter');
+var $themeBtn = document.getElementById('theme-btn');
+
+function applyTheme(dark) {
+  var tint = dark ? TINT.night : TINT.day;
+  var t = makePalette(tint.h, tint.s, dark), r = document.documentElement;
+  for (var k in t) r.style.setProperty(k, t[k]);
+  $themeBtn.textContent = dark ? '☀' : '☾';
+  document.querySelector('meta[name="theme-color"]').content = t['--bg'];
+}
+function toggleTheme() {
+  S.dark = !S.dark;
+  applyTheme(S.dark);
+  try { localStorage.setItem(NS + '_editor_theme', S.dark ? 'night' : 'day'); } catch(e){}
+  sampleTint(S.dark); // the night wallpaper may differ; resample for it
+}
+
+function setStatus(text, kind) {
+  $status.textContent = text;
+  var c = {idle:'var(--muted)',ok:'#6E9B5B',warn:'var(--gold)',err:'#C86B4B'}[kind] || 'var(--muted)';
+  $status.style.color = c;
+}
+
+function updateUI() {
+  var has = S.file != null;
+  $titleNo.style.display = has ? 'none' : 'flex';
+  $titleFile.style.display = has ? 'flex' : 'none';
+  $toolbar.style.display = has ? 'flex' : 'none';
+  $empty.style.display = has ? 'none' : 'flex';
+  if (has) {
+    $fileName.textContent = S.file;
+    $dirtyDot.style.display = S.dirty ? 'inline-block' : 'none';
+    $saveBtn.disabled = !S.dirty;
+    $saveBtn.style.background = S.dirty ? 'var(--gold)' : 'var(--panel2)';
+    $saveBtn.style.color = S.dirty ? '#1A140C' : 'var(--muted)';
+    $saveBtn.style.cursor = S.dirty ? 'pointer' : 'default';
+    $dlBtn.disabled = false;
+    $dlBtn.style.color = 'var(--gold)';
+    $dlBtn.style.cursor = 'pointer';
+    var lines = S.content.split('\n').length;
+    $counter.textContent = '行 ' + lines + ' · ' + S.content.length + ' 字';
+    var onEdit = S.mode === 'edit';
+    document.getElementById('tab-edit').style.background = onEdit ? 'var(--accent)' : 'transparent';
+    document.getElementById('tab-edit').style.color = onEdit ? '#fff' : 'var(--ink2)';
+    document.getElementById('tab-preview').style.background = onEdit ? 'transparent' : 'var(--accent)';
+    document.getElementById('tab-preview').style.color = onEdit ? 'var(--ink2)' : '#fff';
+    $ed.style.display = onEdit ? 'block' : 'none';
+    $pv.style.display = onEdit ? 'none' : 'block';
+    if (!onEdit) renderPreview();
+  } else {
+    $ed.style.display = 'none';
+    $pv.style.display = 'none';
+    $counter.textContent = '';
+  }
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(b) { if (b == null) return ''; if (b < 1024) return b + 'B'; if (b < 1048576) return (b/1024).toFixed(1)+'K'; return (b/1048576).toFixed(1)+'M'; }
+function extColor(e){var m={md:'#6E9B5B',py:'#4C86A8',js:'#C8A060',json:'#B58A3A',html:'#B0562F',css:'#8E77B0',txt:'#8A7C64',sh:'#5B8C7B',ts:'#4C86A8',tsx:'#4C86A8',jsx:'#C8A060',yml:'#B58A3A',yaml:'#B58A3A'};return m[e]||'#8A7C64';}
+function badgeText(e){var m={md:'MD',json:'{ }',html:'<>',js:'JS',jsx:'JSX',ts:'TS',tsx:'TSX',css:'CSS',py:'PY',sh:'SH',yml:'YML',yaml:'YML',txt:'TXT'};return m[e]||(e?e.toUpperCase().slice(0,3):'·');}
+function extLang(e){var m={js:'javascript',jsx:'javascript',ts:'typescript',tsx:'typescript',py:'python',html:'xml',xml:'xml',css:'css',json:'json',yml:'yaml',yaml:'yaml',md:'markdown',sh:'bash',sql:'sql'};return m[e]||'';}
+
+function renderPreview() {
+  if (!S.file) return;
+  var ext = (S.file.split('.').pop()||'').toLowerCase();
+  var html;
+  if ((ext === 'md' || ext === 'markdown') && window.marked && window.DOMPurify) {
+    // 预览的是不可信文件内容（仓库文件/上传/Claude 写的）；没有 sanitizer 就不给富渲染
+    try { html = '<div class="md-body">' + DOMPurify.sanitize(window.marked.parse(S.content)) + '</div>'; } catch(e) { html = '<pre>' + esc(S.content) + '</pre>'; }
+  } else {
+    var lang = extLang(ext);
+    html = '<div class="code-scroll"><pre class="code-pre"><code class="hljs' + (lang ? ' language-' + lang : '') + '">' + esc(S.content) + '</code></pre></div>';
+  }
+  $pv.innerHTML = html;
+  if (window.hljs) $pv.querySelectorAll('pre code:not([data-hl])').forEach(function(c){ try { hljs.highlightElement(c); } catch(e){} c.setAttribute('data-hl','1'); });
+}
+
+function renderTree() {
+  $tree.innerHTML = '';
+  var f = ($filter.value || '').toLowerCase();
+  if (f) {
+    Object.keys(S.treeCache).forEach(function(dir) {
+      S.treeCache[dir].forEach(function(it) {
+        if (it.dir || !String(it.name).toLowerCase().includes(f)) return;
+        var rel = dir ? dir + '/' + it.name : it.name;
+        addFileRow(rel, it, 0);
+      });
+    });
+  } else {
+    walkTree('', 0);
+  }
+}
+
+function walkTree(dir, depth) {
+  var items = S.treeCache[dir];
+  if (!items) return;
+  items.slice().sort(function(a,b){ return (b.dir?1:0)-(a.dir?1:0) || String(a.name).localeCompare(String(b.name)); }).forEach(function(it) {
+    var rel = dir ? dir + '/' + it.name : it.name;
+    if (it.dir) {
+      var exp = !!S.expanded[rel];
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:7px 8px;padding-left:' + (8+depth*15) + 'px;border-radius:7px;cursor:pointer;margin:1px 0';
+      row.innerHTML = '<span style="width:16px;flex-shrink:0;text-align:center;color:var(--muted);font-size:10px">' + (exp?'▾':'▸') + '</span><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;color:var(--gold)"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/></svg></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;color:var(--ink)">' + esc(it.name) + '</span>';
+      row.onclick = (function(r){ return function(){ toggleFolder(r); }; })(rel);
+      $tree.appendChild(row);
+      if (exp) walkTree(rel, depth+1);
+    } else {
+      addFileRow(rel, it, depth);
+    }
+  });
+}
+
+function addFileRow(rel, it, depth) {
+  var ext = (String(it.name).split('.').pop()||'').toLowerCase();
+  var col = extColor(ext);
+  var active = S.file === rel;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:7px 8px;padding-left:' + (8+depth*15) + 'px;border-radius:7px;cursor:pointer;margin:1px 0' + (active ? ';background:var(--sel)' : '');
+  row.innerHTML = '<span style="width:16px;flex-shrink:0"></span><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:20px;border-radius:5px;font-size:8.5px;font-weight:700;font-family:\'JetBrains Mono\',monospace;flex-shrink:0;background:' + col + '22;color:' + col + '">' + badgeText(ext) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;color:' + (active?'var(--accent)':'var(--ink2)') + '">' + esc(it.name) + '</span><span style="margin-left:auto;color:var(--muted);font-size:10px;font-family:\'JetBrains Mono\',monospace;flex-shrink:0">' + fmt(it.size) + '</span>';
+  row.onclick = (function(r){ return function(){ openFile(r); }; })(rel);
+  $tree.appendChild(row);
+}
+
+function toggleFolder(rel) {
+  if (S.expanded[rel]) { delete S.expanded[rel]; }
+  else { S.expanded[rel] = true; if (!S.treeCache[rel]) fetchDir(rel); }
+  renderTree();
+}
+
+function openDrawer() { $drawer.style.display = 'flex'; renderTree(); }
+function closeDrawer() { $drawer.style.display = 'none'; }
+
+async function fetchDir(path) {
+  try {
+    var r = await fetch(API + '/editor/ls?path=' + encodeURIComponent(path || ''), { headers: HEADERS });
+    if (!r.ok) throw 0;
+    var d = await r.json();
+    S.treeCache[path || ''] = d.items || [];
+    renderTree();
+  } catch(e) {
+    setStatus('无法加载目录', 'err');
+  }
+}
+
+async function openFile(rel) {
+  if (S.dirty && !confirm('有未保存的修改，确定切换？')) return;
+  var ext = (rel.split('.').pop()||'').toLowerCase();
+  S.mode = (ext === 'md' || ext === 'markdown') ? 'preview' : 'edit';
+  setStatus('加载中…', 'idle');
+  try {
+    var r = await fetch(API + '/editor/read?path=' + encodeURIComponent(rel), { headers: HEADERS });
+    if (!r.ok) { var d = await r.json().catch(function(){return{};}); setStatus(d.error || '无法打开', 'err'); return; }
+    var data = await r.json();
+    S.file = rel; S.content = data.content; S.original = data.content; S.dirty = false;
+    $ed.value = data.content;
+    closeDrawer();
+    setStatus(data.content.length + ' 字', 'idle');
+    updateUI();
+  } catch(e) { setStatus('无法打开', 'err'); }
+}
+
+async function saveFile() {
+  if (!S.file || !S.dirty) return;
+  setStatus('保存中…', 'idle');
+  try {
+    var r = await fetch(API + '/editor/write', { method:'POST', headers:HEADERS, body:JSON.stringify({ path:S.file, content:S.content }) });
+    if (r.ok) { S.original = S.content; S.dirty = false; setStatus('已保存 ✓', 'ok'); updateUI(); }
+    else { var d = await r.json().catch(function(){return{};}); setStatus('保存失败: '+(d.error||'未知错误'), 'err'); }
+  } catch(e) { setStatus('保存失败', 'err'); }
+}
+
+async function downloadFile() {
+  if (!S.file) return;
+  if (S.dirty) await saveFile();
+  var a = document.createElement('a');
+  // <a href> can't carry an Authorization header; the session cookie
+  // authenticates the navigation (never put the token in a URL)
+  a.href = API + '/editor/download?path=' + encodeURIComponent(S.file);
+  a.download = S.file.split('/').pop() || 'download';
+  document.body.appendChild(a); a.click(); a.remove();
+  setStatus('开始下载', 'ok');
+}
+
+$ed.addEventListener('input', function() {
+  S.content = $ed.value;
+  S.dirty = S.content !== S.original;
+  setStatus(S.dirty ? '已修改 · 未保存' : '已保存', S.dirty ? 'warn' : 'ok');
+  updateUI();
+});
+$ed.addEventListener('keydown', function(e) {
+  if ((e.metaKey||e.ctrlKey) && (e.key==='s'||e.key==='S')) { e.preventDefault(); saveFile(); return; }
+  if (e.key === 'Tab') { e.preventDefault(); var s=$ed.selectionStart, en=$ed.selectionEnd; var nv=S.content.slice(0,s)+'  '+S.content.slice(en); $ed.value=nv; S.content=nv; S.dirty=nv!==S.original; $ed.selectionStart=$ed.selectionEnd=s+2; setStatus('已修改 · 未保存','warn'); updateUI(); }
+});
+
+document.getElementById('drawer-btn').onclick = openDrawer;
+document.getElementById('empty-open').onclick = openDrawer;
+document.getElementById('drawer-overlay').onclick = closeDrawer;
+document.getElementById('drawer-close').onclick = closeDrawer;
+$themeBtn.onclick = toggleTheme;
+document.getElementById('tab-edit').onclick = function(){ S.mode='edit'; updateUI(); };
+document.getElementById('tab-preview').onclick = function(){ S.mode='preview'; updateUI(); };
+$saveBtn.onclick = saveFile;
+$dlBtn.onclick = downloadFile;
+$filter.addEventListener('input', renderTree);
+
+try { S.dark = localStorage.getItem(NS + '_editor_theme') === 'night'; } catch(e){}
+applyTheme(S.dark);   // paint with the cached tint first — no flash
+// cookie first: wallpaper <img> sampling and the download link both
+// authenticate through the HttpOnly session cookie
+ensureCookie().then(function(){ loadLookAndTint(); });
+fetchDir('').then(function(){ setStatus('就绪', 'idle'); });
+})();
+</script>
+</body>
+</html>

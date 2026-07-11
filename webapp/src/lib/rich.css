@@ -1,0 +1,91 @@
+/* 声明从 chat.html 各 cssText 原样搬运，选择器换类名，视觉零变化 */
+.rc-code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.82em;
+  background: var(--c-code);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.rc-b { font-weight: 600; }
+.rc-rainbow {
+  background: linear-gradient(90deg, #c96f4a, #c8a060, #5b8a72, #5f7ba0, #a06f9e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 500;
+}
+.rc-mark {
+  background: rgba(218, 184, 120, 0.4);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.rc-del { text-decoration: line-through; opacity: 0.7; }
+.rc-a {
+  color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rc-em { font-style: italic; }
+.rc-spacer { height: 0.6em; }
+.rc-table-scroll { overflow-x: auto; max-width: 100%; margin: 0.35em 0; }
+.rc-table {
+  border-collapse: collapse;
+  margin: 0.45em 0;
+  font-size: 0.84em;
+  min-width: 100%;
+}
+.rc-cell {
+  border: 1px solid var(--c-border);
+  padding: 0.32em 0.58em;
+  text-align: left;
+  vertical-align: top;
+}
+.rc-th { background: var(--c-code); font-weight: 600; }
+.rc-boxtable {
+  margin: 0.45em 0;
+  padding: 0.55em 0.65em;
+  background: var(--c-code);
+  border-radius: 6px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78em;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre;
+  max-width: 100%;
+}
+.rc-h { display: block; font-weight: 600; margin: 0.35em 0 0.15em; }
+.rc-h1 { font-size: 1.05em; }
+.rc-h2 { font-size: 0.95em; }
+.rc-h3 { font-size: 0.88em; }
+.rc-bq {
+  display: block;
+  border-left: 2px solid var(--c-accent);
+  padding-left: 0.6em;
+  margin: 0.2em 0;
+  color: var(--c-muted);
+}
+.rc-hr { display: block; border-top: 1px solid var(--c-border); margin: 0.5em 0; height: 0; }
+.rc-li { display: block; padding-left: 1.2em; text-indent: -0.8em; }
+.rc-fence-wrap { margin: 6px 0; max-width: 100%; }
+.rc-fence-bar { display: flex; justify-content: flex-end; padding: 3px 2px 0; }
+.rc-fence-copy {
+  cursor: pointer; user-select: none; width: 26px; height: 24px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--c-muted);
+}
+.rc-fence-copy:active { background: var(--c-code); }
+.rc-fence {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.78em;
+  line-height: 1.6;
+  background: var(--c-code);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+  display: block;
+  max-width: 100%;
+}

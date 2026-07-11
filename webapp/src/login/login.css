@@ -1,0 +1,54 @@
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #FBF3E4;
+  --card: #FFFAF2;
+  --text: #3D2E1F;
+  --muted: #8B7355;
+  --accent: #C4956A;
+  --border: #E8DCC8;
+}
+body {
+  font-family: "Noto Serif SC", Georgia, serif;
+  background: linear-gradient(180deg, #fbf3e4 0%, #f1e3cc 100%);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.container {
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+}
+.dash {
+  font-size: 2rem;
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.3em;
+}
+input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.05em;
+  min-height: 44px;
+  box-shadow: 0 10px 28px rgba(60,40,20,0.08), inset 0 1px 0 rgba(255,255,255,0.45);
+}
+input:focus { border-color: var(--accent); }
+input::placeholder { color: var(--border); }
+.hint {
+  margin-top: 0.8rem;
+  font-size: 0.75rem;
+  color: var(--border);
+  min-height: 1.2em;
+}
+.hint.error { color: var(--accent); }

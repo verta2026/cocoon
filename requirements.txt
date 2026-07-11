@@ -1,0 +1,7 @@
+# 按当前验证过的组合锁 minor（~= 允许补丁位漂移，不允许 minor 跳变）
+fastapi~=0.138.0
+starlette~=1.3.1
+uvicorn~=0.46.0
+python-multipart~=0.0.28
+# TestClient 的传输层依赖：不显式列出的话 CI 裸环境会 import 失败（CI 红过一次）
+httpx~=0.28.1
