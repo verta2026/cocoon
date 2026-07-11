@@ -409,7 +409,7 @@ export default function Chat() {
         {items.length === 0 && !typing && (
           <div className="chat-empty">
             <div className="chat-empty-title">还没有消息</div>
-            <div className="chat-empty-hint">桥启动后 Claude 会话会自动就绪——在下面输入框说第一句话，或直接在终端里聊，两边都会出现在这里</div>
+            <div className="chat-empty-hint">桥启动后 Claude 会话会自动就绪，在下面输入框说第一句话，或直接在终端里聊，两边都会出现在这里</div>
           </div>
         )}
         {items}

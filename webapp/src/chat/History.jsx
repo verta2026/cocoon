@@ -77,7 +77,7 @@ export default function History() {
 
       <div className="hist-body">
         {unavailable && (
-          <div className="hist-note">档案索引还没上线——桥重启后就有了</div>
+          <div className="hist-note">档案索引还没上线，桥重启后就有了</div>
         )}
         {!unavailable && months === null && (
           <div className="hist-note"><span className="hist-spin-ring" /> 正在翻档案…</div>

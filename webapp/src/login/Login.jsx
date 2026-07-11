@@ -65,7 +65,7 @@ export default function Login() {
             <ul>
               <li><strong>token 不要给任何人。</strong>拿到 token 的人可以在你的服务器上执行任意命令，等于交出整台机器。</li>
               <li>这个前端是 <strong>Claude Code 的渲染界面</strong>，自带 forge 无缝换窗（上下文写满自动开新窗，对话不中断）。</li>
-              <li>机在这里的能力和 Claude Code 完全相同。界面不顺手、想加功能、出了 bug——直接让机自己改。</li>
+              <li>机在这里的能力和 Claude Code 完全相同。界面不顺手、想加功能、出了 bug，直接让机自己改。</li>
               <li>欢迎反馈 bug，欢迎二改。</li>
             </ul>
             <p className="notice-thanks">致谢 forge 作者：离落。</p>
@@ -99,7 +99,7 @@ export default function Login() {
               <p>进来之后：聊天页侧栏 → 会话 → <code>new session</code> 启动 Claude；<code>/terminal</code> 能看原始终端。</p>
               <p>忘了口令：改 <code>.env</code> 里的 <code>COCOON_TOKEN</code> 再重启即可。</p>
               <div className="guide-sec">安全须知</div>
-              <p>这个口令不是普通密码：拿到它的人可以指挥一个<strong>能在你服务器上执行命令</strong>的 Claude，等于交出整台机器。所以——</p>
+              <p>这个口令不是普通密码：拿到它的人可以指挥一个<strong>能在你服务器上执行命令</strong>的 Claude，等于交出整台机器。所以：</p>
               <p>· 只通过 HTTPS 或内网（Tailscale/SSH 隧道）访问，别把裸 HTTP 端口挂到公网；</p>
               <p>· 口令别发给任何人、别截进图里；</p>
               <p>· 怀疑泄露就立刻换：改 <code>.env</code> 重启，旧口令当场作废。</p>

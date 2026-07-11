@@ -102,7 +102,7 @@ export default function AskSheet({ ask, onClose, onMinimize }) {
         )}
         <div className="ask-foot">
           {sending ? <span className="ask-status">正在替你选…</span>
-            : failed ? <span className="ask-status ask-status--bad">没选上，可能界面对不上——改用打字最稳</span>
+            : failed ? <span className="ask-status ask-status--bad">没选上，可能界面对不上，改用打字最稳</span>
             : <span />}
           <span className="ask-esc" onClick={() => { escapeAsk(); onClose(true) }}>改用打字回答</span>
         </div>

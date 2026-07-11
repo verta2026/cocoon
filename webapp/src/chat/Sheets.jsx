@@ -100,9 +100,9 @@ function StickerEditCard({ sticker, create, onSaved, onDeleted, onClose }) {
         <img className="sticker-edit-preview" src={create ? sticker.data : (sticker.src || (API + '/stickers/' + sticker.file))} alt="" draggable={false} />
         <label className="sticker-edit-label">名字
           <input className="sticker-edit-input" value={name} maxLength={30}
-            onChange={e => setName(e.target.value)} placeholder="给贴纸起个名字" />
+            onChange={e => setName(e.target.value)} placeholder="给表情包起个名字" />
         </label>
-        <label className="sticker-edit-label">描述（AI 靠它认识这张贴纸）
+        <label className="sticker-edit-label">描述（AI 靠它认识这张表情包）
           <textarea className="sticker-edit-input sticker-edit-desc" value={desc} maxLength={200} rows={2}
             onChange={e => setDesc(e.target.value)} placeholder="什么心情、什么场合用" />
         </label>
@@ -187,7 +187,7 @@ export function StickerPanel({ onSend, onClose }) {
       <div className="sheet sheet--sticker" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-head">
-          <span className="sheet-title">贴纸 · 表情</span>
+          <span className="sheet-title">表情包</span>
           <span className="sheet-close" onClick={onClose}>✕</span>
         </div>
         <div className="sticker-grid">
@@ -201,7 +201,7 @@ export function StickerPanel({ onSend, onClose }) {
             </div>
           ))}
           <div className="sticker-add" onClick={uploadSticker}>＋</div>
-          {!stickers.length && <div className="picker-empty" style={{ gridColumn: '1 / -1' }}>还没有贴纸～</div>}
+          {!stickers.length && <div className="picker-empty" style={{ gridColumn: '1 / -1' }}>还没有表情包～</div>}
         </div>
       </div>
       {editing && (

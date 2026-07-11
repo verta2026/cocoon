@@ -130,10 +130,10 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
               <div className="h-item"><div className="h-term">new session</div><div className="h-desc">全新会话，不带刚才的记忆</div></div>
               <div className="h-item"><div className="h-term">clean window</div><div className="h-desc">什么都不带的真空白，排查用</div></div>
               <div className="sb-title">聊天手势</div>
-              <div className="h-item"><div className="h-desc"><b>长按</b>气泡贴表情 · <b>左滑</b>引用回复 · <b>双击</b>选字 · <b>＋</b>图片/文件/贴纸</div></div>
-              <div className="sb-title">贴纸</div>
-              <div className="h-item"><div className="h-desc"><b>发</b>——＋ → sticker，点一张就发 · <b>加</b>——面板末尾的添加卡，传图并填名字和描述 · <b>长按</b>贴纸可改可删</div></div>
-              <div className="h-item"><div className="h-desc">描述是 Claude 的眼睛：机看不见贴纸图，只认你写的描述——写清楚机才会用对</div></div>
+              <div className="h-item"><div className="h-desc"><b>长按</b>气泡贴表情 · <b>左滑</b>引用回复 · <b>双击</b>选字 · <b>＋</b>图片/文件/表情包</div></div>
+              <div className="sb-title">表情包</div>
+              <div className="h-item"><div className="h-desc"><b>发</b>：＋ → sticker，点一张就发 · <b>加</b>：面板末尾的添加卡，传图并填名字和描述 · <b>长按</b>表情包可改可删</div></div>
+              <div className="h-item"><div className="h-desc">描述是 Claude 的眼睛：机看不见表情包的图，只认你写的描述。写清楚机才会用对</div></div>
               <div className="sb-title">工具</div>
               <div className="h-item"><div className="h-term">history</div><div className="h-desc">聊天记录按月归档，可搜索，点一条跳回当时</div></div>
               <div className="h-item"><div className="h-term">terminal</div><div className="h-desc">Claude 的原始画面，esc/↑/↓/enter 可遥控</div></div>
