@@ -132,6 +132,8 @@ All settings are environment variables:
 | `COCOON_TTS_DIR` | system temp / `cocoon-tts` | Directory for generated TTS audio |
 | `COCOON_TTS_MAX_TEXT_CHARS` | `800` | Maximum text length accepted by `/tts/say` |
 | `COCOON_TTS_MAX_AUDIO_FILES` | `40` | Number of generated `.mp3` files retained in `COCOON_TTS_DIR` |
+| `COCOON_REACTION_NOTIFY` | `1` | Send the agent a `[reaction]` notice when the user reacts to a message. Set to `0` to keep reactions frontend-only |
+| `COCOON_REACTION_NOTIFY_TEMPLATE` | built-in | Wording of that notice; placeholders `{user}` `{emoji}` `{excerpt}`. The default asks the agent to discuss renaming `{user}` with you |
 | `COCOON_AUTO_DISMISS_PROMPTS` | `1` | Auto-dismiss routine Claude Code terminal prompts (resume summary, rating, folder trust). Set to `0` to require manual confirmation |
 | `COCOON_STICKER_MAX_MB` | `5` | Separate size cap for sticker uploads (MB) |
 | `COCOON_TRUST_FORWARDED_PROTO` | `0` | Set to `1` behind a trusted TLS-terminating proxy (nginx/Caddy/Cloudflare) so the login cookie carries `Secure`. Off by default: otherwise any client can forge the header and flip cookie attributes |

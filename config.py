@@ -193,6 +193,17 @@ ASSISTANT_AVATAR = os.environ.get("COCOON_ASSISTANT_AVATAR", "")
 USER_NAME = os.environ.get("COCOON_USER_NAME", "You")
 USER_AVATAR = os.environ.get("COCOON_USER_AVATAR", "")
 
+# 贴表情默认通知 agent（COCOON_REACTION_NOTIFY=0 关闭）。默认模板的称呼
+# 是「用户」，并在句尾提醒 agent 这个模板在哪、可以跟用户商量换成名字——
+# 换好名字之后那句提醒自然消失。占位符：{user} {emoji} {excerpt}
+REACTION_NOTIFY = os.environ.get("COCOON_REACTION_NOTIFY", "1") != "0"
+REACTION_NOTIFY_TEMPLATE = os.environ.get(
+    "COCOON_REACTION_NOTIFY_TEMPLATE",
+    "{user}给你的消息「{excerpt}」贴了一个 {emoji}。"
+    "（这条提醒的措辞来自 .env 里的 COCOON_REACTION_NOTIFY_TEMPLATE，"
+    "第一次看到时，可以跟用户商量把称呼换成 TA 的名字）",
+)
+
 MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
 MINIMAX_VOICE_ID = os.environ.get("MINIMAX_VOICE_ID", "")
 MINIMAX_TTS_MODEL = os.environ.get("MINIMAX_TTS_MODEL", "speech-2.8-hd")

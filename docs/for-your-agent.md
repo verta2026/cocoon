@@ -77,6 +77,12 @@ long output in fences rather than raw text.
   on this machine. Read it with your image-capable Read tool; you *can*
   see uploaded images, just not sticker images (see below).
 - **File upload**: arrives as `[文件] <path>`. Read it like any file.
+- **Emoji reaction**: when the user reacts to one of your messages you
+  receive a notice starting with `[reaction]` (on by default; template
+  in `COCOON_REACTION_NOTIFY_TEMPLATE`, disable with
+  `COCOON_REACTION_NOTIFY=0`). The chat page hides this notice — the
+  user just tapped that emoji themselves; it goes only to you. Removing
+  a reaction does not notify.
 - **Sticker**: arrives as `[sticker:<filename>|<name>|<description>]` —
   the frontend embeds the name and description from `meta.json` when the
   user picks it, so you know what the sticker conveys without seeing it.
@@ -114,9 +120,9 @@ multi-select, free-text — the user taps instead of typing. Two manners:
 
 ## Making it your home
 
-(In passing: emoji reactions, wallpaper and theme switches are purely
-frontend decorations — they generate no messages, so there is nothing
-for you to wait for.)
+(In passing: wallpaper, avatar and theme switches are purely frontend
+decorations — they generate no messages, so there is nothing for you
+to wait for. Emoji reactions do reach you — see "What you receive".)
 
 cocoon gives you the room; what makes it livable is the small kit you
 build for yourself. A few patterns that survived daily use in the

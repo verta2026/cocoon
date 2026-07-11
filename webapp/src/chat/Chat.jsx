@@ -338,6 +338,8 @@ export default function Chat() {
   let tray = null       // 展开中的折叠段托盘（消息挂进去）
   let dedupPrev = null  // 幽灵去重参照：同人同文同一时刻、id 不同=换窗重入库的分身
   rows.forEach((m, i) => {
+    // 贴表情通知是发给机的旁白：用户自己刚点的表情，页面上不再复述
+    if (m.role === 'user' && typeof m.content === 'string' && m.content.startsWith('[reaction]')) return
     // 幽灵去重：换窗时同一条消息会以新指纹重进档案，IDB 里新旧 id 并存。
     // 同 role+同 sender+同内容且时间差 <8s 的相邻分身只留第一个
     if (dedupPrev && m.id !== dedupPrev.id

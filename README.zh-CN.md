@@ -131,6 +131,8 @@ npm install -g @anthropic-ai/claude-code
 | `COCOON_TTS_DIR` | 系统临时目录 / `cocoon-tts` | 生成的 TTS 音频目录 |
 | `COCOON_TTS_MAX_TEXT_CHARS` | `800` | `/tts/say` 接受的最大文本长度 |
 | `COCOON_TTS_MAX_AUDIO_FILES` | `40` | `COCOON_TTS_DIR` 里保留的 `.mp3` 文件数 |
+| `COCOON_REACTION_NOTIFY` | `1` | 用户贴表情时给 agent 发一条 `[reaction]` 提醒。设为 `0` 则表情只留在前端 |
+| `COCOON_REACTION_NOTIFY_TEMPLATE` | 内置 | 提醒的措辞；占位符 `{user}` `{emoji}` `{excerpt}`。默认版会请 agent 跟你商量把称呼换成你的名字 |
 | `COCOON_AUTO_DISMISS_PROMPTS` | `1` | 自动关掉常见的 Claude Code 终端弹窗（resume 摘要、评分、目录信任）。设为 `0` 则需手动确认 |
 | `COCOON_AUTO_ACCEPT_SETTINGS_WARNING` | `0` | 连 Claude Code 的 settings 警告也自动接受。默认关——那个警告通常意味着配置文件坏了，值得看一眼 |
 | `COCOON_STICKER_MAX_MB` | `5` | 贴纸上传的独立大小上限（MB） |

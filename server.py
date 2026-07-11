@@ -59,7 +59,10 @@ from config import (
     FILES_URL_PREFIX,
     FRONTEND_DIR,
     SERVE_FRONTEND,
+    REACTION_NOTIFY,
+    REACTION_NOTIFY_TEMPLATE,
     REACTIONS_FILE,
+    USER_NAME,
     RELOAD_COMMAND,
     RELOAD_LOCK_DIR,
     RELOAD_LOCK_STALE_SECONDS,
@@ -178,6 +181,7 @@ from bridge.frontend_routes import register_frontend_routes, register_webapp_rou
 from bridge.reactions import (
     apply_reaction as _apply_reaction,
     load_reactions as _load_reactions,
+    reaction_notice as _reaction_notice,
     recent_image_entries as _recent_image_entries,
     register_reaction_routes,
 )
@@ -624,15 +628,37 @@ async def get_reactions(request: Request):
     return _load_reactions(REACTIONS_FILE)
 
 
+async def _notify_reaction(text: str):
+    # 旁白挤不进终端就算了：表情本身已经记上，通知失败不值得让点按报错
+    try:
+        async with SEND_LOCK:
+            if not tmux_exists() or not claude_running():
+                return
+            if not await asyncio.to_thread(wait_for_claude_tui):
+                return
+            tmux_send(text)
+    except Exception:
+        pass
+
+
 async def post_reaction(request: Request):
     verify_token(request)
     body = await request.json()
     msg_id = str(body.get("msg_id", ""))
     emoji = str(body.get("emoji", ""))
     sender = str(body.get("from", "user"))
+    preview = str(body.get("preview", ""))
     if not msg_id or not emoji:
         raise HTTPException(400, "missing msg_id or emoji")
-    data, _added = _apply_reaction(REACTIONS_FILE, msg_id=msg_id, emoji=emoji, sender=sender)
+    data, added = _apply_reaction(REACTIONS_FILE, msg_id=msg_id, emoji=emoji, sender=sender)
+    # 只在「贴上」时通知（取消不打扰），默认开，COCOON_REACTION_NOTIFY=0 关
+    if added and REACTION_NOTIFY:
+        user_label = USER_NAME if USER_NAME not in ("", "You") else "用户"
+        text = _reaction_notice(
+            REACTION_NOTIFY_TEMPLATE, user=user_label, emoji=emoji, excerpt=preview
+        )
+        if text:
+            asyncio.create_task(_notify_reaction(text))
     return {"ok": True, "reactions": data}
 
 

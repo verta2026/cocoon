@@ -37,6 +37,25 @@ def apply_reaction(path: Path, *, msg_id: str, emoji: str, sender: str) -> tuple
     return data, added
 
 
+REACTION_NOTICE_PREFIX = "[reaction] "
+
+
+def reaction_notice(template: str, *, user: str, emoji: str, excerpt: str) -> str:
+    """Render the terminal-bound reaction notice; "" means don't send.
+
+    The fixed prefix is what the frontend keys on to keep the notice out
+    of the chat page — the user just tapped that emoji themselves.
+    """
+    if not template:
+        return ""
+    excerpt = " ".join(excerpt.split())[:60] or "（无文字）"
+    try:
+        body = template.format(user=user, emoji=emoji, excerpt=excerpt)
+    except (KeyError, IndexError, ValueError):
+        return ""
+    return REACTION_NOTICE_PREFIX + body
+
+
 def recent_image_entries(sources: Iterable[tuple[Path, str]], *, limit: int = 30) -> list[dict]:
     """List newest images across (directory, url_prefix) sources."""
     entries: list[dict] = []

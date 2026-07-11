@@ -4,6 +4,7 @@ from pathlib import Path
 from bridge.reactions import (
     apply_reaction,
     load_reactions,
+    reaction_notice,
     recent_image_entries,
     toggle_reaction,
 )
@@ -62,3 +63,32 @@ def test_recent_image_entries_orders_and_limits(tmp_path):
 
 def test_recent_image_entries_skips_missing_dir(tmp_path):
     assert recent_image_entries([(tmp_path / "nope", "/x/")]) == []
+
+
+def test_reaction_notice_renders_with_prefix():
+    text = reaction_notice(
+        "{user}给你的消息「{excerpt}」贴了一个 {emoji}。",
+        user="用户", emoji="❤", excerpt="今晚修好了缓存",
+    )
+    assert text == "[reaction] 用户给你的消息「今晚修好了缓存」贴了一个 ❤。"
+
+
+def test_reaction_notice_squashes_and_truncates_excerpt():
+    text = reaction_notice(
+        "{excerpt}|{emoji}", user="u", emoji="👍", excerpt="a\nb   c" + "x" * 100,
+    )
+    body = text[len("[reaction] "):]
+    excerpt = body.split("|")[0]
+    assert "\n" not in excerpt
+    assert len(excerpt) <= 60
+    assert excerpt.startswith("a b c")
+
+
+def test_reaction_notice_empty_excerpt_placeholder():
+    text = reaction_notice("{user}:{emoji}:{excerpt}", user="u", emoji="✨", excerpt="  ")
+    assert text.endswith("（无文字）")
+
+
+def test_reaction_notice_bad_template_returns_empty():
+    assert reaction_notice("{nope}", user="u", emoji="x", excerpt="y") == ""
+    assert reaction_notice("", user="u", emoji="x", excerpt="y") == ""
