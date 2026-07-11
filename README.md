@@ -111,7 +111,7 @@ All settings are environment variables:
 | `COCOON_EXTENSIONS_FILE` | `COCOON_WORK_DIR/.cocoon/extensions.json` | Optional read-only extension/link registry for `/extensions` |
 | `COCOON_AUTO_RELOAD_PAUSE_FILE` | `COCOON_STATE_DIR/.forge_auto_reload_paused` | Pause marker used by optional reload integrations |
 | `COCOON_AUTO_RELOAD_LOG_FILE` | `COCOON_STATE_DIR/.forge_auto_reload.log` | Log file used by optional reload integrations |
-| `COCOON_AUTO_RELOAD_ENABLED` | `0` | Enables optional automatic reload integrations. The bundled core does not start a monitor by default |
+| `COCOON_AUTO_RELOAD_ENABLED` | `0` | Starts the built-in auto-reload monitor. Requires `COCOON_RELOAD_COMMAND`; when real context usage (read from the session jsonl) crosses the threshold and Claude is idle, the reload command is sent automatically |
 | `COCOON_AUTO_RELOAD_STATE_FILE` | `COCOON_STATE_DIR/.auto_reload.json` | Cooldown state file for optional automatic reload integrations |
 | `COCOON_AUTO_RELOAD_DRYRUN_FILE` | `COCOON_STATE_DIR/.auto_reload_dryrun` | Dry-run marker for optional automatic reload integrations |
 | `COCOON_AUTO_RELOAD_FORCE_FILE` | `COCOON_STATE_DIR/.auto_reload_force` | Manual force marker for optional automatic reload integrations |
@@ -120,8 +120,10 @@ All settings are environment variables:
 | `COCOON_AUTO_RELOAD_IDLE_MIN_CONTEXT` | `200000` | Minimum context tokens before idle-cache reload decisions are considered |
 | `COCOON_AUTO_RELOAD_IDLE_SECONDS` | `3600` | Idle seconds before idle-cache reload decisions are considered |
 | `COCOON_AUTO_RELOAD_COOLDOWN_SECONDS` | `600` | Cooldown seconds between optional automatic reload attempts |
-| `COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS` | `30` | Default polling interval for optional automatic reload integrations |
-| `COCOON_RELOAD_COMMAND` | empty | Optional command sent to tmux by `POST /reload-session` |
+| `COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS` | `30` | Default polling interval for the auto-reload monitor (drops to 10s near the threshold) |
+| `COCOON_AUTO_RELOAD_STARTUP_DELAY_SECONDS` | `120` | Delay before the monitor's first check after the server starts |
+| `COCOON_CLAUDE_SETTINGS_FILE` | `~/.claude/settings.json` | Claude Code settings file, read only to detect a `[1m]` context-window model |
+| `COCOON_RELOAD_COMMAND` | empty | Command sent to tmux by `POST /reload-session` and by the auto-reload monitor (e.g. your forge/handoff launcher) |
 | `COCOON_RELOAD_LOCK_DIR` | `COCOON_STATE_DIR/.reload.lock` | Lock directory for manual reload integrations |
 | `COCOON_RELOAD_LOCK_STALE_SECONDS` | `300` | Seconds before a reload lock can be reclaimed |
 | `COCOON_UPLOAD_DIR` | system temp / `cocoon-uploads` | Directory for uploaded files |

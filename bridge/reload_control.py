@@ -45,6 +45,38 @@ def session_idle_seconds(current_jsonl_path: Callable[[], Path | None]) -> float
         return 0
 
 
+def current_context_tokens(current_jsonl_path: Callable[[], Path | None]) -> int:
+    """Real context usage: the API usage block of the last main-chain
+    assistant event in the session jsonl (input + cache_creation +
+    cache_read). Returns 0 when unreadable — treated as "still early"."""
+    path = current_jsonl_path()
+    if not path:
+        return 0
+    try:
+        with open(path, "rb") as handle:
+            handle.seek(0, 2)
+            size = handle.tell()
+            handle.seek(max(0, size - 262144))
+            chunk = handle.read().decode("utf-8", "ignore")
+    except OSError:
+        return 0
+    for line in reversed(chunk.splitlines()):
+        try:
+            event = json.loads(line)
+        except Exception:
+            continue
+        if event.get("type") != "assistant" or event.get("isSidechain"):
+            continue
+        usage = (event.get("message") or {}).get("usage") or {}
+        total = sum(
+            int(usage.get(key) or 0)
+            for key in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+        )
+        if total:
+            return total
+    return 0
+
+
 def actual_model_from_session(current_jsonl_path: Callable[[], Path | None]) -> str:
     path = current_jsonl_path()
     if not path:
@@ -228,6 +260,79 @@ def run_auto_reload_tick(
     return decision
 
 
+def run_live_auto_reload_tick(
+    *,
+    pause_file: Path,
+    force_file: Path,
+    dryrun_file: Path,
+    state_file: Path,
+    log_file: Path,
+    cooldown_seconds: int,
+    idle_min_context: int,
+    idle_threshold_seconds: int,
+    lock_dir: Path,
+    lock_stale_seconds: int,
+    tmux_exists_func: Callable[[], bool],
+    pane_command_func: Callable[[], str],
+    dismiss_resume_summary_prompt_func: Callable[[], bool],
+    dismiss_rating_prompt_func: Callable[[], bool],
+    claude_busy_func: Callable[[], bool],
+    tmux_capture_func: Callable[[int], str],
+    context_tokens_func: Callable[[], int],
+    active_threshold_func: Callable[[], int],
+    idle_seconds_func: Callable[[], float],
+    send_reload_command_func: Callable[[], str],
+    min_quiet_seconds: int = 8,
+) -> dict:
+    """The single live entry point for automatic reload; called only by the
+    monitor loop. Sends the configured reload command when the decision
+    engine says fire. Every skip names the guard that stopped it, so a
+    silent monitor can always be explained from its return values."""
+    if not tmux_exists_func() or pane_command_func() != "claude":
+        return {"action": "skip", "reason": "", "guard": "no-claude"}
+    if dismiss_resume_summary_prompt_func():
+        return {"action": "skip", "reason": "", "guard": "resume-summary-prompt"}
+    dismiss_rating_prompt_func()
+    if pause_file.exists():
+        return {"action": "skip", "reason": "", "guard": "paused"}
+    if claude_busy_func():
+        return {"action": "skip", "reason": "", "guard": "busy"}
+    idle_seconds = idle_seconds_func()
+    # The session jsonl must have been quiet for a moment: reloading while
+    # Claude is still flushing its final events would fork the session file.
+    if idle_seconds < min_quiet_seconds:
+        return {"action": "skip", "reason": "", "guard": "not-quiet"}
+    tail = "\n".join(tmux_capture_func(120).splitlines()[-30:])
+    context_tokens = context_tokens_func()
+    decision = evaluate_auto_reload_once(
+        force_file=force_file,
+        dryrun_file=dryrun_file,
+        state_file=state_file,
+        cooldown_seconds=cooldown_seconds,
+        tail_text=tail,
+        context_tokens=context_tokens,
+        active_threshold=active_threshold_func(),
+        idle_seconds=idle_seconds,
+        idle_min_context=idle_min_context,
+        idle_threshold_seconds=idle_threshold_seconds,
+    )
+    if decision["action"] == "dry-run":
+        log_auto_reload(log_file, f"DRY-RUN would fire: {decision['reason']}", throttle=300)
+        return decision
+    if decision["action"] != "fire":
+        return decision
+    with reload_lock(lock_dir, lock_stale_seconds) as locked:
+        if not locked:
+            return {**decision, "action": "skip", "guard": "locked"}
+        command = send_reload_command_func()
+        if not command:
+            log_auto_reload(log_file, "fire skipped: reload command not configured", throttle=300)
+            return {**decision, "action": "skip", "guard": "no-command"}
+        log_auto_reload(log_file, f"firing: {decision['reason']}")
+        mark_auto_reload(state_file, decision["reason"], context_tokens)
+    return decision
+
+
 def execute_reload_fire(
     *,
     reason: str,
@@ -279,6 +384,9 @@ async def auto_reload_monitor_loop(
             decision = {"action": "error", "error": type(exc).__name__, "message": str(exc)}
             print_func(f"[auto-reload] error: {type(exc).__name__}: {exc}", flush=True)
         decisions.append(decision)
+        # The loop normally runs forever; keep only a recent window so the
+        # decision history cannot grow without bound.
+        del decisions[:-50]
         context_tokens = context_tokens_func()
         active_threshold = active_threshold_func()
         interval = reload_monitor_interval(context_tokens, active_threshold, default_interval_seconds)

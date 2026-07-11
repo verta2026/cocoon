@@ -26,6 +26,7 @@ from config import (
     AUTO_ACCEPT_SETTINGS_WARNING,
     AUTO_DISMISS_PROMPTS,
     CLAUDE_PROJECTS_DIR,
+    CLAUDE_SETTINGS_FILE,
     LIVE_ARCHIVE_FILE,
     LIVE_ARCHIVE_SYNC_SECONDS,
     LIVE_MESSAGES_ENABLED,
@@ -42,6 +43,7 @@ from config import (
     AUTO_RELOAD_IDLE_SECONDS,
     AUTO_RELOAD_LOG_FILE,
     AUTO_RELOAD_PAUSE_FILE,
+    AUTO_RELOAD_STARTUP_DELAY_SECONDS,
     AUTO_RELOAD_STATE_FILE,
     CONVERSATIONS_DIR,
     EDITOR_BLOCKED_FILES,
@@ -117,9 +119,15 @@ from bridge.output_routes import (
 from bridge.status_routes import build_status_payload as _build_status_payload, register_status_route
 from bridge.extensions import list_extensions as _list_extensions
 from bridge.reload_control import (
+    active_context_threshold as _active_context_threshold,
+    auto_reload_monitor_loop as _auto_reload_monitor_loop,
     auto_reload_status as _auto_reload_status,
+    current_context_tokens as _current_context_tokens,
+    normalized_reload_command as _normalized_reload_command,
     reload_lock as _reload_lock,
+    run_live_auto_reload_tick as _run_live_auto_reload_tick,
     send_reload_command as _send_reload_command,
+    session_idle_seconds as _session_idle_seconds,
     set_auto_reload_paused as _set_auto_reload_paused,
     set_reload_marker as _set_reload_marker,
 )
@@ -397,6 +405,69 @@ def start_auto_reload_monitor(*, create_task=asyncio.create_task, monitor_coro=N
         raise RuntimeError("Auto reload monitor coroutine is not configured")
     AUTO_RELOAD_TASK = create_task(monitor_coro)
     return AUTO_RELOAD_TASK
+
+
+def current_context_tokens():
+    return _current_context_tokens(current_session_jsonl)
+
+
+def auto_reload_active_threshold():
+    return _active_context_threshold(
+        current_session_jsonl,
+        CLAUDE_SETTINGS_FILE,
+        AUTO_RELOAD_CONTEXT_THRESHOLD,
+        AUTO_RELOAD_CONTEXT_THRESHOLD_1M,
+    )
+
+
+def auto_reload_tick():
+    return _run_live_auto_reload_tick(
+        pause_file=AUTO_RELOAD_PAUSE_FILE,
+        force_file=AUTO_RELOAD_FORCE_FILE,
+        dryrun_file=AUTO_RELOAD_DRYRUN_FILE,
+        state_file=AUTO_RELOAD_STATE_FILE,
+        log_file=AUTO_RELOAD_LOG_FILE,
+        cooldown_seconds=AUTO_RELOAD_COOLDOWN_SECONDS,
+        idle_min_context=AUTO_RELOAD_IDLE_MIN_CONTEXT,
+        idle_threshold_seconds=AUTO_RELOAD_IDLE_SECONDS,
+        lock_dir=RELOAD_LOCK_DIR,
+        lock_stale_seconds=RELOAD_LOCK_STALE_SECONDS,
+        tmux_exists_func=tmux_exists,
+        pane_command_func=pane_command,
+        dismiss_resume_summary_prompt_func=dismiss_resume_summary_prompt,
+        dismiss_rating_prompt_func=dismiss_rating_prompt,
+        claude_busy_func=claude_busy,
+        tmux_capture_func=tmux_capture,
+        context_tokens_func=current_context_tokens,
+        active_threshold_func=auto_reload_active_threshold,
+        idle_seconds_func=lambda: _session_idle_seconds(current_session_jsonl),
+        send_reload_command_func=send_reload_command,
+    )
+
+
+def build_auto_reload_monitor_coro():
+    return _auto_reload_monitor_loop(
+        tick_func=auto_reload_tick,
+        context_tokens_func=current_context_tokens,
+        active_threshold_func=auto_reload_active_threshold,
+        default_interval_seconds=AUTO_RELOAD_CHECK_INTERVAL_SECONDS,
+        startup_delay_seconds=AUTO_RELOAD_STARTUP_DELAY_SECONDS,
+    )
+
+
+@app.on_event("startup")
+async def startup_auto_reload_monitor():
+    if not AUTO_RELOAD_ENABLED:
+        return None
+    if not _normalized_reload_command(RELOAD_COMMAND):
+        # Enabled-but-unconfigured must fail loud at startup, not silently
+        # tick forever without ever being able to fire.
+        print(
+            "[auto-reload] COCOON_AUTO_RELOAD_ENABLED=1 but COCOON_RELOAD_COMMAND is empty; monitor not started",
+            flush=True,
+        )
+        return None
+    return start_auto_reload_monitor(monitor_coro=build_auto_reload_monitor_coro())
 
 
 class Message(BaseModel):
@@ -737,6 +808,9 @@ async def reload_status(request: Request):
     return {
         "reload_configured": bool(RELOAD_COMMAND),
         "auto_reload_enabled": AUTO_RELOAD_ENABLED,
+        "auto_reload_monitor_running": AUTO_RELOAD_TASK is not None and not AUTO_RELOAD_TASK.done(),
+        "context_tokens": current_context_tokens(),
+        "active_context_threshold": auto_reload_active_threshold(),
         "auto_reload_paused": AUTO_RELOAD_PAUSE_FILE.exists(),
         "auto_reload_dryrun": AUTO_RELOAD_DRYRUN_FILE.exists(),
         "auto_reload_force_pending": AUTO_RELOAD_FORCE_FILE.exists(),

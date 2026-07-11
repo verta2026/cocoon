@@ -85,6 +85,9 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
             "idle_seconds": server.AUTO_RELOAD_IDLE_SECONDS,
             "cooldown": server.AUTO_RELOAD_COOLDOWN_SECONDS,
             "check_interval": server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS,
+            "task": server.AUTO_RELOAD_TASK,
+            "context_tokens_func": server.current_context_tokens,
+            "active_threshold_func": server.auto_reload_active_threshold,
         }
         try:
             with tempfile.TemporaryDirectory() as tmp:
@@ -114,6 +117,9 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
                 server.AUTO_RELOAD_IDLE_SECONDS = 60
                 server.AUTO_RELOAD_COOLDOWN_SECONDS = 30
                 server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS = 5
+                server.AUTO_RELOAD_TASK = None
+                server.current_context_tokens = lambda: 42
+                server.auto_reload_active_threshold = lambda: 100
 
                 result = await server.reload_status(object())
 
@@ -122,6 +128,9 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
                     {
                         "reload_configured": True,
                         "auto_reload_enabled": True,
+                        "auto_reload_monitor_running": False,
+                        "context_tokens": 42,
+                        "active_context_threshold": 100,
                         "auto_reload_paused": True,
                         "auto_reload_dryrun": True,
                         "auto_reload_force_pending": True,
@@ -154,6 +163,9 @@ class ReloadRoutesTest(unittest.IsolatedAsyncioTestCase):
             server.AUTO_RELOAD_IDLE_SECONDS = originals["idle_seconds"]
             server.AUTO_RELOAD_COOLDOWN_SECONDS = originals["cooldown"]
             server.AUTO_RELOAD_CHECK_INTERVAL_SECONDS = originals["check_interval"]
+            server.AUTO_RELOAD_TASK = originals["task"]
+            server.current_context_tokens = originals["context_tokens_func"]
+            server.auto_reload_active_threshold = originals["active_threshold_func"]
 
     async def test_reload_force_routes_set_and_clear_marker(self):
         originals = {

@@ -110,7 +110,7 @@ npm install -g @anthropic-ai/claude-code
 | `COCOON_EXTENSIONS_FILE` | `COCOON_WORK_DIR/.cocoon/extensions.json` | 可选的只读扩展 / 链接注册表，供 `/extensions` 使用 |
 | `COCOON_AUTO_RELOAD_PAUSE_FILE` | `COCOON_STATE_DIR/.forge_auto_reload_paused` | 可选重载集成使用的暂停标记 |
 | `COCOON_AUTO_RELOAD_LOG_FILE` | `COCOON_STATE_DIR/.forge_auto_reload.log` | 可选重载集成使用的日志文件 |
-| `COCOON_AUTO_RELOAD_ENABLED` | `0` | 启用可选的自动重载集成。自带核心默认不启动监控器 |
+| `COCOON_AUTO_RELOAD_ENABLED` | `0` | 启动内置的自动重载监控器。需要同时配置 `COCOON_RELOAD_COMMAND`：当真实上下文占用（从会话 jsonl 读取）越过阈值且 Claude 空闲时，自动发送重载命令 |
 | `COCOON_AUTO_RELOAD_STATE_FILE` | `COCOON_STATE_DIR/.auto_reload.json` | 可选自动重载集成的冷却状态文件 |
 | `COCOON_AUTO_RELOAD_DRYRUN_FILE` | `COCOON_STATE_DIR/.auto_reload_dryrun` | 可选自动重载集成的 dry-run 标记 |
 | `COCOON_AUTO_RELOAD_FORCE_FILE` | `COCOON_STATE_DIR/.auto_reload_force` | 可选自动重载集成的手动强制标记 |
@@ -119,8 +119,10 @@ npm install -g @anthropic-ai/claude-code
 | `COCOON_AUTO_RELOAD_IDLE_MIN_CONTEXT` | `200000` | 考虑「空闲缓存重载」决策前所需的最小上下文 token 数 |
 | `COCOON_AUTO_RELOAD_IDLE_SECONDS` | `3600` | 考虑「空闲缓存重载」决策前的空闲秒数 |
 | `COCOON_AUTO_RELOAD_COOLDOWN_SECONDS` | `600` | 可选自动重载尝试之间的冷却秒数 |
-| `COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS` | `30` | 可选自动重载集成的默认轮询间隔 |
-| `COCOON_RELOAD_COMMAND` | 空 | `POST /reload-session` 发给 tmux 的可选命令 |
+| `COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS` | `30` | 自动重载监控器的默认轮询间隔（接近阈值时降到 10 秒） |
+| `COCOON_AUTO_RELOAD_STARTUP_DELAY_SECONDS` | `120` | 服务启动后监控器首次检查前的延迟 |
+| `COCOON_CLAUDE_SETTINGS_FILE` | `~/.claude/settings.json` | Claude Code 设置文件，只用于检测 `[1m]` 上下文窗口模型 |
+| `COCOON_RELOAD_COMMAND` | 空 | `POST /reload-session` 和自动重载监控器发给 tmux 的命令（例如你的 forge/交接启动器） |
 | `COCOON_RELOAD_LOCK_DIR` | `COCOON_STATE_DIR/.reload.lock` | 手动重载集成的锁目录 |
 | `COCOON_RELOAD_LOCK_STALE_SECONDS` | `300` | 重载锁可被回收前的秒数 |
 | `COCOON_UPLOAD_DIR` | 系统临时目录 / `cocoon-uploads` | 上传文件的目录 |

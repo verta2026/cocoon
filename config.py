@@ -58,6 +58,13 @@ AUTO_RELOAD_IDLE_MIN_CONTEXT = _env_int("COCOON_AUTO_RELOAD_IDLE_MIN_CONTEXT", 2
 AUTO_RELOAD_IDLE_SECONDS = _env_int("COCOON_AUTO_RELOAD_IDLE_SECONDS", 3600, minimum=1)
 AUTO_RELOAD_COOLDOWN_SECONDS = _env_int("COCOON_AUTO_RELOAD_COOLDOWN_SECONDS", 600, minimum=0)
 AUTO_RELOAD_CHECK_INTERVAL_SECONDS = _env_int("COCOON_AUTO_RELOAD_CHECK_INTERVAL_SECONDS", 30, minimum=5)
+# Delay before the first auto-reload check, so a bridge restart with an
+# already-idle session does not immediately trigger idle-cache-expired.
+AUTO_RELOAD_STARTUP_DELAY_SECONDS = _env_int("COCOON_AUTO_RELOAD_STARTUP_DELAY_SECONDS", 120, minimum=0)
+# Claude Code settings file; only read to detect a [1m] context-window model.
+CLAUDE_SETTINGS_FILE = Path(
+    os.environ.get("COCOON_CLAUDE_SETTINGS_FILE", str(Path.home() / ".claude" / "settings.json"))
+)
 RELOAD_COMMAND = os.environ.get("COCOON_RELOAD_COMMAND", "").strip()
 # Launch command for a clean, context-free session (defaults to START_COMMAND).
 CLEAN_START_COMMAND = os.environ.get("COCOON_CLEAN_START_COMMAND", "").strip() or START_COMMAND
