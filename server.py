@@ -79,7 +79,11 @@ from config import (
     WORK_DIR,
     validate_security,
 )
-from bridge.channel_preflight import clean_stale_channel_state
+from bridge.channel_preflight import (
+    clean_stale_channel_state,
+    sidecar_trim_cutoff,
+    trim_sidecar_rows,
+)
 from bridge.session import (
     compose_start_command as _compose_start_command,
     launcher_in_progress as _launcher_in_progress,
@@ -356,6 +360,25 @@ def channel_preflight():
         return
     for action in clean_stale_channel_state():
         print(f"[channel-preflight] {action}", flush=True)
+    trim_channel_sidecars()
+
+
+def trim_channel_sidecars():
+    # Drain the send sidecar into the live archive on every launch. The plugin
+    # appends forever; without this trim each swap re-merges the entire channel
+    # history into the fresh session's archive view and the file grows without
+    # bound.
+    if not SEND_SIDECAR_FILE:
+        return
+    result = sync_live_archive(force=True)
+    if not (result.get("updated") or result.get("reason") == "unchanged"):
+        # No source session to merge from — trimming now could drop rows that
+        # were never archived. Leave the sidecar alone.
+        return
+    cutoff = sidecar_trim_cutoff(_read_live_archive_rows(LIVE_ARCHIVE_FILE))
+    kept = trim_sidecar_rows(Path(SEND_SIDECAR_FILE), cutoff)
+    if kept is not None:
+        print(f"[channel-preflight] send sidecar trimmed, kept {kept} rows", flush=True)
 
 
 def start_claude():

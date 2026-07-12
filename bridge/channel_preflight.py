@@ -22,6 +22,7 @@ there.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -88,6 +89,44 @@ def _clean_in_use_markers(cache_dir: Path, actions: list[str]) -> None:
                     actions.append(f"removed {orphan_flag}")
                 except OSError:
                     pass
+
+
+def sidecar_trim_cutoff(archive_rows) -> str:
+    """Newest timestamp already persisted in the live archive."""
+    return max((row.get("timestamp", "") or "" for row in archive_rows), default="")
+
+
+def trim_sidecar_rows(sidecar_file: Path, cutoff: str) -> int | None:
+    """Drop sidecar rows already covered by the live archive.
+
+    Channel plugins append every send/receive to their sidecar forever; the
+    launch-time live-archive sync merges those rows into the durable archive.
+    Without a trim the sidecar grows without bound and every fresh session
+    re-merges the entire channel history. Rows newer than ``cutoff`` (not yet
+    archived) are kept. Returns the kept-row count, or None when nothing was
+    done (missing file / empty cutoff).
+    """
+    if not cutoff or not sidecar_file.exists():
+        return None
+    try:
+        lines = sidecar_file.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    kept: list[str] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except Exception:
+            continue
+        if (row.get("timestamp") or "") > cutoff:
+            kept.append(line)
+    try:
+        sidecar_file.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
+    except OSError:
+        return None
+    return len(kept)
 
 
 def clean_stale_channel_state(claude_home: Path | None = None) -> list[str]:

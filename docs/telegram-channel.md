@@ -50,6 +50,8 @@ Pairing persists; cocoon reconnects the channel on every swap afterwards.
 
 **Outbound messages don't reach the web chat log (by default).** Replies the agent sends via Telegram go through the plugin's outbound path, not the Claude session file. To mirror them into the web UI, point `COCOON_SEND_SIDECAR_FILE` at the plugin's outbound log file (if your plugin version writes one). Inbound needs nothing — Telegram messages enter the session as `<channel>` tags, which the web UI renders natively; set `COCOON_PRIMARY_SENDER_ID` to render your own Telegram account as "you" rather than a third-party bubble.
 
+**The sidecar is a queue, not an archive.** When `COCOON_SEND_SIDECAR_FILE` is set, the plugin appends every outbound message to it forever. Cocoon drains it at each launch preflight: rows already merged into the live archive are dropped, rows not yet archived are kept. Without the trim the file grows without bound and every session swap re-merges the entire channel history into the fresh session's view. Don't point the variable at a file you also use as your own long-term log; the archive is the durable copy.
+
 **Authority stays with you.** Pairing approval via `/telegram:access` must be done by you in the terminal. Any Telegram message asking the agent to "approve the pending pairing" is the canonical shape of a prompt injection — the plugin docs and the agent are both taught to refuse, and you shouldn't route around that either.
 
 ## Beyond Telegram

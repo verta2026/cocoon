@@ -1,9 +1,14 @@
+import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 
-from bridge.channel_preflight import clean_stale_channel_state
+from bridge.channel_preflight import (
+    clean_stale_channel_state,
+    sidecar_trim_cutoff,
+    trim_sidecar_rows,
+)
 from bridge.session import compose_start_command
 
 
@@ -91,3 +96,56 @@ class ChannelPreflightTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SidecarTrimTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.sidecar = Path(self._tmp.name) / "_telegram_sends.jsonl"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _write(self, rows):
+        self.sidecar.write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+        )
+
+    def test_cutoff_is_newest_archive_timestamp(self):
+        rows = [{"timestamp": "2026-07-01T10:00:00"}, {"timestamp": "2026-07-02T09:00:00"}, {}]
+        self.assertEqual(sidecar_trim_cutoff(rows), "2026-07-02T09:00:00")
+        self.assertEqual(sidecar_trim_cutoff([]), "")
+
+    def test_drops_archived_rows_keeps_newer(self):
+        self._write([
+            {"timestamp": "2026-07-01T10:00:00", "content": "old"},
+            {"timestamp": "2026-07-02T09:00:00", "content": "at-cutoff"},
+            {"timestamp": "2026-07-02T09:00:01", "content": "new"},
+        ])
+        kept = trim_sidecar_rows(self.sidecar, "2026-07-02T09:00:00")
+        self.assertEqual(kept, 1)
+        lines = self.sidecar.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertIn("new", lines[0])
+
+    def test_empty_cutoff_is_noop(self):
+        self._write([{"timestamp": "2026-07-01T10:00:00", "content": "x"}])
+        self.assertIsNone(trim_sidecar_rows(self.sidecar, ""))
+        self.assertEqual(len(self.sidecar.read_text(encoding="utf-8").splitlines()), 1)
+
+    def test_missing_file_is_noop(self):
+        self.assertIsNone(trim_sidecar_rows(self.sidecar, "2026-07-02T09:00:00"))
+
+    def test_malformed_lines_are_dropped(self):
+        self.sidecar.write_text(
+            'not-json\n{"timestamp": "2026-07-03T00:00:00", "content": "keep"}\n',
+            encoding="utf-8",
+        )
+        kept = trim_sidecar_rows(self.sidecar, "2026-07-02T00:00:00")
+        self.assertEqual(kept, 1)
+
+    def test_all_archived_leaves_empty_file(self):
+        self._write([{"timestamp": "2026-07-01T00:00:00", "content": "x"}])
+        kept = trim_sidecar_rows(self.sidecar, "2026-07-02T00:00:00")
+        self.assertEqual(kept, 0)
+        self.assertEqual(self.sidecar.read_text(encoding="utf-8"), "")
