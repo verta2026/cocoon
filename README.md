@@ -177,6 +177,16 @@ Endpoints:
 
 The chat UI renders voice markers like `[[cocoon_voice:<id>]]` and direct `/tts/audio/<id>.mp3` links as playable voice bubbles.
 
+### Optional Telegram channel
+
+Claude Code's official Telegram plugin lets the same agent answer your Telegram DMs. Cocoon can keep that channel alive across its session swaps — one `.env` line:
+
+```bash
+COCOON_CHANNEL_ARGS="--channels plugin:telegram@claude-plugins-official"
+```
+
+Every cocoon-driven launch then carries the flag, and stale channel state from dead sessions (the "Telegram silently stopped answering" bug) is scrubbed before each launch. Setup, pitfalls, and how it works: [docs/telegram-channel.md](docs/telegram-channel.md).
+
 ## Features
 
 - **Chat UI** — messages parsed from terminal output into clean bubbles

@@ -55,6 +55,8 @@ from config import (
     LOOK_FILE,
     MAX_UPLOAD_BYTES,
     STICKER_MAX_BYTES,
+    CHANNEL_ARGS,
+    CHANNEL_PREFLIGHT,
     CLEAN_START_COMMAND,
     FILES_URL_PREFIX,
     FRONTEND_DIR,
@@ -77,7 +79,9 @@ from config import (
     WORK_DIR,
     validate_security,
 )
+from bridge.channel_preflight import clean_stale_channel_state
 from bridge.session import (
+    compose_start_command as _compose_start_command,
     launcher_in_progress as _launcher_in_progress,
     start_claude as _start_claude,
     start_tmux_session as _start_tmux_session,
@@ -345,20 +349,44 @@ def tmux_new_session():
     _start_tmux_session(SESSION_NAME, WORK_DIR, tmux_send)
 
 
+def channel_preflight():
+    # A launch that reuses a dead session's bot.pid / .in_use markers comes up
+    # with the channel silently missing; scrub dead-pid state first.
+    if not CHANNEL_PREFLIGHT:
+        return
+    for action in clean_stale_channel_state():
+        print(f"[channel-preflight] {action}", flush=True)
+
+
 def start_claude():
     # Every cocoon-driven launch resets the session-file pin (see
     # current_session_jsonl); a launch that skips this keeps mirroring the
     # previous session's file.
     mark_session_launch(_SESSION_PICK_STATE)
-    _start_claude(START_COMMAND, tmux_clear_input, tmux_clear_scrollback, tmux_send)
+    channel_preflight()
+    _start_claude(
+        _compose_start_command(START_COMMAND, CHANNEL_ARGS),
+        tmux_clear_input,
+        tmux_clear_scrollback,
+        tmux_send,
+    )
 
 
 def start_claude_clean():
     mark_session_launch(_SESSION_PICK_STATE)
-    _start_claude(CLEAN_START_COMMAND, tmux_clear_input, tmux_clear_scrollback, tmux_send)
+    channel_preflight()
+    _start_claude(
+        _compose_start_command(CLEAN_START_COMMAND, CHANNEL_ARGS),
+        tmux_clear_input,
+        tmux_clear_scrollback,
+        tmux_send,
+    )
 
 
 def send_reload_command():
+    # The reload command is the user's own script and owns its argv (it must
+    # carry --channels itself; doctor warns when it doesn't) — only preflight.
+    channel_preflight()
     return _send_reload_command(RELOAD_COMMAND, tmux_clear_input, tmux_clear_scrollback, tmux_send)
 
 

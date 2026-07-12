@@ -247,7 +247,11 @@ mines already):
 2. Add `--channels plugin:telegram@claude-plugins-official` to the
    Claude Code start command. **Put the flag in the permanent start
    script**: if it was only typed once by hand, the next restart drops
-   the channel silently, with no error anywhere.
+   the channel silently, with no error anywhere. The easiest form is
+   `COCOON_CHANNEL_ARGS` in `.env` — cocoon then carries the flag on
+   every session swap and scrubs the stale state dead sessions leave
+   behind (both root causes of the silent drop); details in
+   [telegram-channel.md](telegram-channel.md).
 3. The user messages the bot to get a six-digit pairing code; you run
    `/telegram:access pair <code>` in the session to pair.
 4. Telegram messages then arrive as `<channel source="telegram" ...>`.

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import socket
 import sys
@@ -138,6 +139,36 @@ def run_checks(strict: bool = False) -> int:
         errors.append(
             "web app is not built and npm is missing. Install Node.js, then: cd webapp && npm install && npm run build"
         )
+
+    channel_args = os.environ.get("COCOON_CHANNEL_ARGS", "").strip()
+    if channel_args:
+        # plugin:<name>@<marketplace> tokens → the plugin must have been
+        # installed by a previous interactive `claude --channels ...` run;
+        # cocoon only relaunches it, it cannot install or pair it.
+        plugins = re.findall(r"plugin:([\w.-]+)@([\w.-]+)", channel_args)
+        cache_root = Path.home() / ".claude" / "plugins" / "cache"
+        for plugin, marketplace in plugins:
+            plugin_dir = cache_root / marketplace / plugin
+            if plugin_dir.is_dir():
+                _print("ok", f"channel plugin cached: {marketplace}/{plugin}")
+            else:
+                warnings.append(
+                    f"COCOON_CHANNEL_ARGS references {marketplace}/{plugin} but "
+                    f"{plugin_dir} is missing — run `claude {channel_args}` once "
+                    "interactively to install and pair the channel first"
+                )
+        if not plugins:
+            warnings.append(
+                "COCOON_CHANNEL_ARGS is set but contains no plugin:<name>@<marketplace> token"
+            )
+        reload_command = os.environ.get("COCOON_RELOAD_COMMAND", "").strip()
+        if reload_command and "--channels" not in reload_command:
+            warnings.append(
+                "COCOON_RELOAD_COMMAND does not mention --channels; cocoon appends "
+                "channel args to its own launches but your reload script owns its "
+                "argv — make sure it passes the same --channels flags, or the "
+                "channel drops on every reload"
+            )
 
     if port:
         free, reason = _port_is_free(host, port)

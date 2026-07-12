@@ -176,6 +176,16 @@ MINIMAX_VOICE_ID=your-voice-id \
 
 聊天界面会把 `[[cocoon_voice:<id>]]` 这样的语音标记，以及直接的 `/tts/audio/<id>.mp3` 链接，渲染成可播放的语音气泡。
 
+### 可选的 Telegram 频道
+
+Claude Code 官方的 Telegram 插件能让同一个 agent 顺带接你的 Telegram 私信。cocoon 可以让这条频道跨换会话存活——`.env` 里一行：
+
+```bash
+COCOON_CHANNEL_ARGS="--channels plugin:telegram@claude-plugins-official"
+```
+
+之后每次 cocoon 驱动的启动都自动带旗，死会话留下的残留状态（"TG 悄无声息失联"那个 bug）也会在每次启动前被清扫。安装、坑、原理：[docs/telegram-channel.zh-CN.md](docs/telegram-channel.zh-CN.md)。
+
 ## 功能
 
 - **聊天界面**——从终端输出解析成干净的气泡

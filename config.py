@@ -160,6 +160,14 @@ TTS_DIR = Path(os.environ.get("COCOON_TTS_DIR", str(Path(tempfile.gettempdir()) 
 TTS_PROVIDER = os.environ.get("COCOON_TTS_PROVIDER", "none").strip().lower()
 TTS_MAX_TEXT_CHARS = _env_int("COCOON_TTS_MAX_TEXT_CHARS", 800, minimum=1)
 TTS_MAX_AUDIO_FILES = _env_int("COCOON_TTS_MAX_AUDIO_FILES", 40, minimum=1)
+# Optional channel plugins (e.g. Telegram). When set, these args are appended
+# to every cocoon-driven Claude launch (start/new-session/clean) so the channel
+# survives session swaps, and stale channel state (dead-pid bot.pid /.in_use
+# markers) is cleaned before each launch. Example:
+#   COCOON_CHANNEL_ARGS="--channels plugin:telegram@claude-plugins-official"
+# See docs/telegram-channel.md.
+CHANNEL_ARGS = os.environ.get("COCOON_CHANNEL_ARGS", "").strip()
+CHANNEL_PREFLIGHT = _env_bool("COCOON_CHANNEL_PREFLIGHT", bool(CHANNEL_ARGS))
 AUTO_DISMISS_PROMPTS = _env_bool("COCOON_AUTO_DISMISS_PROMPTS", True)
 # The Claude Code settings warning usually means a config file is broken;
 # auto-accepting it hides a real problem, so it is opt-in separately.

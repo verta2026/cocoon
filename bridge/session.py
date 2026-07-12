@@ -14,6 +14,19 @@ def normalized_start_command(start_command: str | None) -> str:
     return command or "claude"
 
 
+def compose_start_command(start_command: str | None, channel_args: str | None) -> str:
+    """Append channel args (e.g. ``--channels plugin:telegram@...``) to a launch command.
+
+    Skipped when the command already carries ``--channels`` so a user who put
+    the flag into COCOON_START_COMMAND directly doesn't get it twice.
+    """
+    command = normalized_start_command(start_command)
+    extra = (channel_args or "").strip()
+    if not extra or "--channels" in command:
+        return command
+    return f"{command} {extra}"
+
+
 def start_tmux_session(
     session_name: str,
     work_dir: str,
