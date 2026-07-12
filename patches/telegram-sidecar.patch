@@ -1,0 +1,64 @@
+--- a/server.ts
++++ b/server.ts
+@@ -19,7 +19,7 @@
+ import { Bot, GrammyError, InlineKeyboard, InputFile, type Context } from 'grammy'
+ import type { ReactionTypeEmoji } from 'grammy/types'
+ import { randomBytes } from 'crypto'
+-import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, statSync, renameSync, realpathSync, chmodSync } from 'fs'
++import { readFileSync, writeFileSync, appendFileSync, mkdirSync, readdirSync, rmSync, statSync, renameSync, realpathSync, chmodSync } from 'fs'
+ import { homedir } from 'os'
+ import { join, extname, sep } from 'path'
+ 
+@@ -585,6 +585,23 @@
+           sentIds.length === 1
+             ? `sent (id: ${sentIds[0]})`
+             : `sent ${sentIds.length} parts (ids: ${sentIds.join(', ')})`
++
++        try {
++          const sidecarDir = process.env.TELEGRAM_SIDECAR_DIR;
++          if (sidecarDir) {
++            const logEntry = JSON.stringify({
++              role: "assistant",
++              content: text,
++              telegram: String(chat_id).startsWith("-") ? "group" : "dm",
++              source: "telegram-reply",
++              timestamp: new Date().toISOString(),
++              chat_id: String(chat_id),
++              message_ids: sentIds,
++            }) + "\n";
++            appendFileSync(`${sidecarDir}/_telegram_sends.jsonl`, logEntry);
++          }
++        } catch {}
++
+         return { content: [{ type: 'text', text: result }] }
+       }
+       case 'react': {
+@@ -958,6 +975,28 @@
+ 
+   const imagePath = downloadImage ? await downloadImage() : undefined
+ 
++  // Inbound sidecar — persist at receive time, independent of the main-window
++  // jsonl turn boundary. The turn-boundary dependency is what loses messages
++  // when Claude is mid-turn (thinking) or a window swap lands on the seam.
++  try {
++    const sidecarDir = process.env.TELEGRAM_SIDECAR_DIR;
++    if (sidecarDir) {
++      const recvEntry = JSON.stringify({
++        uuid: crypto.randomUUID(),
++        role: "user",
++        content: text,
++        telegram: chat_id.startsWith("-") ? "group" : "dm",
++        source: "telegram-recv",
++        timestamp: new Date((ctx.message?.date ?? 0) * 1000).toISOString(),
++        chat_id,
++        ...(msgId != null ? { message_id: msgId } : {}),
++        user: from.username ?? String(from.id),
++        user_id: String(from.id),
++      }) + "\n";
++      appendFileSync(`${sidecarDir}/_telegram_recv.jsonl`, recvEntry);
++    }
++  } catch {}
++
+   // image_path goes in meta only — an in-content "[image attached — read: PATH]"
+   // annotation is forgeable by any allowlisted sender typing that string.
+   mcp.notification({
