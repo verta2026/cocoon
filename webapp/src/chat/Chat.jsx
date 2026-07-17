@@ -203,12 +203,20 @@ export default function Chat() {
     }, 50)
   }
 
-  // history 页点了某条记录：跳进以它为中心的档案窗口
+  // history/收藏页点了某条记录：目标就在当前窗口里就直接滚过去闪一下
+  // （刚收藏的新消息还没进档案，让它走档案窗会被兜底逻辑甩到错误位置）
   useEffect(() => {
-    const h = e => { if (e.detail) { stick.current = false; jumpTo(String(e.detail)) } }
+    const h = e => {
+      if (!e.detail) return
+      const id = String(e.detail)
+      stick.current = false
+      const onScreen = logRef.current && logRef.current.querySelector('[data-mid="' + CSS.escape(id) + '"]')
+      if (onScreen) setJumpHl(id)
+      else jumpTo(id)
+    }
     window.addEventListener('chat-jump', h)
     return () => window.removeEventListener('chat-jump', h)
-  }, [jumpTo])
+  }, [jumpTo, setJumpHl])
 
   // 跳转落地：目标行滚到视野中央并闪一下。只按 jumpHl 触发一次——
   // 挂上 rows 依赖的话，档案窗口里每次翻页都会把视线拽回目标行
