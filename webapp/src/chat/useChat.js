@@ -34,7 +34,23 @@ export function useChat() {
     polling.current = true
     try {
       const d = await fetchChat(maxId.current)
-      let fresh = (d.messages || []).filter(m => !seen.current.has(m.id))
+      const incoming = d.messages || []
+      let fresh = incoming.filter(m => !seen.current.has(m.id))
+      // 尾部回声里的已见行：语音迟并/内容补写的热更新，只动真变了的
+      if (!archive.current) {
+        const updates = incoming.filter(m => {
+          if (!seen.current.has(m.id)) return false
+          const cur = rowsRef.current.find(r => r.id === m.id)
+          return cur && (cur.voice !== m.voice || cur.content !== m.content)
+        })
+        if (updates.length) {
+          idbPut(updates)
+          setRows(prev => prev.map(r => {
+            const u = updates.find(m => m.id === r.id)
+            return u ? { ...r, ...u } : r
+          }))
+        }
+      }
       // 档案模式：新消息照常入库存水位（回来时不缺账），但不进当前视图——
       // 她正读三月，七月的消息突然接在窗口底下会把"往下翻页"的语义打穿
       if (fresh.length && archive.current) {
