@@ -2,7 +2,7 @@
 // 逻辑从 chat.html poll()/doSend()/init 链原样移植。
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { API, HEADERS, ID, fetchChat, sendText, ensureCookie, ensureSession, loadPrivateConfig } from '../lib/api.js'
-import { openDb, idbAll, idbPut } from '../lib/idb.js'
+import { openDb, idbAll, idbPut, idbPurgeOnce } from '../lib/idb.js'
 
 const byTime = (a, b) => {
   const ta = new Date(a.ts).getTime() || 0
@@ -117,6 +117,9 @@ export function useChat() {
     // 后面——高延迟链路+硬刷新(无HTTP缓存)时那就是十秒白屏。缓存先上屏，
     // 网络链(cookie→私配→会话→轮询)随后接力
     openDb()
+      // 2026-07-17 语音标记连环案后的一次性清创：缓存里的中毒行（幽灵语音/
+      // 双 thinking）不在热更新窗内，清一次让云端干净版本长回来
+      .then(() => idbPurgeOnce('20260717-voicewar'))
       .then(() => idbAll())
       .then(cached => {
         cached.forEach(r => {

@@ -7,6 +7,7 @@ import { parseMessage } from './parseMessage.js'
 import { API, ID, NS, AI_KEY } from '../lib/api.js'
 import { playMusicById } from '../lib/music.js'
 import VoiceCard from './VoiceCard.jsx'
+import ThinkingFold from './ThinkingFold.jsx'
 
 export function cssUrl(u) {
   return 'url("' + String(u == null ? '' : u).replace(/["'()\\]/g, '') + '")'
@@ -200,7 +201,7 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
           </div>
         )}
 
-        {(p.body || p.quote || p.img || p.stickerFile || p.voiceId) && (
+        {(p.body || p.quote || p.img || p.stickerFile || p.voiceId || p.fileVoice || p.thinkingId) && (
           <div
             className={'cb-bub' + (p.me ? ' cb-bub--me' : ' assistant-msg') + (p.tgOn ? ' cb-bub--tg' : '') + (p.pureSticker || p.pureVoice ? ' cb-bub--sticker' : '') + (doc ? ' cb-bub--doc' : '') + (cm ? ' cb-bub--cm' : '')}
             style={{ borderRadius: rad }}
@@ -210,6 +211,7 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
             onContextMenu={onCtx}>
+            {p.thinkingId && <ThinkingFold id={p.thinkingId} />}
             {p.quote && <div className="cb-quote">{p.quote}</div>}
             {p.img && (
               <div className="cb-inline-img" style={{ backgroundImage: cssUrl(p.img) }}
@@ -220,6 +222,7 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
                 src={API + '/stickers/' + p.stickerFile} />
             )}
             {p.voiceId && <VoiceCard id={p.voiceId} />}
+            {p.fileVoice && <VoiceCard id={'file:' + p.fileVoice.file} src={API + '/files/' + encodeURIComponent(p.fileVoice.file)} />}
             {p.body && <span className="cb-text"><Rich text={p.body} /></span>}
           </div>
         )}

@@ -91,6 +91,25 @@ export function parseMessage(m) {
   let voiceId = m.voice || ''
   const vMatch = matchOutsideCode(body, VOICE_RE)
   if (vMatch) { if (!voiceId) voiceId = vMatch[1]; body = cutMatch(body, vMatch) }
+  // 服务端显示层的单括号语音标记 [bondvoice:<hex>]（bridge_display 为旧 DOM
+  // 覆盖层生成的形态，存量历史消息里都是它）。语音条由 voiceId 原生渲染，
+  // 标记全剥掉；一条消息可能带多个（通话行引用旧语音），只认第一个
+  let bv
+  while ((bv = matchOutsideCode(body, /\[bondvoice:([a-f0-9]{8,64})\]/))) {
+    if (!voiceId) voiceId = bv[1]
+    body = cutMatch(body, bv)
+  }
+  // 她的语音输入 / 通话录音：[voice:<文件名>:<秒数>]，音频在 /files/ 下
+  let fileVoice = null
+  let fv
+  while ((fv = matchOutsideCode(body, /\[voice:([^\]:\s]+):?(\d*)\]/))) {
+    if (!fileVoice) fileVoice = { file: fv[1], dur: parseInt(fv[2], 10) || 0 }
+    body = cutMatch(body, fv)
+  }
+  // 思考折叠标记 [[thinking:<id>]]：Bubble 渲染成可展开思考条，全文按需拉
+  let thinkingId = ''
+  const tkMatch = matchOutsideCode(body, /\[\[thinking:([0-9a-fA-F\-:]+)\]\]\s*/)
+  if (tkMatch) { thinkingId = tkMatch[1]; body = cutMatch(body, tkMatch) }
 
   let music = null
   const mMus = matchOutsideCode(body, /\[music:(\d+)[:：]([^:：]+)[:：]([^:：\]]+)(?:[:：]([^\]]*))?\]/)
@@ -137,11 +156,11 @@ export function parseMessage(m) {
   }
 
   return {
-    kind, me, body, quote: q, img, stickerFile, music, voiceId,
+    kind, me, body, quote: q, img, stickerFile, music, voiceId, fileVoice, thinkingId,
     attImgs: allAtts.filter(a => a.is_image),
     attFiles: allAtts.filter(a => !a.is_image),
     tgOn, tgGroup, tgWho, tgChat, tgText, groupOther, senderColor,
     pureSticker: !!stickerFile && !body && !q && !img,
-    pureVoice: !!voiceId && !body && !q && !img && !stickerFile,
+    pureVoice: (!!voiceId || !!fileVoice) && !body && !q && !img && !stickerFile,
   }
 }

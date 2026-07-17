@@ -29,7 +29,9 @@ const PAUSE = (
   </svg>
 )
 
-export default function VoiceCard({ id }) {
+// id 是全页唯一的播放身份；src 缺省时按 TTS 语音取（/tts/audio/<id>.mp3），
+// 传入 src 则播任意音频文件（她的语音输入/通话录音走 /files/）
+export default function VoiceCard({ id, src }) {
   const [, force] = useReducer(x => x + 1, 0)
   useEffect(() => {
     subs.add(force)
@@ -46,7 +48,7 @@ export default function VoiceCard({ id }) {
   function toggle(e) {
     e.stopPropagation()
     if (active && !audio.paused) { audio.pause(); return }
-    if (!active) { curId = id; audio.src = API + '/tts/audio/' + encodeURIComponent(id) + '.mp3' }
+    if (!active) { curId = id; audio.src = src || (API + '/tts/audio/' + encodeURIComponent(id) + '.mp3') }
     audio.play().catch(() => {})
   }
 

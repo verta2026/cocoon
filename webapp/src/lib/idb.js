@@ -51,3 +51,19 @@ export function idbPut(rows) {
     rows.forEach(r => st.put(r))
   } catch (e) {}
 }
+
+// 一次性缓存清创：服务端已修好的行（幽灵语音标记/改嫁 voice 字段/双 thinking），
+// 缓存里落在尾部回声窗之外就永远得不到热更新——按标记整库清一次，
+// 历史从云端翻页重新长回来（服务器是真源，清了不丢东西）
+export function idbPurgeOnce(tag) {
+  return new Promise(res => {
+    if (!db) return res()
+    try {
+      if (localStorage.getItem(NS + '_msg_purge') === tag) return res()
+      const st = db.transaction('messages', 'readwrite').objectStore('messages')
+      const q = st.clear()
+      q.onsuccess = () => { try { localStorage.setItem(NS + '_msg_purge', tag) } catch (e) {} res() }
+      q.onerror = () => res()
+    } catch (e) { res() }
+  })
+}
