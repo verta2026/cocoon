@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import Chat from './chat/Chat.jsx'
 import History from './chat/History.jsx'
+import Favorites from './chat/Favorites.jsx'
 import { requireToken, CFG } from './lib/api.js'
 
 if (CFG.siteName) document.title = CFG.siteName
@@ -19,6 +20,7 @@ function App() {
     <>
       <Chat />
       {hash === '#/history' && <History />}
+      {hash === '#/favorites' && <Favorites />}
     </>
   )
 }

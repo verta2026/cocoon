@@ -12,7 +12,7 @@ export function cssUrl(u) {
   return 'url("' + String(u == null ? '' : u).replace(/["'()\\]/g, '') + '")'
 }
 
-function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, onToggle, onOpenMenu, onQuote, onLightbox, onRetry, onReact, onCopy, onTextView }) {
+function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, selOn, onSelToggle, onToggle, onOpenMenu, onQuote, onLightbox, onRetry, onReact, onCopy, onTextView }) {
   const p = parseMessage(m)
   const rowRef = useRef(null)
   const g = useRef({ lpT: 0, lpFired: false, x: 0, y: 0, swiping: false, swipeTriggered: false, icon: null })
@@ -38,6 +38,7 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, onToggle,
 
   // 手势逻辑从 chat.html 原样移植：480ms 长按开菜单，左滑 48px 触发引用
   function onPointerDown(e) {
+    if (selMode) return
     const s = g.current
     s.x = e.clientX; s.y = e.clientY; s.lpFired = false
     s.swiping = false; s.swipeTriggered = false
@@ -105,6 +106,7 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, onToggle,
     }
   }
   function onBubClick() {
+    if (selMode) return // 选择模式：cb-col 已 pointer-events:none，点击由行级 onClick 统一接
     if (g.current.lpFired) { g.current.lpFired = false; return }
     // 双击 → 全屏选字页；第二下也过 onToggle，展开态转一圈回原位不留痕
     const now = Date.now()
@@ -119,13 +121,15 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, onToggle,
   }
   function onCtx(e) {
     e.preventDefault()
+    if (selMode) return
     clearTimeout(g.current.lpT)
     onOpenMenu(m, e.clientX, e.clientY)
   }
 
   return (
     <div ref={rowRef} data-mid={m.id}
-      className={'cb-row ' + (p.me ? 'cb-row--me msg--user' : 'msg--assistant')}
+      onClick={selMode ? () => onSelToggle(m.id) : undefined}
+      className={'cb-row ' + (p.me ? 'cb-row--me msg--user' : 'msg--assistant') + (selMode ? ' cb-row--sel' : '') + (selOn ? ' cb-row--sel-on' : '')}
       style={{
         maxWidth: rowMax, width: doc ? '100%' : 'auto',
         // 新到的消息才渐入；历史水合不动（chat_v2 isNew 同款语义）。
@@ -264,4 +268,5 @@ export default memo(Bubble, (a, b) =>
   a.m === b.m && a.grouped === b.grouped && a.mode === b.mode
   && a.avatars === b.avatars // useMemo 身份：换头像 bump lookVer 时全体重画
   && a.expanded === b.expanded && a.copied === b.copied
+  && a.selMode === b.selMode && a.selOn === b.selOn
   && JSON.stringify(a.reacts || null) === JSON.stringify(b.reacts || null))

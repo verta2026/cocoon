@@ -11,7 +11,7 @@ export function loadQuicks() {
   return ['❤️', '😂', '😮', '🥺', '👍']
 }
 
-export function ContextMenu({ menu, reacts, quicks, onReact, onAddQuick, onClose }) {
+export function ContextMenu({ menu, reacts, quicks, onReact, onAddQuick, onClose, onFav, onMultiSel }) {
   const popRef = useRef(null)
   const [emojiAdd, setEmojiAdd] = useState(false)
   const [emojiVal, setEmojiVal] = useState('')
@@ -69,6 +69,10 @@ export function ContextMenu({ menu, reacts, quicks, onReact, onAddQuick, onClose
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitQuick() } }} />
           )}
           <button className="cm-emoji-add" onClick={() => (emojiAdd ? commitQuick() : setEmojiAdd(true))}>＋</button>
+        </div>
+        <div className="cm-act-row">
+          <button className="cm-act" onClick={() => onFav(menu.id)}>✦ 收藏</button>
+          <button className="cm-act" onClick={() => onMultiSel(menu.id)}>▤ 选一段</button>
         </div>
       </div>
     </div>

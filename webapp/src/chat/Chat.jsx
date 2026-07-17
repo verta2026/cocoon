@@ -7,7 +7,7 @@ import Composer from './Composer.jsx'
 import { ImagePicker, StickerPanel } from './Sheets.jsx'
 import AskSheet from './AskSheet.jsx'
 import { channelWho } from './parseMessage.js'
-import { NS } from '../lib/api.js'
+import { NS, API, HEADERS } from '../lib/api.js'
 import { wallpaperUrl, avatarUrl, extractWallpaperColors, loadLook } from '../lib/look.js'
 import Music from './Music.jsx'
 import { restoreMusic, openFull } from '../lib/music.js'
@@ -73,6 +73,10 @@ export default function Chat() {
   const [docPad, setDocPad] = useState(0)
   const [quicks, setQuicks] = useState(loadQuicks)
   const [foldClosed, setFoldClosed] = useState({})
+  // 收藏：单条走长按菜单，选段走 selMode（点气泡=勾选，底条确认）
+  const [selMode, setSelMode] = useState(false)
+  const [selIds, setSelIds] = useState({})
+  const [favToast, setFavToast] = useState('')
   const logRef = useRef(null)
   const taRef = useRef(null)
   const frostRef = useRef(null)
@@ -258,6 +262,52 @@ export default function Chat() {
     setTimeout(() => setCopied(null), 1500)
   }
 
+  function toast(t) {
+    setFavToast(t)
+    setTimeout(() => setFavToast(''), 1800)
+  }
+
+  // ids 按 rows 顺序取快照发桥；单条和选段共用
+  function favoriteIds(ids) {
+    const set = {}
+    ids.forEach(id => { set[id] = true })
+    const msgs = rows.filter(m => set[m.id]).map(m => ({
+      id: m.id, role: m.role, sender: m.sender || '', content: m.content || '', ts: m.ts || '',
+    }))
+    if (!msgs.length) return
+    fetch(API + '/favorites', { method: 'POST', headers: HEADERS, body: JSON.stringify({ action: 'add', messages: msgs }) })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => toast(d && d.dup ? '已经在收藏里了' : '✦ 已收藏'))
+      .catch(() => toast('收藏失败，稍后再试'))
+  }
+
+  function favOne(id) {
+    setMenu(null)
+    favoriteIds([id])
+  }
+
+  function startMultiSel(id) {
+    setMenu(null)
+    setSelMode(true)
+    setSelIds({ [id]: true })
+  }
+
+  function selToggle(id) {
+    setSelIds(prev => {
+      const next = { ...prev }
+      if (next[id]) delete next[id]
+      else next[id] = true
+      return next
+    })
+  }
+
+  function confirmSel() {
+    const ids = rows.filter(m => selIds[m.id]).map(m => m.id)
+    if (ids.length) favoriteIds(ids)
+    setSelMode(false)
+    setSelIds({})
+  }
+
   function addQuick(v) {
     setQuicks(prev => {
       const next = prev.indexOf(v) < 0 ? prev.concat([v]).slice(-8) : prev
@@ -321,6 +371,7 @@ export default function Chat() {
     return (
       <Bubble key={m._key || m.id} m={m} grouped={grouped} mode={mode} avatars={avatars}
         expanded={expId === m.id} copied={copied === m.id}
+        selMode={selMode} selOn={!!selIds[m.id]} onSelToggle={selToggle}
         reacts={reacts[m.id]}
         onToggle={() => setExpId(cur => (cur === m.id ? null : m.id))}
         onOpenMenu={openMenu}
@@ -433,8 +484,18 @@ export default function Chat() {
         <ContextMenu menu={menu} reacts={reacts} quicks={quicks}
           onReact={(id, emoji, content) => { react(id, emoji, content); setMenu(null) }}
           onAddQuick={addQuick}
+          onFav={favOne}
+          onMultiSel={startMultiSel}
           onClose={() => setMenu(null)} />
       )}
+      {selMode && (
+        <div className="sel-bar">
+          <span className="sel-bar-count">已选 {Object.keys(selIds).length} 条</span>
+          <button className="sel-bar-btn sel-bar-btn--go" disabled={!Object.keys(selIds).length} onClick={confirmSel}>✦ 收藏这一段</button>
+          <button className="sel-bar-btn" onClick={() => { setSelMode(false); setSelIds({}) }}>取消</button>
+        </div>
+      )}
+      {favToast && <div className="fav-toast">{favToast}</div>}
       {lb && <Lightbox src={lb} onClose={() => setLb(null)} />}
       {tv && <TextView text={tv} onClose={() => setTv(null)} />}
       {askLive && !askMin && (

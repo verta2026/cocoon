@@ -174,6 +174,7 @@ export default function Sidebar({ mode, theme, offline, onClose, onToggleMode, o
               <div className="sb-sep" />
               <div className="sb-title">工具</div>
               <Item icon="☰" label="history" onClick={() => { onClose(); window.location.hash = '#/history' }} />
+              <Item icon="✦" label="收藏" onClick={() => { onClose(); window.location.hash = '#/favorites' }} />
               <Item icon=">_" label="terminal" onClick={() => { window.location.href = TERMINAL_URL }} />
               <div className="sb-title">外观</div>
               <Item icon="❐" label={'mode: ' + (mode === 'doc' ? 'claude' : 'bubble')} onClick={onToggleMode} />
