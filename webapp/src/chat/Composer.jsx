@@ -2,6 +2,7 @@
 // 引用条、textarea 自适应。上传流从 chat.html attachUpload/renderAttach 移植。
 import { useEffect, useRef, useState } from 'react'
 import { uploadToServer } from '../lib/look.js'
+import { API, TOKEN } from '../lib/api.js'
 
 let attSeq = 0
 
@@ -16,6 +17,63 @@ export default function Composer({ api, quote, onClearQuote, onSubmit, onOpenSti
   const imgRef = useRef(null)
   const fileRef = useRef(null)
   const imgPress = useRef(null)
+  // 语音输入（旧覆盖层 injectVoiceBtn/startVoiceRec/sendVoiceMsg 收编）：
+  // 麦克风切换按住说话，录完上传+STT 并行，发 [voice:file:dur] 文字
+  const [voiceMode, setVoiceMode] = useState(false)
+  const [recState, setRecState] = useState('') // '' | 'rec' | 'sending'
+  const rec = useRef({ mr: null, chunks: [], start: 0 })
+
+  function startRec() {
+    if (rec.current.mr) return
+    rec.current.chunks = []
+    rec.current.start = Date.now()
+    setRecState('rec')
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      rec.current.mr = mr
+      mr.ondataavailable = e => { if (e.data.size > 0) rec.current.chunks.push(e.data) }
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        rec.current.mr = null
+        if (!rec.current.chunks.length) { setRecState(''); return }
+        const blob = new Blob(rec.current.chunks, { type: 'audio/webm' })
+        rec.current.chunks = []
+        sendVoice(blob, Math.round((Date.now() - rec.current.start) / 1000))
+      }
+      mr.start()
+    }).catch(() => { rec.current.mr = null; setRecState('') })
+  }
+
+  function stopRec() {
+    const mr = rec.current.mr
+    if (mr && mr.state !== 'inactive') mr.stop()
+    else setRecState('')
+  }
+
+  function cancelRec() {
+    const mr = rec.current.mr
+    if (mr) { mr.ondataavailable = null; mr.onstop = null; try { mr.stream.getTracks().forEach(t => t.stop()) } catch (e) {}; if (mr.state !== 'inactive') mr.stop() }
+    rec.current.mr = null
+    rec.current.chunks = []
+    setRecState('')
+  }
+
+  function sendVoice(blob, dur) {
+    setRecState('sending')
+    const fname = 'voice_' + Date.now() + '.webm'
+    const upP = uploadToServer(new File([blob], fname, { type: 'audio/webm' }))
+      .then(d => d.filename || fname)
+    const fd = new FormData()
+    fd.append('audio', blob, fname)
+    const sttP = fetch(API + '/api/call/transcribe', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN }, body: fd,
+    }).then(r => r.json()).catch(() => ({ text: '' }))
+    Promise.all([upP, sttP]).then(([file, stt]) => {
+      const text = (stt.text || '').trim()
+      onSubmit('[voice:' + file + ':' + dur + ']' + (text ? ' ' + text : ''), [])
+      setRecState('')
+    }).catch(() => setRecState(''))
+  }
 
   function onInput(e) {
     inputVal.current = e.target.value
@@ -148,27 +206,49 @@ export default function Composer({ api, quote, onClearQuote, onSubmit, onOpenSti
       )}
       <div className="chat-input-row">
         <span className="chat-plus" style={{ transform: tb ? 'rotate(45deg)' : 'none' }} onClick={() => setTb(!tb)}>+</span>
-        <textarea
-          ref={taRef}
-          rows={1}
-          placeholder="输入消息..."
-          value={input}
-          onChange={onInput}
-          onFocus={onFocus}
-          onKeyDown={e => {
-            const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-            if (e.key === 'Enter' && !isMobile && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault()
-              submit()
-            }
-          }}
-        />
-        <div className="chat-send" role="button" style={{ opacity: anyUploading ? 0.5 : 1 }} onClick={submit}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
-        </div>
+        <button className={'voice-toggle' + (voiceMode ? ' active' : '')} title="语音输入"
+          onClick={() => { if (recState) cancelRec(); setVoiceMode(v => !v) }}>
+          {voiceMode ? (
+            <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="6" y1="8" x2="6" y2="8" /><line x1="10" y1="8" x2="10" y2="8" /><line x1="14" y1="8" x2="14" y2="8" /><line x1="18" y1="8" x2="18" y2="8" /><line x1="6" y1="12" x2="6" y2="12" /><line x1="10" y1="12" x2="10" y2="12" /><line x1="14" y1="12" x2="14" y2="12" /><line x1="18" y1="12" x2="18" y2="12" /><line x1="8" y1="16" x2="16" y2="16" /></svg>
+          ) : (
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
+          )}
+        </button>
+        {voiceMode ? (
+          <div className={'voice-hold-btn' + (recState === 'rec' ? ' rec' : '')}
+            onPointerDown={e => { e.preventDefault(); if (recState !== 'sending') startRec() }}
+            onPointerUp={() => { if (recState === 'rec') stopRec() }}
+            onPointerLeave={() => { if (recState === 'rec') cancelRec() }}
+            onPointerCancel={() => { if (recState === 'rec') cancelRec() }}
+            onContextMenu={e => e.preventDefault()}>
+            {recState === 'rec' ? <><span className="voice-dot" />松开 发送</>
+              : recState === 'sending' ? '发送中...' : '按住 说话'}
+          </div>
+        ) : (
+          <>
+            <textarea
+              ref={taRef}
+              rows={1}
+              placeholder="输入消息..."
+              value={input}
+              onChange={onInput}
+              onFocus={onFocus}
+              onKeyDown={e => {
+                const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+                if (e.key === 'Enter' && !isMobile && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault()
+                  submit()
+                }
+              }}
+            />
+            <div className="chat-send" role="button" style={{ opacity: anyUploading ? 0.5 : 1 }} onClick={submit}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </div>
+          </>
+        )}
       </div>
       {tb && (
         <div className="chat-toolbar">

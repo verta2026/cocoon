@@ -449,22 +449,66 @@ textarea::placeholder { color: var(--c-muted); }
 }
 .sticker-cell img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; pointer-events: none; }
 
-/* 语音气泡：播放按钮 + 进度条 + 剩余时长（chat_v2 voiceCard 同款） */
-.voice-card {
-  display: flex; align-items: center; gap: 9px; padding: 9px 13px;
-  border-radius: 16px; max-width: 230px; margin: 2px 0; cursor: pointer;
-  background: var(--c-bubble); box-shadow: 0 1px 3px rgba(60,40,20,0.09);
+/* 语音气泡：波形条样式（旧覆盖层 vm-bubble 原样收编）。
+   进度=已播部分的条点亮；转文字默认展开可折叠 */
+.vm-bubble {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer;
+  min-width: 140px; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
-.voice-btn {
-  width: 30px; height: 30px; border-radius: 50%; background: var(--c-send);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff;
+.vm-play {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--c-accent, #5a5550);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.voice-track {
-  flex: 1; height: 4px; border-radius: 2px; background: rgba(140,110,80,0.25);
-  position: relative; overflow: hidden; min-width: 56px;
+.vm-bars { flex: 1; display: flex; align-items: center; gap: 2px; height: 20px; }
+.vm-bars span { width: 3px; border-radius: 1.5px; background: var(--c-accent, #5a5550); opacity: .4; }
+.vm-bars span.on { opacity: 1; }
+.vm-dur { font-size: 12px; color: #999; flex-shrink: 0; min-width: 28px; text-align: right; }
+.vm-text { margin-top: 4px; font-size: 13px; color: #888; line-height: 1.4; padding: 0 4px; }
+.vm-text--cap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.vm-cap-chip {
+  margin-top: 4px; font-size: 12px; color: #aaa; cursor: pointer; padding: 0 4px;
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
 }
-.voice-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c-send); border-radius: 2px; }
-.voice-time { font-size: 0.7rem; color: var(--c-muted); flex-shrink: 0; min-width: 30px; text-align: right; }
+.vm-loading { font-size: 12px; color: #aaa; margin-top: 4px; padding: 0 4px; }
+
+/* 思考折叠条（旧覆盖层 tk-bar 原样收编） */
+.tk-bar {
+  display: flex; align-items: center; gap: 5px; font-size: 12px; color: #9a938c;
+  cursor: pointer; padding: 1px 2px; margin-bottom: 3px; user-select: none; -webkit-user-select: none;
+}
+.tk-bar .tk-arrow { display: inline-block; transition: transform .15s; font-size: 10px; }
+.tk-bar.open .tk-arrow { transform: rotate(90deg); }
+.tk-body {
+  font-size: 12.5px; color: #8a847d; line-height: 1.55; border-left: 2px solid rgba(0,0,0,.1);
+  padding: 4px 10px; margin: 2px 0 8px; white-space: pre-wrap; max-height: 320px; overflow-y: auto;
+}
+
+/* 语音输入：麦克风切换 + 按住说话（旧覆盖层 voice-toggle 原样收编） */
+.voice-toggle {
+  width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; flex-shrink: 0; transition: opacity .2s; padding: 0;
+}
+.voice-toggle:active { opacity: .6; }
+.voice-toggle svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; opacity: .7;
+}
+.voice-toggle.active svg { stroke: var(--c-accent, #4caf50); opacity: 1; }
+.voice-hold-btn {
+  flex: 1; height: 42px; border-radius: 21px; border: 1.5px solid rgba(0,0,0,.12);
+  background: rgba(255,253,248,.8); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #5a5550; cursor: pointer; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: none;
+  transition: background .2s, border-color .2s;
+}
+.voice-hold-btn.rec { background: rgba(244,67,54,.08); border-color: rgba(244,67,54,.3); color: #e53935; }
+.voice-hold-btn .voice-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #e53935; margin-right: 8px;
+  animation: voice-pulse 1s infinite;
+}
+@keyframes voice-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
 /* 贴纸编辑卡：长按贴纸弹出，居中小卡，和弹窗一族的磨砂质感 */
 .sticker-edit-ov { display: flex; align-items: center; justify-content: center; }

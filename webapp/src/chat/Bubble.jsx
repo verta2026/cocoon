@@ -1,7 +1,7 @@
 // 单条消息行，视觉与 chat.html renderMessages 逐项对齐。
 // 手势(长按菜单/左滑引用)、反应、失败重试、时间戳+复制已接。
 // 本批未接：doc 模式排版、贴纸选择器、音乐播放(卡片仅展示)。
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import Rich from '../lib/rich.jsx'
 import { parseMessage } from './parseMessage.js'
 import { API, ID, NS, AI_KEY } from '../lib/api.js'
@@ -11,6 +11,19 @@ import ThinkingFold from './ThinkingFold.jsx'
 
 export function cssUrl(u) {
   return 'url("' + String(u == null ? '' : u).replace(/["'()\\]/g, '') + '")'
+}
+
+// 语音消息的随行文字＝转文字：默认展开，点一下折叠成"▸ 转文字"小条（旧覆盖层同款）
+function VoiceCaption({ body }) {
+  const [folded, setFolded] = useState(false)
+  if (folded) {
+    return <div className="vm-cap-chip" onClick={e => { e.stopPropagation(); setFolded(false) }}>▸ 转文字</div>
+  }
+  return (
+    <div className="vm-text vm-text--cap" onClick={e => { e.stopPropagation(); setFolded(true) }}>
+      <Rich text={body} />
+    </div>
+  )
 }
 
 function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, selOn, onSelToggle, onToggle, onOpenMenu, onQuote, onLightbox, onRetry, onReact, onCopy, onTextView }) {
@@ -221,9 +234,11 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
               <img className="cb-sticker" alt="sticker" draggable={false}
                 src={API + '/stickers/' + p.stickerFile} />
             )}
-            {p.voiceId && <VoiceCard id={p.voiceId} />}
-            {p.fileVoice && <VoiceCard id={'file:' + p.fileVoice.file} src={API + '/files/' + encodeURIComponent(p.fileVoice.file)} />}
-            {p.body && <span className="cb-text"><Rich text={p.body} /></span>}
+            {p.voiceId && <VoiceCard id={p.voiceId} hasCaption={!!p.body} />}
+            {p.fileVoice && <VoiceCard id={'file:' + p.fileVoice.file} src={API + '/files/' + encodeURIComponent(p.fileVoice.file)} dur={p.fileVoice.dur} hasCaption={!!p.body} />}
+            {p.body && (p.voiceId || p.fileVoice
+              ? <VoiceCaption body={p.body} />
+              : <span className="cb-text"><Rich text={p.body} /></span>)}
           </div>
         )}
 
