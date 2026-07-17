@@ -6,7 +6,7 @@ import Sidebar from './Sidebar.jsx'
 import Composer from './Composer.jsx'
 import { ImagePicker, StickerPanel } from './Sheets.jsx'
 import AskSheet from './AskSheet.jsx'
-import { channelWho } from './parseMessage.js'
+import { channelWho, quotePreview } from './parseMessage.js'
 import { NS, API, HEADERS } from '../lib/api.js'
 import { wallpaperUrl, avatarUrl, extractWallpaperColors, loadLook } from '../lib/look.js'
 import Music from './Music.jsx'
@@ -260,7 +260,7 @@ export default function Chat() {
   }
 
   function startQuote(m) {
-    setQuote({ id: m.id, text: m.content })
+    setQuote({ id: m.id, text: quotePreview(m) || m.content })
     if (taRef.current) taRef.current.focus()
   }
 

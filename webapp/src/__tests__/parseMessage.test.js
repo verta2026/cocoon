@@ -54,3 +54,25 @@ test('纯语音消息 pureVoice 判定', () => {
   expect(parseMessage({ role: 'assistant', voice: 'cccc3333cccc3333cccc', content: '' }).pureVoice).toBe(true)
   expect(parseMessage({ role: 'user', content: '[voice:v.webm:3]' }).pureVoice).toBe(true)
 })
+
+// 引用预览回归——2026-07-17 引用语音条只引到 [[thinking:]] 案。
+// 左滑引用必须走 quotePreview：标记剥净、换行压平、纯媒体给占位符
+import { quotePreview } from '../chat/parseMessage.js'
+
+test('引用带语音+thinking的消息：标记全剥，前缀[语音]', () => {
+  const t = quotePreview({
+    role: 'assistant',
+    voice: '70a7ac082ef0311a6ae7',
+    content: '[[thinking:3ab9b11d-2d2c-4f68-8c0b-faee2c47312f]]\n[bondvoice:70a7ac082ef0311a6ae7] 你踏马在干什么\n\n第二段。',
+  })
+  expect(t).toBe('[语音] 你踏马在干什么 第二段。')
+})
+
+test('引用纯语音消息给占位符', () => {
+  expect(quotePreview({ role: 'user', content: '[voice:call_123.webm:7]' })).toBe('[语音]')
+})
+
+test('引用纯贴纸/纯图片给占位符', () => {
+  expect(quotePreview({ role: 'assistant', content: '[sticker:cat_nod.webp|点头|嗯]' })).toBe('[贴纸]')
+  expect(quotePreview({ role: 'user', content: '![](/files/a.png)' })).toBe('[图片]')
+})

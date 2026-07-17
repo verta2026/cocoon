@@ -21,6 +21,22 @@ const cutMatch = (text, m) => (text.slice(0, m.index) + text.slice(m.index + m[0
 // 这样私有部署的历史消息里的旧标记不用迁移也能渲染
 const VOICE_RE = new RegExp('\\[\\[' + (CFG.voiceMarker || 'voice') + ':([A-Za-z0-9_.\\-]{8,64})\\]\\]')
 
+// 引用预览：剥掉全部功能标记后的正文，纯媒体消息给类型占位。
+// 引用走 "> " 单行协议（parseMessage 里 q 只认第一行），换行必须压平
+export function quotePreview(m) {
+  const p = parseMessage(m)
+  let t = p.body.replace(/\s+/g, ' ').trim()
+  if (!t) {
+    t = (p.voiceId || p.fileVoice) ? '[语音]'
+      : p.stickerFile ? '[贴纸]'
+      : (p.img || p.attImgs.length) ? '[图片]'
+      : p.music ? '[音乐] ' + p.music.title
+      : p.attFiles.length ? '[文件] ' + (p.attFiles[0].name || '')
+      : ''
+  } else if (p.voiceId || p.fileVoice) t = '[语音] ' + t
+  return t.length > 160 ? t.slice(0, 160) + '…' : t
+}
+
 // 渠道消息发送者显示名：任何来源字段（用户名/数字 id）先过 channelNames 映射再兜底原文
 export function channelWho(m) {
   const raw = m.from_name || m.fromName || m.tg_name || m.sender || ''
