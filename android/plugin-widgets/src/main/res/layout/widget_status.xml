@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="14dp"
+    android:background="@drawable/card_bg">
+
+    <ImageView
+        android:id="@+id/status_dot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_centerVertical="false"
+        android:layout_marginTop="4dp"
+        android:src="@drawable/dot_lemon"
+        android:contentDescription="@null" />
+
+    <TextView
+        android:id="@+id/status_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/status_dot"
+        android:layout_marginStart="6dp"
+        android:textSize="11sp"
+        android:textColor="#7A6552"
+        android:text="@string/widget_status" />
+
+    <TextView
+        android:id="@+id/widget_state"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:background="@drawable/chip_mint"
+        android:textSize="12sp"
+        android:textColor="#FFFFFF"
+        android:text="…" />
+
+    <TextView
+        android:id="@+id/widget_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_state"
+        android:layout_marginTop="8dp"
+        android:textSize="15sp"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textColor="#4A382A"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/widget_poke"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="7dp"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#4A382A"
+        android:background="@drawable/keycap"
+        android:text="@string/status_poke" />
+</RelativeLayout>

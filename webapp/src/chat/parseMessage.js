@@ -127,6 +127,10 @@ export function parseMessage(m) {
   const tkMatch = matchOutsideCode(body, /\[\[thinking:([0-9a-fA-F\-:]+)\]\]\s*/)
   if (tkMatch) { thinkingId = tkMatch[1]; body = cutMatch(body, tkMatch) }
 
+  let call = null
+  const callMatch = matchOutsideCode(body, /\[\[call:([^:]+):([^\]]*)\]\]/)
+  if (callMatch) { call = { type: callMatch[1], reason: callMatch[2] }; body = cutMatch(body, callMatch) }
+
   let music = null
   const mMus = matchOutsideCode(body, /\[music:(\d+)[:：]([^:：]+)[:：]([^:：\]]+)(?:[:：]([^\]]*))?\]/)
   if (mMus) {
@@ -172,7 +176,7 @@ export function parseMessage(m) {
   }
 
   return {
-    kind, me, body, quote: q, img, stickerFile, music, voiceId, fileVoice, thinkingId,
+    kind, me, body, quote: q, img, stickerFile, music, call, voiceId, fileVoice, thinkingId,
     attImgs: allAtts.filter(a => a.is_image),
     attFiles: allAtts.filter(a => !a.is_image),
     tgOn, tgGroup, tgWho, tgChat, tgText, groupOther, senderColor,

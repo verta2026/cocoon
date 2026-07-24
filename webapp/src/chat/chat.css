@@ -110,6 +110,17 @@ textarea::placeholder { color: var(--c-muted); }
   max-width: 240px; cursor: pointer; box-shadow: 0 2px 8px rgba(60,40,20,0.08);
 }
 .cb-att-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--c-text); }
+.cb-call {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: var(--c-bubble); border-radius: 14px; box-shadow: 0 2px 8px rgba(60,40,20,0.08);
+  max-width: 260px; margin: 4px 0;
+}
+.cb-call-icon { color: var(--c-accent); flex-shrink: 0; }
+.cb-call-info { flex: 1; min-width: 0; }
+.cb-call-label { font-size: 0.82rem; color: var(--c-accent); font-weight: 500; }
+.cb-call-reason { font-size: 0.72rem; color: var(--c-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cb-call--missed .cb-call-icon { color: #c25; }
+.cb-call--missed .cb-call-label { color: #c25; }
 .cb-music {
   display: flex; align-items: center; gap: 10px; padding: 10px 12px;
   background: var(--c-bubble); border-radius: 14px; box-shadow: 0 2px 8px rgba(60,40,20,0.1);
@@ -504,6 +515,7 @@ textarea::placeholder { color: var(--c-muted); }
   transition: background .2s, border-color .2s;
 }
 .voice-hold-btn.rec { background: rgba(244,67,54,.08); border-color: rgba(244,67,54,.3); color: #e53935; }
+.voice-hold-btn.rec.cancel { background: rgba(244,67,54,.35); border-color: #e53935; color: #fff; }
 .voice-hold-btn .voice-dot {
   width: 8px; height: 8px; border-radius: 50%; background: #e53935; margin-right: 8px;
   animation: voice-pulse 1s infinite;

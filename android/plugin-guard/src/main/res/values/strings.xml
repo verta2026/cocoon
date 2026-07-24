@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="guard_lock_active">App lock active</string>
+    <string name="guard_locked_fmt">%1$s is locked</string>
+    <string name="guard_go_back">Go back</string>
+    <string name="guard_screen_active">Screen sharing active</string>
+    <string name="guard_stop_share">Stop</string>
+    <string name="guard_screen_request">Screen share requested</string>
+    <string name="guard_screen_request_body">Tap to start sharing</string>
+    <string name="guard_overlay_rationale">The app lock needs "Display over other apps" — find this app in the system list and switch it on.</string>
+</resources>

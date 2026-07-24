@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_status">Status</string>
+    <string name="widget_heart">Heart rate</string>
+    <string name="widget_reminder">Next up</string>
+    <string name="widget_tasks">Today</string>
+    <string name="widget_quick">Quick pokes</string>
+    <string name="widget_health">Health</string>
+    <string name="widget_mailbox">Notes</string>
+
+    <string name="widget_login_hint">Open the app to sign in</string>
+    <string name="widget_tasks_empty">No tasks today</string>
+    <string name="widget_health_fmt">Today %1$d/8 cups</string>
+    <string name="widget_health_zero">Today 0/8 cups</string>
+    <string name="widget_mailbox_new">Notes · %1$d new</string>
+    <string name="widget_mailbox_empty">Nothing here yet</string>
+    <string name="mailbox_add">+ Add a note</string>
+    <string name="health_water_btn">+1 cup</string>
+    <string name="health_period_btn">Period</string>
+    <string name="status_poke">Poke</string>
+    <string name="quick_kiss">Kiss</string>
+    <string name="quick_miss">Miss you</string>
+    <string name="quick_hug">Hug</string>
+    <string name="quick_harvest">Harvest</string>
+</resources>

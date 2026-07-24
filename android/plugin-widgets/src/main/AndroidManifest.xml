@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <receiver
+            android:name="cocoon.widgets.StatusWidget"
+            android:exported="true"
+            android:label="@string/widget_status">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="cocoon.widgets.POKE" />
+                <action android:name="cocoon.widgets.REFRESH_STATUS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/status_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="cocoon.widgets.HeartWidget"
+            android:exported="true"
+            android:label="@string/widget_heart">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/heart_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="cocoon.widgets.ReminderWidget"
+            android:exported="true"
+            android:label="@string/widget_reminder">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/reminder_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="cocoon.widgets.QuickWidget"
+            android:exported="true"
+            android:label="@string/widget_quick">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="cocoon.widgets.QUICK_SEND" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="cocoon.widgets.TasksWidget"
+            android:exported="true"
+            android:label="@string/widget_tasks">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="cocoon.widgets.TASK_DONE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tasks_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="cocoon.widgets.HealthWidget"
+            android:exported="true"
+            android:label="@string/widget_health">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="cocoon.widgets.HEALTH_QUICK" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/health_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="cocoon.widgets.MailboxWidget"
+            android:exported="true"
+            android:label="@string/widget_mailbox">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mailbox_widget_info" />
+        </receiver>
+    </application>
+</manifest>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="telemetry_bgloc_rationale">Allow background location ("Always allow" in system settings) so reports keep flowing when the app is closed. Optional — foreground reports work either way.</string>
+    <string name="telemetry_usage_rationale">Screen-time reporting needs "Usage access" — find this app in the system list and switch it on.</string>
+</resources>

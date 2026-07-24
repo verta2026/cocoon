@@ -4,7 +4,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import Rich from '../lib/rich.jsx'
 import { parseMessage } from './parseMessage.js'
-import { API, ID, NS, AI_KEY } from '../lib/api.js'
+import { API, ID, NS, AI_KEY, TOKEN } from '../lib/api.js'
 import { playMusicById } from '../lib/music.js'
 import VoiceCard from './VoiceCard.jsx'
 import ThinkingFold from './ThinkingFold.jsx'
@@ -12,6 +12,30 @@ import ThinkingFold from './ThinkingFold.jsx'
 export function cssUrl(u) {
   return 'url("' + String(u == null ? '' : u).replace(/["'()\\]/g, '') + '")'
 }
+
+// 语音原文（说这条语音时的文字）：桥 /tts/text/<id> 按需拉，模块级缓存。
+// 有原文时它才是转文字；语音标记后面跟着的正文是正文，不再被当成转文字顶掉
+const vtCache = new Map()
+function useVoiceText(id) {
+  const [text, setText] = useState(() => (id && vtCache.get(id)) || '')
+  useEffect(() => {
+    if (!id) return
+    if (vtCache.has(id)) { setText(vtCache.get(id)); return }
+    let on = true
+    fetch(API + '/tts/text/' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + TOKEN } })
+      .then(r => (r.ok ? r.json() : { text: '' }))
+      .then(j => {
+        const t = (j.text || '').trim()
+        vtCache.set(id, t)
+        if (on) setText(t)
+      })
+      .catch(() => { if (on) setText('') })
+    return () => { on = false }
+  }, [id])
+  return text
+}
+
+const normText = s => String(s || '').replace(/\s+/g, ' ').trim()
 
 // 语音消息的随行文字＝转文字：默认展开，点一下折叠成"▸ 转文字"小条（旧覆盖层同款）
 function VoiceCaption({ body }) {
@@ -34,6 +58,8 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
   if (p.kind === 'system') {
     return <div className="cb-sys">{m.content}</div>
   }
+
+  const vText = useVoiceText(p.voiceId)
 
   // 新到的音乐卡自动开播（原版 isNew && !me 行为）
   useEffect(() => {
@@ -200,6 +226,22 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
           </div>
         ))}
 
+        {p.call && (
+          <div className={'cb-call' + (p.call.type === 'missed' ? ' cb-call--missed' : '')}>
+            <svg className="cb-call-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {p.call.type === 'missed' ? (
+                <><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.33 1.85.53 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.11 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.17.96.37 1.91.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91" /><line x1="23" y1="1" x2="17" y2="7" /><line x1="17" y1="1" x2="23" y2="7" /></>
+              ) : (
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              )}
+            </svg>
+            <div className="cb-call-info">
+              <div className="cb-call-label">{p.call.type === 'dial' ? '语音通话' : p.call.type === 'missed' ? '未接来电' : '通话结束'}</div>
+              <div className="cb-call-reason">{p.call.type === 'ended' ? '通话时长 ' + p.call.reason : p.call.reason}</div>
+            </div>
+          </div>
+        )}
+
         {p.music && (
           <div className="cb-music" onClick={e => { e.stopPropagation(); playMusicById(p.music.id, p.music.title, p.music.artist, p.music.cover) }}>
             <div className="cb-music-cover"
@@ -234,9 +276,16 @@ function Bubble({ m, grouped, mode, avatars, expanded, copied, reacts, selMode, 
               <img className="cb-sticker" alt="sticker" draggable={false}
                 src={API + '/stickers/' + p.stickerFile} />
             )}
-            {p.voiceId && <VoiceCard id={p.voiceId} hasCaption={!!p.body} />}
+            {p.voiceId && <VoiceCard id={p.voiceId} hasCaption={!!(vText || p.body)} />}
             {p.fileVoice && <VoiceCard id={'file:' + p.fileVoice.file} src={API + '/files/' + encodeURIComponent(p.fileVoice.file)} dur={p.fileVoice.dur} hasCaption={!!p.body} />}
-            {p.body && (p.voiceId || p.fileVoice
+            {p.voiceId && vText ? (
+              <>
+                <VoiceCaption body={vText} />
+                {p.body && normText(p.body) !== normText(vText) && (
+                  <span className="cb-text"><Rich text={p.body} /></span>
+                )}
+              </>
+            ) : p.body && (p.voiceId || p.fileVoice
               ? <VoiceCaption body={p.body} />
               : <span className="cb-text"><Rich text={p.body} /></span>)}
           </div>

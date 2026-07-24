@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <application>
+        <activity
+            android:name="cocoon.call.IncomingCallActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+    </application>
+</manifest>

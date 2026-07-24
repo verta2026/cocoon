@@ -38,3 +38,22 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    strategy:
+      matrix:
+        # full plugin set and bare core must both stay green
+        plugins: ["widgets,guard,call,telemetry", ""]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Build
+        run: ./gradlew assembleDebug "-Pcocoon.plugins=${{ matrix.plugins }}" --no-daemon

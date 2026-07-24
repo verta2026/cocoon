@@ -81,7 +81,21 @@ export function useChat() {
               }
             }
           })
-          const add = fresh.filter(m => !skip[m.id])
+          // 语音消息内容更新后 id 变（archive_key 含 content），旧 id 已在 seen 但新 id
+          // 是 fresh，若直接追加会出现两个同 voice 气泡。找旧行替换，seen 换 id，不新增
+          const add = fresh.filter(m => {
+            if (skip[m.id]) return false
+            if (m.voice) {
+              const dupIdx = next.findIndex(r => r.voice === m.voice && r.id !== m.id)
+              if (dupIdx !== -1) {
+                seen.current.delete(next[dupIdx].id)
+                seen.current.add(m.id)
+                next[dupIdx] = { ...m, _key: next[dupIdx]._key || next[dupIdx].id }
+                return false
+              }
+            }
+            return true
+          })
           return add.length ? next.concat(add).sort(byTime) : next
         })
       }

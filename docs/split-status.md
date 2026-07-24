@@ -166,6 +166,21 @@ they are useful in a real deployment:
   does not ship device data, live usage files, phone app labels, or route
   storage paths.
 
+## Android Shell (`android/`)
+
+The Android app is split the same way: a minimal core (`:app` — WebView shell,
+login token capture, FCM message notifications, quick reply, system alarm
+relay) plus optional plugin modules selected in `gradle.properties`
+(`cocoon.plugins=`): `widgets`, `guard` (app lock + screen share), `call`
+(full-screen incoming call), `telemetry` (battery/location/screen-time/Health
+Connect). The core discovers plugins reflectively through the
+`cocoon.common.CocoonPlugin` contract, so a removed module is a removed
+feature, never a broken build. All copy is neutral string resources; deployment
+URLs, storage namespace, and landscape page lists are gradle properties;
+`google-services.json`, keystores, and ringtone audio are explicitly not
+shipped. The `/widget/*` bridge endpoints the shell talks to are instance
+routes, not cocoon core.
+
 ## Private Route Boundary
 
 Some private deployments may keep instance-only routes for relationship modes,

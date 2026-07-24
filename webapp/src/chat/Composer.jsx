@@ -21,33 +21,49 @@ export default function Composer({ api, quote, onClearQuote, onSubmit, onOpenSti
   // 麦克风切换按住说话，录完上传+STT 并行，发 [voice:file:dur] 文字
   const [voiceMode, setVoiceMode] = useState(false)
   const [recState, setRecState] = useState('') // '' | 'rec' | 'sending'
-  const rec = useRef({ mr: null, chunks: [], start: 0 })
+  const [willCancel, setWillCancel] = useState(false) // 上滑取消区内
+  const rec = useRef({ mr: null, chunks: [], start: 0, active: false, pendingStop: false, startY: 0 })
 
   function startRec() {
-    if (rec.current.mr) return
+    if (rec.current.active) return
     rec.current.chunks = []
     rec.current.start = Date.now()
+    rec.current.active = true
+    rec.current.pendingStop = false
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      rec.current.active = false
+      alert('录音失败: 此环境没有 mediaDevices API')
+      return
+    }
     setRecState('rec')
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      if (!rec.current.active) { stream.getTracks().forEach(t => t.stop()); return }
       const mr = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
       rec.current.mr = mr
       mr.ondataavailable = e => { if (e.data.size > 0) rec.current.chunks.push(e.data) }
       mr.onstop = () => {
         stream.getTracks().forEach(t => t.stop())
         rec.current.mr = null
+        rec.current.active = false
         if (!rec.current.chunks.length) { setRecState(''); return }
         const blob = new Blob(rec.current.chunks, { type: 'audio/webm' })
         rec.current.chunks = []
         sendVoice(blob, Math.round((Date.now() - rec.current.start) / 1000))
       }
       mr.start()
-    }).catch(() => { rec.current.mr = null; setRecState('') })
+      if (rec.current.pendingStop) mr.stop()
+    }).catch(err => {
+      rec.current.mr = null; rec.current.active = false; setRecState('')
+      // 排障期临时弹真实错误：OPPO WebView 上静默失败查不出根因
+      alert('录音失败: ' + (err && (err.name + ' - ' + err.message)))
+    })
   }
 
   function stopRec() {
+    if (!rec.current.active) return
     const mr = rec.current.mr
     if (mr && mr.state !== 'inactive') mr.stop()
-    else setRecState('')
+    else { rec.current.pendingStop = true }
   }
 
   function cancelRec() {
@@ -55,6 +71,8 @@ export default function Composer({ api, quote, onClearQuote, onSubmit, onOpenSti
     if (mr) { mr.ondataavailable = null; mr.onstop = null; try { mr.stream.getTracks().forEach(t => t.stop()) } catch (e) {}; if (mr.state !== 'inactive') mr.stop() }
     rec.current.mr = null
     rec.current.chunks = []
+    rec.current.active = false
+    rec.current.pendingStop = false
     setRecState('')
   }
 
@@ -215,13 +233,28 @@ export default function Composer({ api, quote, onClearQuote, onSubmit, onOpenSti
           )}
         </button>
         {voiceMode ? (
-          <div className={'voice-hold-btn' + (recState === 'rec' ? ' rec' : '')}
-            onPointerDown={e => { e.preventDefault(); if (recState !== 'sending') startRec() }}
-            onPointerUp={() => { if (recState === 'rec') stopRec() }}
-            onPointerLeave={() => { if (recState === 'rec') cancelRec() }}
-            onPointerCancel={() => { if (recState === 'rec') cancelRec() }}
+          <div className={'voice-hold-btn' + (recState === 'rec' ? (willCancel ? ' rec cancel' : ' rec') : '')}
+            onTouchStart={e => {
+              e.preventDefault()
+              if (recState !== 'sending') {
+                rec.current.startY = e.touches[0].clientY
+                setWillCancel(false)
+                startRec()
+              }
+            }}
+            onTouchMove={e => {
+              if (recState === 'rec') setWillCancel(rec.current.startY - e.touches[0].clientY > 60)
+            }}
+            onTouchEnd={e => {
+              e.preventDefault()
+              if (recState === 'rec') { willCancel ? cancelRec() : stopRec() }
+              setWillCancel(false)
+            }}
+            onTouchCancel={() => { if (recState === 'rec') cancelRec(); setWillCancel(false) }}
+            onMouseDown={e => { e.preventDefault(); if (recState !== 'sending') startRec() }}
+            onMouseUp={() => { if (recState === 'rec') stopRec() }}
             onContextMenu={e => e.preventDefault()}>
-            {recState === 'rec' ? <><span className="voice-dot" />松开 发送</>
+            {recState === 'rec' ? (willCancel ? <><span className="voice-dot" />松开 取消</> : <><span className="voice-dot" />松开 发送 · 上滑取消</>)
               : recState === 'sending' ? '发送中...' : '按住 说话'}
           </div>
         ) : (
@@ -233,6 +266,21 @@ export default function Composer({ api, quote, onClearQuote, onSubmit, onOpenSti
               value={input}
               onChange={onInput}
               onFocus={onFocus}
+              onPaste={e => {
+                const items = e.clipboardData && e.clipboardData.items
+                if (!items) return
+                const imgs = []
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.indexOf('image') !== -1) {
+                    const f = items[i].getAsFile()
+                    if (f) imgs.push(f)
+                  }
+                }
+                if (imgs.length) {
+                  e.preventDefault()
+                  addImages(imgs)
+                }
+              }}
               onKeyDown={e => {
                 const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
                 if (e.key === 'Enter' && !isMobile && !e.shiftKey && !e.nativeEvent.isComposing) {
